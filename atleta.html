@@ -1,1 +1,282 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal do Atleta - ProCoach</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+        .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #334155; outline: none; }
+        .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); border: 2px solid #334155; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-slow { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+    <div id="root" class="h-full w-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- FIREBASE INIT ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco",
+            authDomain: "prosaude-e9130.firebaseapp.com",
+            projectId: "prosaude-e9130",
+            storageBucket: "prosaude-e9130.firebasestorage.app",
+            messagingSenderId: "999318121562",
+            appId: "1:999318121562:web:1f192d4c0f14a64fb57c63"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        // --- UTILS & CONSTANTS ---
+        const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
+        
+        const BODY_PARTS = ["Cabeça", "Pescoço", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"];
+        const SIDES = [{id: '', label: 'Central/Ambos'}, {id: '(Dir)', label: 'Direito'}, {id: '(Esq)', label: 'Esquerdo'}];
+
+        const Icon = ({ name, size=24, className="" }) => {
+            const icons = {
+                user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+                check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
+                x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+                send: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+                alert: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            };
+            return <span className={className}>{icons[name]}</span>;
+        };
+
+        const AthletePortal = () => {
+            const [players, setPlayers] = useState([]);
+            const [coachDocId, setCoachDocId] = useState(null);
+            const [trainingLog, setTrainingLog] = useState({});
+            const [themeColor, setThemeColor] = useState('#1e3a8a');
+            
+            const [step, setStep] = useState(1); 
+            const [selectedIdx, setSelectedIdx] = useState(null);
+            
+            const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
+            const [painZones, setPainZones] = useState([]);
+            
+            const [tempPart, setTempPart] = useState('');
+            const [tempSide, setTempSide] = useState('');
+            
+            const [loading, setLoading] = useState(true);
+            const [submitting, setSubmitting] = useState(false);
+
+            useEffect(() => {
+                db.collection('coachData').limit(1).get().then(snap => {
+                    if(!snap.empty) {
+                        const doc = snap.docs[0];
+                        const data = doc.data();
+                        setCoachDocId(doc.id);
+                        setPlayers(data.players || []);
+                        setTrainingLog(data.trainingLog || {});
+                        if(data.themeColor) setThemeColor(data.themeColor);
+                    } else {
+                        alert("Erro: Banco de dados da equipe não encontrado.");
+                    }
+                    setLoading(false);
+                }).catch(e => {
+                    console.error(e);
+                    alert("Erro ao conectar com a nuvem.");
+                    setLoading(false);
+                });
+            }, []);
+
+            const selectPlayer = (idx) => {
+                setSelectedIdx(idx);
+                const today = getTodayStr();
+                const existingLog = trainingLog[today]?.[idx]?.wellness;
+                if(existingLog) {
+                    setScores(existingLog);
+                    setPainZones(trainingLog[today][idx].painZones || []);
+                } else {
+                    setScores({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
+                    setPainZones([]);
+                }
+                setStep(2);
+            };
+
+            const addPain = () => {
+                if(!tempPart) return;
+                const zoneString = tempSide ? `${tempPart} ${tempSide}` : tempPart;
+                if(!painZones.includes(zoneString)) {
+                    setPainZones([...painZones, zoneString]);
+                }
+                setTempPart('');
+                setTempSide('');
+            };
+
+            const removePain = (zone) => {
+                setPainZones(painZones.filter(z => z !== zone));
+            };
+
+            const submitData = () => {
+                setSubmitting(true);
+                const today = getTodayStr();
+                
+                const newLog = { ...trainingLog };
+                if (!newLog[today]) newLog[today] = {};
+                if (!newLog[today][selectedIdx]) newLog[today][selectedIdx] = {};
+                
+                newLog[today][selectedIdx].wellness = scores;
+                newLog[today][selectedIdx].painZones = painZones;
+
+                db.collection('coachData').doc(coachDocId).set({ trainingLog: newLog }, { merge: true })
+                    .then(() => {
+                        setSubmitting(false);
+                        setStep(3); 
+                    })
+                    .catch(err => {
+                        setSubmitting(false);
+                        alert("Erro ao enviar dados. Verifique a internet.");
+                    });
+            };
+
+            if (loading) {
+                return <div className="h-full flex flex-col items-center justify-center text-blue-500 animate-pulse"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div><p className="font-bold uppercase tracking-widest">Carregando Elenco...</p></div>;
+            }
+
+            // --- TELA 1: MURAL DE SELEÇÃO ---
+            if (step === 1) {
+                return (
+                    <div className="h-full flex flex-col p-4 animate-fade-in">
+                        <div className="text-center mt-6 mb-8">
+                            <h1 className="text-3xl font-black text-white italic tracking-wider flex items-center justify-center gap-2">
+                                <span style={{color: themeColor}}>PRO</span>COACH 
+                                <span className="text-[9px] not-italic bg-slate-800 text-white px-1.5 py-0.5 rounded border border-slate-700">V129 MAX</span>
+                            </h1>
+                            <p className="text-slate-400 text-sm mt-1 uppercase font-bold">Portal do Atleta</p>
+                            <h2 className="text-xl font-bold mt-6 text-slate-100">Quem é você?</h2>
+                            <p className="text-xs text-slate-500 mt-1">Toque na sua foto para preencher o formulário</p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pb-10">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                                {players.map((p, i) => (
+                                    <div key={i} onClick={() => selectPlayer(i)} className="flex flex-col items-center gap-2 cursor-pointer group transform transition-transform active:scale-95">
+                                        <div className="w-20 h-20 rounded-full border-2 border-slate-700 bg-slate-800 overflow-hidden shadow-lg group-hover:border-blue-500 transition-colors">
+                                            {p.image ? <img src={p.image} className="w-full h-full object-cover object-top" /> : <div className="w-full h-full flex items-center justify-center text-slate-600"><Icon name="user" size={32}/></div>}
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-300 text-center leading-tight truncate w-full px-1">{p.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- TELA 2: FORMULÁRIO DE WELLNESS ---
+            if (step === 2) {
+                const p = players[selectedIdx];
+                return (
+                    <div className="h-full flex flex-col animate-fade-in relative bg-slate-900">
+                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center gap-4 shrink-0 shadow-lg z-10">
+                            <button onClick={()=>setStep(1)} className="text-slate-400 hover:text-white p-2 bg-slate-700 rounded-full"><Icon name="x" size={20}/></button>
+                            <div className="w-14 h-14 rounded-full border-2 bg-slate-700 overflow-hidden shrink-0" style={{borderColor: themeColor}}>
+                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top" /> : <Icon name="user" className="m-3 text-slate-500"/>}
+                            </div>
+                            <div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider" style={{color: themeColor}}>Avaliando Hoje</div>
+                                <h2 className="text-lg font-black text-white leading-none truncate">{p.name}</h2>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28">
+                            {[
+                                {id:'sleep', label:'😴 Qualidade do Sono', desc:'1 = Excelente | 7 = Péssimo/Insônia', color:'#3b82f6'},
+                                {id:'stress', label:'🤯 Nível de Estresse', desc:'1 = Muito Relaxado | 7 = Muito Estressado', color:'#8b5cf6'},
+                                {id:'fatigue', label:'🔋 Nível de Cansaço', desc:'1 = Com Muita Energia | 7 = Exausto', color:'#10b981'},
+                                {id:'soreness', label:'🦵 Dor Muscular', desc:'1 = Nenhuma Dor | 7 = Muita Dor', color:'#f59e0b'},
+                                {id:'mood', label:'🧠 Humor / Disposição', desc:'1 = Muito Animado | 7 = Irritado/Desanimado', color:'#eab308'}
+                            ].map(metric => (
+                                <div key={metric.id} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 shadow-inner">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div>
+                                            <h3 className="font-bold text-slate-100 text-sm">{metric.label}</h3>
+                                            <p className="text-[9px] text-slate-400 uppercase mt-0.5">{metric.desc}</p>
+                                        </div>
+                                        <div className="text-xl font-black w-8 h-8 flex items-center justify-center rounded bg-slate-800 border border-slate-600 text-white shadow" style={{borderColor: metric.color}}>{scores[metric.id]}</div>
+                                    </div>
+                                    <input type="range" min="1" max="7" step="1" value={scores[metric.id]} onChange={(e)=>setScores({...scores, [metric.id]: parseInt(e.target.value)})} className="hooper-slider mt-4" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}} />
+                                </div>
+                            ))}
+
+                            <div className="bg-slate-800/80 p-5 rounded-2xl border border-red-500/30 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+                                <h3 className="font-bold text-red-400 flex items-center gap-2 mb-1"><Icon name="alert" size={18}/> Mapeamento de Dores Focais</h3>
+                                <p className="text-[10px] text-slate-400 uppercase mb-4">Adicione se houver alguma dor específica hoje.</p>
+                                
+                                <div className="flex flex-col gap-3 mb-4">
+                                    <div className="flex gap-2">
+                                        <select className="flex-1 bg-slate-900 border border-slate-600 text-slate-200 text-sm p-3 rounded-xl outline-none focus:border-red-500" value={tempPart} onChange={e=>setTempPart(e.target.value)}>
+                                            <option value="">1. Qual local?</option>
+                                            {BODY_PARTS.map(bp => <option key={bp} value={bp}>{bp}</option>)}
+                                        </select>
+                                        <select className="flex-1 bg-slate-900 border border-slate-600 text-slate-200 text-sm p-3 rounded-xl outline-none focus:border-red-500" value={tempSide} onChange={e=>setTempSide(e.target.value)}>
+                                            <option value="">2. Qual lado?</option>
+                                            {SIDES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <button onClick={addPain} disabled={!tempPart} className={`py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${tempPart ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/50' : 'bg-slate-700 text-slate-500'}`}>+ ADICIONAR DOR</button>
+                                </div>
+
+                                {painZones.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-700">
+                                        {painZones.map(z => (
+                                            <div key={z} onClick={()=>removePain(z)} className="bg-red-900/40 border border-red-500/50 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer hover:bg-red-900/80">
+                                                {z} <Icon name="x" size={14}/>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="absolute bottom-0 left-0 w-full p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 z-20">
+                            <button onClick={submitData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-900/50 flex items-center justify-center gap-2 text-lg transition-transform active:scale-95" style={{backgroundColor: themeColor}}>
+                                {submitting ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <><Icon name="send"/> ENVIAR AVALIAÇÃO</>}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- TELA 3: SUCESSO ---
+            if (step === 3) {
+                return (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-center animate-fade-in bg-slate-900">
+                        <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-green-900/50 mb-6 pulse-slow">
+                            <Icon name="check" size={48}/>
+                        </div>
+                        <h2 className="text-3xl font-black text-white mb-2">Tudo Certo!</h2>
+                        <p className="text-slate-400 mb-8 max-w-xs">Seus dados de prontidão foram enviados diretamente para a comissão técnica.</p>
+                        <p className="font-bold text-lg" style={{color: themeColor}}>Bom treino!</p>
+                        <button onClick={()=>setStep(1)} className="mt-12 text-slate-500 text-sm underline font-bold">Voltar para o Início</button>
+                    </div>
+                );
+            }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AthletePortal />);
+    </script>
+</body>
+</html>
 
