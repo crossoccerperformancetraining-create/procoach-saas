@@ -63,7 +63,17 @@
             { id: 7, md: 'MD+2', name: 'DOMINGO', date:'', am: [], pm: [] }
         ];
 
-        const RTP_PHASES = [ {id:1,label:"Fase 1: Aguda"}, {id:2,label:"Fase 2: Sub-aguda"}, {id:3,label:"Fase 3: Transição I"}, {id:4,label:"Fase 4: Transição II"}, {id:5,label:"Fase 5: Transição III"}, {id:6,label:"Fase 6: Performance I"}, {id:7,label:"Fase 7: Performance II"}, {id:8,label:"Fase 8: Performance III"}, {id:9,label:"Fase 9: Liberação"} ];
+        const RTP_PHASES = [ 
+            {id:1, label:"Fase 1: Aguda", desc:"Controle do quadro álgico/inflamatório. Fisioterapia."}, 
+            {id:2, label:"Fase 2: Sub-aguda", desc:"Reabilitação do segmento lesado + Fortalecimento não envolvidos. Fisioterapia."}, 
+            {id:3, label:"Fase 3: Transição I", desc:"Força segmentada (não envolvidos) + Cardio sem impacto. Fisio + Transição."}, 
+            {id:4, label:"Fase 4: Transição II", desc:"Funcionais + cardio sem impacto. Força com restrição. Introdução Pliometria/Corrida."}, 
+            {id:5, label:"Fase 5: Transição III", desc:"Força sem restrições funcionais. Cardio com impacto. Fisio + Transição Campo."}, 
+            {id:6, label:"Fase 6: Performance I", desc:"Potência na Academia. Aceleração e Pliometria sem restrições."}, 
+            {id:7, label:"Fase 7: Performance II", desc:"Potência especifica do esporte. Preparação individual e parcial com grupo."}, 
+            {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo com minutagem controlada em jogo. Liberado treino com o grupo sem restrições."}, 
+            {id:9, label:"Fase 9: Liberação", desc:"Responsabilidade do atleta com cuidados antes e após treinos e jogos."} 
+        ];
 
         class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, resetting: false }; }
@@ -123,6 +133,26 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         db.enablePersistence().catch((err) => { console.warn("Offline Persistence Error:", err.code); });
+
+        const smartShare = async (blob, filename, title) => {
+            const file = new File([blob], filename, { type: blob.type });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: title });
+                    return;
+                } catch (err) {
+                    console.log("Compartilhamento cancelado ou falhou", err);
+                }
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
 
         const showToast = (msg, color = '#333') => { const t = document.getElementById('toast'); if(t){ t.innerText = msg; t.style.backgroundColor = color; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3000); } };
         const compressImage = (file, maxWidth=150, quality=0.5) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (event) => { const img = new Image(); img.src = event.target.result; img.onload = () => { const elem = document.createElement('canvas'); const scaleFactor = maxWidth / img.width; elem.width = maxWidth; elem.height = img.height * scaleFactor; const ctx = elem.getContext('2d'); ctx.drawImage(img, 0, 0, elem.width, elem.height); resolve(elem.toDataURL('image/jpeg', quality)); }; }; }); };
@@ -409,16 +439,31 @@
             const generateShareCard = async () => {
                 const el = document.getElementById('export-card-' + playerIndex);
                 if(!el) return;
-                el.style.left = '0'; el.style.top = '0'; 
+                
+                // Força o display e background para não ficar escuro no html2canvas
+                el.style.left = '0'; el.style.top = '0'; el.style.position = 'absolute'; el.style.zIndex = '9999';
+                const originalBg = el.style.backgroundColor;
+                el.style.backgroundColor = '#0f172a'; // Fundo sólido escuro
+                
+                showToast("Gerando card...");
+                
                 try {
-                    const canvas = await html2canvas(el, {scale: 2, useCORS: true, backgroundColor: '#0f172a'});
+                    const canvas = await html2canvas(el, {
+                        scale: 2, 
+                        useCORS: true, 
+                        backgroundColor: '#0f172a',
+                        logging: false
+                    });
+                    
                     canvas.toBlob(blob => {
-                        smartShare(blob, `card_${player.name}.png`, `Status - ${player.name}`);
+                        smartShare(blob, `card_${player.name.replace(/\s+/g, '_')}.png`, `Status - ${player.name}`);
                         el.style.left = '-9999px'; el.style.top = '-9999px';
+                        el.style.backgroundColor = originalBg;
                     });
                 } catch(e) {
                     showToast("Erro ao gerar card");
                     el.style.left = '-9999px'; el.style.top = '-9999px';
+                    el.style.backgroundColor = originalBg;
                 }
             };
 
@@ -453,16 +498,17 @@
                         </div>
                     </div>
 
-                    <div id={`export-card-${playerIndex}`} className="fixed z-[-1]" style={{left:'-9999px', top: '-9999px', width: '400px'}}>
-                        <div className="bg-slate-900 p-6 rounded-3xl border-4 border-slate-700 text-white flex flex-col items-center relative overflow-hidden">
+                    {/* ELEMENTO OCULTO PARA EXPORTAÇÃO DO CARD (COM FUNDO FORÇADO) */}
+                    <div id={`export-card-${playerIndex}`} className="fixed z-[-1] bg-slate-900" style={{left:'-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
+                        <div className="p-6 rounded-3xl border-4 border-slate-700 text-white flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
                             <div className="absolute top-0 left-0 w-full h-32 opacity-50" style={{background:`linear-gradient(to bottom, ${themeColor}, transparent)`}}></div>
                             <div className="w-32 h-32 rounded-full border-4 border-slate-800 bg-slate-800 shadow-2xl mb-4 overflow-hidden z-10 relative">
                                 {player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-500"><Icon name="user" size={40}/></div>}
                             </div>
-                            <h2 className="text-3xl font-black uppercase z-10 mb-1">{player.name}</h2>
+                            <h2 className="text-3xl font-black uppercase z-10 mb-1 text-white">{player.name}</h2>
                             <p className="text-slate-400 font-bold z-10 mb-6 tracking-widest">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
                             
-                            <div className="w-full bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700 flex justify-between items-center z-10 shadow-inner">
+                            <div className="w-full bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700 flex justify-between items-center z-10 shadow-inner" style={{backgroundColor: '#1e293b'}}>
                                 <div className="text-center">
                                     <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Wellness Index</div>
                                     <div className={`text-3xl font-black ${wColor}`}>{totalW > 0 ? totalW : '-'}</div>
@@ -474,7 +520,7 @@
                                 </div>
                             </div>
                             
-                            <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10">
+                            <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10" style={{backgroundColor: '#1e293b'}}>
                                 <div className="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
                                     <Icon name="brain" className="text-purple-400" size={16}/>
                                     <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Fisiologista Virtual</span>
@@ -643,7 +689,7 @@
 
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in">
-                    <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-2"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="trophy"/> Performance & Carga</h2><div className="flex gap-2"><button onClick={()=>{window.print()}} className="bg-white dark:bg-slate-700 border dark:border-slate-600 rounded px-3 py-1.5 text-xs font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600 dark:text-white no-print flex items-center gap-1"><Icon name="share"/> PDF</button><div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 border dark:border-slate-600 rounded px-3 py-1.5 shadow-sm"><span className="font-bold text-slate-500 dark:text-slate-300 uppercase">Análise:</span><input type="date" value={monitorDate} onChange={e=>setMonitorDate(e.target.value)} className="bg-transparent text-slate-800 dark:text-slate-100 font-bold outline-none"/></div></div></div>
+                    <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-2"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="trophy"/> Performance & Carga</h2><div className="flex gap-2"><div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 border dark:border-slate-600 rounded px-3 py-1.5 shadow-sm"><span className="font-bold text-slate-500 dark:text-slate-300 uppercase">Análise:</span><input type="date" value={monitorDate} onChange={e=>setMonitorDate(e.target.value)} className="bg-transparent text-slate-800 dark:text-slate-100 font-bold outline-none"/></div></div></div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center col-span-1"><SpeedometerGauge value={teamHooperAvg} /></div>
                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4"><DonutChart value={pseAvgRaw} max={20} color={pseColor} size={60} /><div><div className="text-xl font-black text-slate-800 dark:text-slate-200">CARGA DIA</div><div className="text-[10px] text-slate-400 font-bold uppercase">Média (M+T)</div></div></div>
@@ -685,7 +731,25 @@
             const addEvent = (typeObj) => { const newDays = safeDays.map(d => { if(d.id === activeSlot.dayId) { const list = d[activeSlot.period] || []; const newEvent = { id: Date.now(), type: typeObj.label, colorClass: typeObj.color, textClass: typeObj.text, load: typeObj.load }; return { ...d, [activeSlot.period]: [...list, newEvent] }; } return d; }); setDays(newDays); setModalOpen(false); };
             const removeEvent = (dayId, period, eventId) => { const newDays = safeDays.map(d => { if(d.id === dayId) { return { ...d, [period]: (d[period] || []).filter(e => e.id !== eventId) }; } return d; }); setDays(newDays); };
             const updateHeader = (dayId, field, val) => { setDays(safeDays.map(d => d.id === dayId ? { ...d, [field]: val } : d)); };
-            const exportAsImage = async () => { const element = document.getElementById('microcycle-container'); if(!element) return; try { const canvas = await html2canvas(element, { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: document.documentElement.scrollWidth }); canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planejamento Semanal'); }); } catch(e) { showToast("Erro ao exportar"); } };
+            const exportAsImage = async () => { 
+                const element = document.getElementById('microcycle-container'); 
+                if(!element) return; 
+                showToast("Gerando PNG...");
+                const originalBg = element.style.backgroundColor;
+                element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
+                try { 
+                    const canvas = await html2canvas(element, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        scrollX: 0, 
+                        scrollY: 0, 
+                        windowWidth: document.documentElement.scrollWidth,
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
+                    }); 
+                    canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planejamento Semanal'); }); 
+                } catch(e) { showToast("Erro ao exportar"); } 
+                element.style.backgroundColor = originalBg;
+            };
             
             const DayAnalysisModal = () => {
                 if(!aiModal) return null; const md = aiModal.md || ""; let advice = "", focus = "";
@@ -717,23 +781,44 @@
             const records = safeArray(dmRecords);
             const activeInjuries = records.filter(r => r && r.status === 'Active');
             const commonDiagnoses = [ "Estiramento Posterior Coxa", "Estiramento Quadríceps", "Estiramento Adutor", "Estiramento Panturrilha", "Entorse Tornozelo", "Entorse Joelho", "Trauma Direto (Pancada)", "Edema Muscular", "Tendinite Patelar", "Tendinite Aquiles", "Pubalgia", "Contratura Muscular", "Fratura", "Luxação Ombro", "Desconforto Muscular", "Gripe / Virose", "Outro" ];
+            
             const handleSave = () => { if(selectedPlayer==='') return alert('Selecione um atleta'); if (editingId) { const updated = records.map(r => r.id === editingId ? { ...r, playerId: selectedPlayer, type: injuryType, location, dateIn } : r); setDmRecords(updated); setEditingId(null); showToast('Registro atualizado'); } else { const newRecord = { id: Date.now(), playerId: selectedPlayer, type: injuryType, location, dateIn, dateOut: null, status: 'Active', rtpPhase: 1 }; setDmRecords([newRecord, ...records]); const updatedPlayers = [...players]; if(updatedPlayers[selectedPlayer]) updatedPlayers[selectedPlayer].injured = true; setPlayers(updatedPlayers); showToast('Atleta no DM'); } setLocation(''); if (!editingId) setSelectedPlayer(''); };
             const handleEdit = (record) => { setEditingId(record.id); setSelectedPlayer(record.playerId); setInjuryType(record.type); setLocation(record.location); setDateIn(record.dateIn); };
             const handleDelete = (id, playerId, status) => { if(!confirm('Excluir?')) return; const newRecords = records.filter(r => r.id !== id); setDmRecords(newRecords); if (status === 'Active') { const hasOtherActive = newRecords.some(r => r.playerId == playerId && r.status === 'Active'); if (!hasOtherActive) { const updatedPlayers = [...players]; if(updatedPlayers[playerId]) updatedPlayers[playerId].injured = false; setPlayers(updatedPlayers); } } showToast('Excluído'); };
             const dischargePlayer = (recordId, playerId) => { if(!confirm('Dar alta?')) return; const updatedRecords = records.map(r => r.id === recordId ? { ...r, status: 'Recovered', dateOut: getTodayStr() } : r); setDmRecords(updatedRecords); const updatedPlayers = [...players]; if(updatedPlayers[playerId]) updatedPlayers[playerId].injured = false; setPlayers(updatedPlayers); showToast('Atleta liberado!'); };
-            const DrAI = ({ phaseId }) => { 
-                const pid = parseInt(phaseId) || 1; let advice = "";
-                if(pid <= 2) advice = "Foco: Analgesia e reparo tecidual. Controle de inflamação antes da mobilidade.";
-                else if(pid <= 4) advice = "Foco: Iniciar arco de movimento e força isométrica.";
-                else if(pid <= 6) advice = "Foco: Retorno ao campo, trotes lineares e propriocepção dinâmica.";
-                else if(pid <= 8) advice = "Foco: Treino com bola, reações rápidas e integração progressiva ao grupo.";
-                else advice = "Foco: Apto para jogo. Controle de minutagem inicial sugerido.";
-                return (<div className="mt-2 flex gap-2 items-center bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-[10px] text-blue-800 dark:text-blue-300"><Icon name="brain" size={14}/><span><strong>Dr. Virtual:</strong> {advice}</span></div>); 
+            
+            // MAPA VISUAL DO RETURN TO PLAY
+            const ReturnToPlayMap = () => {
+                return (
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-4 mt-6">
+                        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2">
+                            <Icon name="activity"/> Mapa Return To Play
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {RTP_PHASES.map(ph => {
+                                // Verifica se tem algum atleta ativo nesta fase para destacar
+                                const isPhaseActive = activeInjuries.some(r => r.rtpPhase === ph.id);
+                                return (
+                                    <div key={ph.id} className={`p-3 rounded-lg border transition-all ${isPhaseActive ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/40 dark:border-blue-400 ring-2 ring-blue-500/50' : 'bg-slate-50 border-slate-200 dark:bg-slate-700 dark:border-slate-600'}`}>
+                                        <div className={`text-xs font-black uppercase mb-1 ${isPhaseActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{ph.label}</div>
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{ph.desc}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
             };
+
+            const DrAI = ({ phaseId }) => { 
+                const phase = RTP_PHASES.find(p => p.id === parseInt(phaseId)) || RTP_PHASES[0];
+                return (<div className="mt-2 flex gap-2 items-center bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-[10px] text-blue-800 dark:text-blue-300"><Icon name="brain" size={14}/><span><strong>Dr. Virtual:</strong> {phase.desc}</span></div>); 
+            };
+            
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6">
                     <div className="flex flex-col md:flex-row gap-6">
-                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700">
+                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 h-fit">
                             <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-red-600 dark:text-red-500"><Icon name="medkit"/> {editingId ? 'Editar' : 'Entrada DM'}</h2>
                             <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full bg-slate-100 overflow-hidden relative shadow-sm">{selectedPlayer!==''&&players[selectedPlayer]?.image?<img src={players[selectedPlayer].image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={40}/></div>}</div></div>
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Atleta</label>
@@ -773,6 +858,7 @@
                                     )
                                 })}</div>}
                             </div>
+                            
                             <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-6">
                                 <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2"><Icon name="list"/> Histórico Completo</h3>
                                 <div className="overflow-x-auto">
@@ -782,6 +868,10 @@
                                     </table>
                                 </div>
                             </div>
+
+                            {/* O MAPA DO RETURN TO PLAY ENTRA AQUI */}
+                            <ReturnToPlayMap />
+
                         </div>
                     </div>
                 </div>
@@ -876,6 +966,33 @@
                 return alerts;
             }, [players, trainingLog, dmRecords, matchMinutes]);
 
+            // NOVA FUNÇÃO DE DOWNLOAD (FUNDO FORÇADO PARA CORRIGIR DARK MODE)
+            const downloadCurrentView = async () => {
+                const el = document.getElementById('print-area');
+                if(!el) return;
+                showToast("Gerando imagem da tela...");
+                
+                // Salva o bg atual e força a cor sólida
+                const originalBg = el.style.backgroundColor;
+                el.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
+                
+                try {
+                    const canvas = await html2canvas(el, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' 
+                    });
+                    canvas.toBlob(blob => { 
+                        smartShare(blob, `procoach_view.png`, 'ProCoach Export'); 
+                    });
+                } catch(e) { 
+                    showToast("Erro ao exportar tela"); 
+                }
+                
+                // Devolve a cor original
+                el.style.backgroundColor = originalBg;
+            };
+
             return (
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
                     <SettingsModal show={showSettings} onClose={()=>setShowSettings(false)} themeColor={themeColor} setThemeColor={setThemeColor} header={header} setHeader={setHeader} logo={logo} setLogo={setLogo} onExport={()=>{}} onImport={()=>{}} />
@@ -889,7 +1006,8 @@
                         <div className="flex gap-1 items-center">
                             <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
-                            <button onClick={()=>window.print()} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1"><Icon name="download"/></button>
+                            {/* BOTÃO DE DOWNLOAD CORRIGIDO PARA RESOLVER TELA ESCURA */}
+                            <button onClick={downloadCurrentView} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1"><Icon name="download"/></button>
                             <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700" style={{color: themeColor}}><Icon name="settings" size={24}/></button>
                             <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" title="Sair"><Icon name="logout" size={20}/></button>
                         </div>
