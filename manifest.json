@@ -1,5 +1,5 @@
 {
-  "name": "ProCoach System",
+  "name": "ProCoach MAX",
   "short_name": "ProCoach",
   "start_url": "./index.html",
   "display": "standalone",
@@ -7,7 +7,7 @@
   "theme_color": "#1e3a8a",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/8853/8853159.png",
+      "src": "logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
