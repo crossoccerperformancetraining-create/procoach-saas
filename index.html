@@ -965,8 +965,24 @@
                     recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
                     if (minsLast7 >= 150) alerts.push({ type: 'danger', icon: 'alert', text: `${p.name} acumulou ${minsLast7}min de jogo. Risco alto.`});
                 });
+                
                 const activeDm = safeArray(dmRecords).filter(r => r && r.status === 'Active');
-                if (activeDm.length > 0) alerts.push({ type: 'info', icon: 'medkit', text: `${activeDm.length} atleta(s) no DM.`});
+                activeDm.forEach(r => {
+                    const p = players[r.playerId];
+                    if(p) {
+                        const phaseLabel = RTP_PHASES.find(ph => ph.id === (r.rtpPhase || 1))?.label || `Fase ${r.rtpPhase}`;
+                        alerts.push({ type: 'warning', icon: 'medkit', text: `DM: ${p.name} está na ${phaseLabel}.` });
+                    }
+                });
+                
+                const dischargedToday = safeArray(dmRecords).filter(r => r && r.status === 'Recovered' && r.dateOut === getTodayStr());
+                dischargedToday.forEach(r => {
+                    const p = players[r.playerId];
+                    if(p) {
+                        alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` });
+                    }
+                });
+
                 return alerts;
             }, [players, trainingLog, dmRecords, matchMinutes]);
 
@@ -1010,7 +1026,6 @@
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
-                            {/* BOTÃO DE REFRESH ADICIONADO AQUI */}
                             <button onClick={handleRefresh} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Atualizar Dados"><Icon name="refresh" size={20}/></button>
                             <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
