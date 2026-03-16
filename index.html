@@ -4,9 +4,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ProCoach V129 MAX</title>
     
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="logo.png">
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json?v=2">
+    <link rel="apple-touch-icon" href="logo.png?v=2">
+    <link rel="icon" type="image/png" href="logo.png?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -51,7 +51,6 @@
         .status-badge { position: absolute; top: 10px; right: 10px; background: #dcfce7; color: #166534; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
         .status-badge.show { opacity: 1; }
         
-        /* SCROLLBAR CUSTOMIZADA PARA O MODAL TÁTICO */
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
@@ -440,7 +439,6 @@
             const dates = getDatesInRange(today, 7).reverse();
             const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
             
-            // LÓGICA DE CARGA PARA O ALERTA IA DENTRO DO PERFIL
             const getLoad = (d) => { const l = logs[d]?.[playerIndex]; return l ? (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0) : 0; };
             const todayLoad = getLoad(today);
             const historyDates = getDatesInRange(today, 7).slice(1); 
@@ -512,7 +510,6 @@
                         
                         <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
                             
-                            {/* ALERTA DE CARGA IA AQUI NO PERFIL */}
                             <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 p-4 shadow-inner">
                                 <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-600 pb-2">
                                     <Icon name="brain" className={loadColor} size={18}/>
@@ -683,7 +680,7 @@
             return (<div className={`md:col-span-2 rounded-xl shadow p-5 border border-slate-700 flex flex-col justify-center relative overflow-hidden ${colorClass}`}><div className="absolute top-0 right-0 p-4 opacity-10"><Icon name="brain" size={80}/></div><div className="flex items-center gap-2 mb-2 z-10"><div className="bg-white/20 p-1.5 rounded-full"><Icon name="brain" size={20}/></div><h3 className="font-bold text-sm uppercase tracking-wider opacity-80">Técnico Virtual (Equipe)</h3></div><div className="z-10"><div className="text-xl font-black mb-1">{title}</div><div className="text-sm font-medium opacity-90 leading-snug">{suggestion}</div></div></div>);
         };
 
-        const PreGameView = ({ players, themeColor, trainingLog, dmRecords, matchMinutes, setMatchMinutes }) => {
+        const PreGameView = ({ players, setPlayers, themeColor, trainingLog, dmRecords, matchMinutes, setMatchMinutes }) => {
             const [monitorDate, setMonitorDate] = useState(getTodayStr()); 
             const dailyData = safeObj(trainingLog[monitorDate]);
             const safePs = safeArray(players);
@@ -725,7 +722,6 @@
 
             const [viewProfile, setViewProfile] = useState(null);
 
-            // FUNÇÃO DE MINUTAGEM IA PARA A ABA MATCH
             const MatchReadinessAI = ({ pLog, mins, isInjured }) => {
                 if (isInjured) return <div className="text-[9px] font-bold text-red-500 bg-red-900/30 px-2 py-0.5 rounded">Indisponível (DM)</div>;
                 const load = (Number(pLog.rpe_am)||0) + (Number(pLog.rpe_pm)||0);
@@ -775,7 +771,6 @@
                             const painZones = Array.isArray(pLog.painZones) ? pLog.painZones : []; 
                             const borderClass = painAlert ? 'border-red-500 animate-pulse border-4' : 'border-slate-200 dark:border-slate-700'; 
                             
-                            // Calcula minutos dos últimos 7 dias
                             const recentDates = getDatesInRange(monitorDate, 7); 
                             let minsLast7 = 0;
                             recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
@@ -815,22 +810,20 @@
             const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null }); 
             const safeDays = safeArray(days, DEFAULT_DAYS);
             
-            // OS NOVOS EVENTOS TÁTICOS (SEPARADOS POR CORES)
             const eventTypes = [ 
                 { label: 'JOGO', color: 'bg-[#dc2626]', text: 'text-white', load: 100 }, 
                 { label: 'RECUPERAÇÃO', color: 'bg-[#3b82f6]', text: 'text-white', load: 20 }, 
                 { label: 'ACADEMIA', color: 'bg-[#eab308]', text: 'text-slate-900', load: 40 }, 
-                { label: 'FOLGA', color: 'bg-[#94a3b8]', text: 'text-white', load: 0 },
+                { label: 'FOLGA', color: 'bg-[#94a3b8]', text: 'text-slate-800', load: 0 },
                 { label: 'TREINO FÍSICO', color: 'bg-[#16a34a]', text: 'text-white', load: 60 },
-                
+                { label: 'TÉCNICO', color: 'bg-[#2563eb]', text: 'text-white', load: 50 }, 
+                { label: 'JOGUINHO', color: 'bg-[#ec4899]', text: 'text-white', load: 60 },
                 { label: 'ORG. OFENSIVA', color: 'bg-[#0ea5e9]', text: 'text-white', load: 60 }, 
                 { label: 'ORG. DEFENSIVA', color: 'bg-[#f97316]', text: 'text-white', load: 60 }, 
                 { label: 'TRANS. OFENSIVA', color: 'bg-[#06b6d4]', text: 'text-white', load: 70 }, 
                 { label: 'TRANS. DEFENSIVA', color: 'bg-[#f43f5e]', text: 'text-white', load: 70 }, 
-                
                 { label: 'ABP OFENSIVA', color: 'bg-[#8b5cf6]', text: 'text-white', load: 30 }, 
                 { label: 'ABP DEFENSIVA', color: 'bg-[#d946ef]', text: 'text-white', load: 30 }, 
-                
                 { label: 'TÁTICO GERAL', color: 'bg-[#10b981]', text: 'text-white', load: 60 }, 
                 { label: 'PDI', color: 'bg-[#14b8a6]', text: 'text-white', load: 40 }
             ];
@@ -1151,7 +1144,7 @@
                         {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} />}
                         {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                         {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'match' && <PreGameView players={players} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
                         {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} />}
                         {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                     </div>
