@@ -179,6 +179,28 @@
             return 0;
         };
 
+        // NOVA FUNÇÃO DE CÁLCULO DE CARGA (sRPE)
+        const calcDailyLoad = (log) => {
+            if(!log) return 0;
+            const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0);
+            const dur = Number(log.duration) || 0;
+            if(dur > 0) return rpe * dur; // sRPE Real
+            return rpe; // Fallback se não preencher duração
+        };
+
+        // NOVA FUNÇÃO VERIFICADORA DE TRANSIÇÃO (Alta do DM nos últimos 7 dias)
+        const isPlayerInTransition = (pId, dmRecords) => {
+            const todayDate = new Date(getTodayStr());
+            const records = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Recovered' && r.dateOut);
+            for(let r of records) {
+                const outDate = new Date(r.dateOut);
+                const diffTime = Math.abs(todayDate - outDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if(diffDays <= 7) return true;
+            }
+            return false;
+        };
+
         const sanitizeCloudData = (data) => {
             if (!data || typeof data !== 'object') return {};
             return {
@@ -439,7 +461,14 @@
             const dates = getDatesInRange(today, 7).reverse();
             const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
             
-            const getLoad = (d) => { const l = logs[d]?.[playerIndex]; return l ? (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0) : 0; };
+            const getLoad = (d) => { 
+                const l = logs[d]?.[playerIndex]; 
+                if(!l) return 0;
+                const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
+                const dur = Number(l.duration) || 0;
+                return dur > 0 ? rpeSum * dur : rpeSum * 10; // Normaliza
+            };
+
             const todayLoad = getLoad(today);
             const historyDates = getDatesInRange(today, 7).slice(1); 
             let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
@@ -526,7 +555,7 @@
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga</h3>
-                                <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=(Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
+                                <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const dur = Number(l.duration)||0; const t = dur > 0 ? ((Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0))*dur : (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0); const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
                             </div>
                             <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
                         </div>
@@ -549,14 +578,14 @@
                                 <div className="h-10 w-px bg-slate-700"></div>
                                 <div className="text-center">
                                     <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Carga Hoje</div>
-                                    <div className="text-3xl font-black text-blue-400">{(Number(currentLog.rpe_am)||0)+(Number(currentLog.rpe_pm)||0) || '-'}</div>
+                                    <div className="text-3xl font-black text-blue-400">{todayLoad || '-'}</div>
                                 </div>
                             </div>
                             
                             <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10" style={{backgroundColor: '#1e293b'}}>
                                 <div className="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
-                                    <Icon name="brain" className={loadColor === 'text-red-500' ? 'text-red-500' : loadColor === 'text-yellow-500' ? 'text-yellow-500' : 'text-green-500'} size={16}/>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{color: loadColor === 'text-red-500' ? '#ef4444' : loadColor === 'text-yellow-500' ? '#eab308' : '#22c55e'}}>{loadMsg}</span>
+                                    <Icon name="brain" className={loadColor.replace('text-', 'text-')} size={16}/>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{color: loadColor === 'text-red-500' ? '#ef4444' : '#eab308'}}>{loadMsg}</span>
                                 </div>
                                 <div className="text-sm text-slate-300 leading-snug">
                                     {totalW >= 25 ? "Alerta Crítico: Risco de Burnout ou Lesão." : totalW >= 18 ? "Atenção: Fadiga acumulada. Recuperação sugerida." : "Prontidão Alta: Atleta em boas condições."}
@@ -579,7 +608,7 @@
             const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
             const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
-            const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { const log = trainingLog[d]?.[playerIndex]; if(log) sum += (Number(log.rpe_am) || 0) + (Number(log.rpe_pm) || 0); }); return sum; };
+            const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { const log = trainingLog[d]?.[playerIndex]; if(log) { const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0); const dur = Number(log.duration)||0; sum += dur > 0 ? rpe*dur : rpe*10; } }); return Math.min(100, sum/200); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
             const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
@@ -603,14 +632,17 @@
                             const sleep = Number(wellness.sleep) || 0; 
                             const isRisk = soreness >= 5; 
                             const dmStatus = p.injured ? getPlayerDMStatus(i) : null; 
+                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
                             
                             return (
                                 <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-4 flex flex-col items-center gap-3 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured ? 'border-red-500 dark:border-red-500 ring-2 ring-red-100 dark:ring-red-900/50' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
                                     <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-2 right-2 text-slate-300 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-800 rounded-full p-1"><Icon name="edit" size={16}/></button>
+                                    
                                     {isRisk && !p.injured && <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse z-10 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO</div>}
                                     {p.injured && <div className="absolute top-2 left-2 bg-slate-800 dark:bg-slate-600 text-white p-1.5 rounded-full z-10"><Icon name="medkit" size={14}/></div>}
+                                    {inTransition && <div className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
                                     
-                                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden relative border-2 shrink-0" style={{borderColor: p.injured ? '#1e293b' : isRisk ? '#ef4444' : themeColor}}>
+                                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden relative border-2 shrink-0" style={{borderColor: p.injured ? '#1e293b' : inTransition ? '#f97316' : isRisk ? '#ef4444' : themeColor}}>
                                         {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><Icon name="user" size={32}/></div>}
                                     </div>
                                     <div className="text-center w-full">
@@ -637,35 +669,21 @@
             );
         };
 
-        const LoadAdvisor = ({ playerIndex, date, trainingLog }) => {
-            const getLoad = (d) => { const l = trainingLog[d]?.[playerIndex]; return l ? (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0) : 0; };
-            const todayLoad = getLoad(date);
-            const historyDates = getDatesInRange(date, 7).slice(1); 
-            let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); const avgLoad = (chronicLoad + todayLoad) / 7;
-            let tmrMsg = "Manter planejamento."; let color = "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800";
-            if (avgLoad > 0) {
-                if (todayLoad > avgLoad * 1.4) { tmrMsg = "Sugestão p/ amanhã: Recuperativo"; color = "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"; } 
-                else if (todayLoad < avgLoad * 0.6) { tmrMsg = "Sugestão: Treino de Força"; color = "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"; }
-            }
-            return (<div className={`mt-2 p-2 rounded text-[10px] font-bold ${color} flex items-center gap-2 border-l-2`}><Icon name="brain" size={14}/><span>{tmrMsg} (Carga Hoje: {todayLoad})</span></div>);
-        };
-
         const PSEView = ({ players, themeColor, trainingLog, setTrainingLog }) => {
             const [date, setDate] = useState(getTodayStr()); 
             const [localRPEs, setLocalRPEs] = useState({});
             const [saveStatus, setSaveStatus] = useState('');
-            const [selectedForAdvice, setSelectedForAdvice] = useState(null); 
             const saveTimeoutRef = useRef(null);
-            
+
             useEffect(() => { 
                 const c = {}; 
                 safeArray(players).forEach((_, i) => { 
                     const log = trainingLog[date]?.[i] || {}; 
-                    c[i] = { am: Number(log.rpe_am) || 0, pm: Number(log.rpe_pm) || 0, duration: Number(log.duration) || 0 }; 
+                    c[i] = { am: Number(log.rpe_am) || 0, pm: Number(log.rpe_pm) || 0, dur: Number(log.duration) || 0 }; 
                 }); 
                 setLocalRPEs(c); 
             }, [date, players, trainingLog]);
-            
+
             const saveToMain = (currentLocal) => { 
                 setSaveStatus('Salvando...'); 
                 const newLog = {...trainingLog}; 
@@ -674,16 +692,15 @@
                     if(!newLog[date][i]) newLog[date][i] = {}; 
                     newLog[date][i].rpe_am = currentLocal[i].am; 
                     newLog[date][i].rpe_pm = currentLocal[i].pm; 
-                    newLog[date][i].duration = currentLocal[i].duration; 
+                    newLog[date][i].duration = currentLocal[i].dur;
                 }); 
                 setTrainingLog(newLog); 
                 setTimeout(() => setSaveStatus('Salvo'), 500); 
                 setTimeout(() => setSaveStatus(''), 2000); 
             };
-            
+
             const updateRPE = (i, field, val) => { 
                 const newValue = parseInt(val) || 0; 
-                setSelectedForAdvice(i); 
                 setLocalRPEs(prev => { 
                     const next = {...prev, [i]: {...prev[i], [field]: newValue}}; 
                     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); 
@@ -691,45 +708,42 @@
                     return next; 
                 }); 
             };
-            
+
             const manualSave = () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); saveToMain(localRPEs); showToast("Salvo manualmente!"); };
-            
+
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col relative custom-scroll">
                     <div className={`status-badge ${saveStatus ? 'show' : ''} z-50`}>{saveStatus === 'Salvo' ? '💾 SALVO' : '⏳ SALVANDO...'}</div>
-                    <div className="flex justify-between items-center mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0"><div className="flex items-center gap-2"><h2 className="text-xl font-bold text-slate-700 dark:text-slate-100 flex items-center gap-2"><Icon name="activity"/> CONTROLE DE CARGA (PSE)</h2></div><div className="flex gap-2"><button onClick={manualSave} className="bg-slate-200 dark:bg-slate-700 p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"><Icon name="save"/></button><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 dark:text-white font-bold p-2 rounded border dark:border-slate-600"/></div></div>
+                    <div className="flex justify-between items-center mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0"><div className="flex items-center gap-2"><h2 className="text-xl font-bold text-slate-700 dark:text-slate-100 flex items-center gap-2"><Icon name="activity"/> CONTROLE DE CARGA (sRPE)</h2></div><div className="flex gap-2"><button onClick={manualSave} className="bg-slate-200 dark:bg-slate-700 p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"><Icon name="save"/></button><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 dark:text-white font-bold p-2 rounded border dark:border-slate-600"/></div></div>
+                    
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1 min-h-0">
-                        <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-3 text-xs font-bold text-slate-500 dark:text-slate-300 uppercase shrink-0">
-                            <div className="col-span-3">Atleta</div>
-                            <div className="col-span-3 text-center">PSE Manhã</div>
-                            <div className="col-span-3 text-center">PSE Tarde</div>
-                            <div className="col-span-3 text-center">Treino (Min)</div>
+                        <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-3 text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase shrink-0">
+                            <div className="col-span-4">Atleta</div>
+                            <div className="col-span-3 text-center">Manhã (0-10)</div>
+                            <div className="col-span-3 text-center">Tarde (0-10)</div>
+                            <div className="col-span-2 text-center">Duração (min)</div>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1 custom-scroll">
                             {safeArray(players).map((p, i) => { 
                                 if(!p) return null; 
-                                const totalDailyScore = (localRPEs[i]?.am || 0) + (localRPEs[i]?.pm || 0);
-                                const duration = localRPEs[i]?.duration || 0;
-                                const sRPE = totalDailyScore * duration;
-
+                                const sRPE = ((localRPEs[i]?.am||0) + (localRPEs[i]?.pm||0)) * (localRPEs[i]?.dur||0);
                                 return (
-                                <div key={i} className={`grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${selectedForAdvice===i ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`} onClick={()=>setSelectedForAdvice(i)}>
-                                    <div className="col-span-3">
-                                        <div className="flex items-center gap-3 mb-1"><div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><span className="font-bold text-sm text-slate-700 dark:text-slate-200 truncate">{p.name}</span></div>
-                                        {selectedForAdvice===i && <LoadAdvisor playerIndex={i} date={date} trainingLog={trainingLog}/>}
+                                    <div key={i} className={`grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50`}>
+                                        <div className="col-span-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
+                                                <div>
+                                                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 truncate block">{p.name}</span>
+                                                    {sRPE > 0 && <span className="text-[9px] font-bold text-blue-500">Carga Real: {sRPE}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.am||0} onChange={e=>updateRPE(i,'am',e.target.value)} className="w-16 md:w-24 mr-2 accent-blue-600"/><span className="font-bold w-4 text-center text-blue-600 dark:text-blue-400">{localRPEs[i]?.am}</span></div>
+                                        <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.pm||0} onChange={e=>updateRPE(i,'pm',e.target.value)} className="w-16 md:w-24 mr-2 accent-orange-500"/><span className="font-bold w-4 text-center text-orange-500 dark:text-orange-400">{localRPEs[i]?.pm}</span></div>
+                                        <div className="col-span-2 flex justify-center"><input type="number" min="0" placeholder="0" className="w-12 md:w-16 p-1 text-center text-sm font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-white" value={localRPEs[i]?.dur||''} onChange={e=>updateRPE(i,'dur',e.target.value)} /></div>
                                     </div>
-                                    <div className="col-span-3 flex justify-center">
-                                        <input type="range" min="0" max="10" value={localRPEs[i]?.am||0} onChange={e=>updateRPE(i,'am',e.target.value)} className="w-16 md:w-24 mr-2 accent-blue-600"/><span className="font-bold w-4 text-center text-blue-600 dark:text-blue-400">{localRPEs[i]?.am}</span>
-                                    </div>
-                                    <div className="col-span-3 flex justify-center">
-                                        <input type="range" min="0" max="10" value={localRPEs[i]?.pm||0} onChange={e=>updateRPE(i,'pm',e.target.value)} className="w-16 md:w-24 mr-2 accent-orange-500"/><span className="font-bold w-4 text-center text-orange-500 dark:text-orange-400">{localRPEs[i]?.pm}</span>
-                                    </div>
-                                    <div className="col-span-3 flex flex-col items-center justify-center border-l dark:border-slate-700 pl-2">
-                                        <input type="number" min="0" placeholder="0" value={duration || ''} onChange={e=>updateRPE(i,'duration',e.target.value)} className="w-16 p-1 border dark:border-slate-600 rounded text-xs text-center font-bold dark:bg-slate-700 dark:text-white" />
-                                        {duration > 0 && <span className="text-[10px] font-black text-slate-500 mt-1 uppercase" title="Carga Real (sRPE)">U.A: {sRPE}</span>}
-                                    </div>
-                                </div>
-                            )})}
+                                )
+                            })}
                         </div>
                     </div>
                 </div>
@@ -739,11 +753,11 @@
         const TeamCoachAI = ({ activePlayers, pseAvg, dmCount }) => {
             const numericAvg = parseFloat(pseAvg) || 0;
             let title = "Diagnóstico da Equipe"; let suggestion = ""; let colorClass = "bg-slate-800 text-slate-300";
-            if (numericAvg >= 16) { title = "ALERTA VERMELHO (Sobrecarga)"; suggestion = "Carga Extremamente Alta. RISCO DE LESÃO ELEVADO. Amanhã: Recuperação passiva ou folga obrigatória."; colorClass = "bg-red-900 text-red-50"; } 
-            else if (numericAvg >= 12) { title = "Zona de Alta Intensidade"; suggestion = "Treino exigente. Amanhã: Carga baixa/moderada (foco tático sem contato) para supercompensação."; colorClass = "bg-orange-800 text-orange-50"; } 
-            else if (numericAvg >= 8) { title = "Zona de Manutenção/Desenvolvimento"; suggestion = "Carga Ideal. Amanhã: Pode manter a intensidade se não for véspera de jogo (MD-1)."; colorClass = "bg-green-800 text-green-50"; } 
+            if (numericAvg >= 600) { title = "ALERTA VERMELHO (Sobrecarga)"; suggestion = "Carga Extremamente Alta. RISCO DE LESÃO ELEVADO. Amanhã: Recuperação passiva ou folga obrigatória."; colorClass = "bg-red-900 text-red-50"; } 
+            else if (numericAvg >= 400) { title = "Zona de Alta Intensidade"; suggestion = "Treino exigente. Amanhã: Carga baixa/moderada (foco tático sem contato) para supercompensação."; colorClass = "bg-orange-800 text-orange-50"; } 
+            else if (numericAvg >= 200) { title = "Zona de Manutenção/Desenvolvimento"; suggestion = "Carga Ideal. Amanhã: Pode manter a intensidade se não for véspera de jogo (MD-1)."; colorClass = "bg-green-800 text-green-50"; } 
             else if (numericAvg > 0) { title = "Carga Baixa / Regenerativo"; suggestion = "Estímulo leve hoje. Amanhã: Oportunidade para 'Choque' (Força ou Resistência) se longe do jogo."; colorClass = "bg-blue-800 text-blue-50"; } 
-            else { title = "Sem Dados Suficientes"; suggestion = "Aguardando dados de PSE dos atletas para gerar análise."; colorClass = "bg-slate-800 text-slate-300"; }
+            else { title = "Sem Dados Suficientes"; suggestion = "Aguardando preenchimento de PSE e Duração (min) dos treinos."; colorClass = "bg-slate-800 text-slate-300"; }
             if(dmCount >= 3) { suggestion += ` ALERTA: ${dmCount} atletas no DM. Atenção na rotação.`; }
             return (<div className={`md:col-span-2 rounded-xl shadow p-5 border border-slate-700 flex flex-col justify-center relative overflow-hidden ${colorClass}`}><div className="absolute top-0 right-0 p-4 opacity-10"><Icon name="brain" size={80}/></div><div className="flex items-center gap-2 mb-2 z-10"><div className="bg-white/20 p-1.5 rounded-full"><Icon name="brain" size={20}/></div><h3 className="font-bold text-sm uppercase tracking-wider opacity-80">Técnico Virtual (Equipe)</h3></div><div className="z-10"><div className="text-xl font-black mb-1">{title}</div><div className="text-sm font-medium opacity-90 leading-snug">{suggestion}</div></div></div>);
         };
@@ -761,12 +775,11 @@
                 : 0;
 
             const rpePlayersIndices = [];
-            safePs.forEach((p, i) => { if(p && ((Number(dailyData[i]?.rpe_am)||0) + (Number(dailyData[i]?.rpe_pm)||0)) > 0) rpePlayersIndices.push(i); });
+            safePs.forEach((p, i) => { if(p && calcDailyLoad(dailyData[i]) > 0) rpePlayersIndices.push(i); });
             
-            const pseSum = rpePlayersIndices.reduce((acc, i) => acc + (Number(dailyData[i]?.rpe_am)||0) + (Number(dailyData[i]?.rpe_pm)||0), 0);
-            const pseAvgRaw = rpePlayersIndices.length > 0 ? (pseSum / rpePlayersIndices.length) : 0;
-            const pseAvg = pseAvgRaw.toFixed(1);
-            const pseColor = pseAvgRaw >= 14 ? '#ef4444' : pseAvgRaw >= 8 ? '#eab308' : '#22c55e';
+            const pseSum = rpePlayersIndices.reduce((acc, i) => acc + calcDailyLoad(dailyData[i]), 0);
+            const pseAvgRaw = rpePlayersIndices.length > 0 ? Math.round(pseSum / rpePlayersIndices.length) : 0;
+            const pseColor = pseAvgRaw >= 600 ? '#ef4444' : pseAvgRaw >= 300 ? '#eab308' : '#22c55e';
             
             const dmCount = safePs.filter(p => p && p.injured).length;
             
@@ -778,7 +791,8 @@
                     if(p) {
                         const l = dayLog[i];
                         if(l) { 
-                            if((Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0) > 0) { loadSum += ((Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0)); countLoad++; } 
+                            const load = calcDailyLoad(l);
+                            if(load > 0) { loadSum += load; countLoad++; } 
                             if(safeObj(l.wellness).sleep) { wellnessSum += getWSum(l.wellness); countWell++; } 
                         }
                     }
@@ -790,14 +804,14 @@
 
             const [viewProfile, setViewProfile] = useState(null);
 
-            const MatchReadinessAI = ({ pLog, mins, isInjured, isTransition }) => {
+            const MatchReadinessAI = ({ pLog, mins, isInjured, inTransition }) => {
                 if (isInjured) return <div className="text-[9px] font-bold text-red-500 bg-red-900/30 px-2 py-0.5 rounded">Indisponível (DM)</div>;
-                if (isTransition) return <div className="text-[9px] font-bold text-orange-500 bg-orange-900/30 px-2 py-0.5 rounded">Transição - Limite 30 min</div>;
+                if (inTransition) return <div className="text-[9px] font-bold text-orange-500 bg-orange-900/30 px-2 py-0.5 rounded">Transição - Limitar a 30min</div>;
                 
-                const load = (Number(pLog.rpe_am)||0) + (Number(pLog.rpe_pm)||0);
+                const load = calcDailyLoad(pLog);
                 const wellness = getWSum(pLog.wellness);
                 if (mins >= 150) return <div className="text-[9px] font-bold text-red-500 bg-red-900/30 px-2 py-0.5 rounded">Risco Máximo - POUPE O ATLETA</div>;
-                if (load >= 15 || wellness >= 20) return <div className="text-[9px] font-bold text-yellow-500 bg-yellow-900/30 px-2 py-0.5 rounded">Fadigado - Limitar 45 min</div>;
+                if (load >= 600 || wellness >= 20) return <div className="text-[9px] font-bold text-yellow-500 bg-yellow-900/30 px-2 py-0.5 rounded">Fadigado - Limitar 45 min</div>;
                 return <div className="text-[9px] font-bold text-green-500 bg-green-900/30 px-2 py-0.5 rounded">Apto para 90 min</div>;
             };
 
@@ -808,7 +822,11 @@
                     <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-2"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="trophy"/> Performance & Carga</h2><div className="flex gap-2"><div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 border dark:border-slate-600 rounded px-3 py-1.5 shadow-sm"><span className="font-bold text-slate-500 dark:text-slate-300 uppercase">Análise:</span><input type="date" value={monitorDate} onChange={e=>setMonitorDate(e.target.value)} className="bg-transparent text-slate-800 dark:text-slate-100 font-bold outline-none"/></div></div></div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center col-span-1"><SpeedometerGauge value={teamHooperAvg} /></div>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4"><DonutChart value={pseAvgRaw} max={20} color={pseColor} size={60} /><div><div className="text-xl font-black text-slate-800 dark:text-slate-200">CARGA DIA</div><div className="text-[10px] text-slate-400 font-bold uppercase">Média (M+T)</div></div></div>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+                            {/* GAuge visual representation hack for high numbers */}
+                            <DonutChart value={Math.min(20, Math.round(pseAvgRaw/50))} max={20} color={pseColor} size={60} />
+                            <div><div className="text-xl font-black text-slate-800 dark:text-slate-200">{pseAvgRaw}</div><div className="text-[10px] text-slate-400 font-bold uppercase">sRPE Equipe</div></div>
+                        </div>
                         <TeamCoachAI activePlayers={activePlayersIndices} pseAvg={pseAvgRaw} dmCount={dmCount} />
                     </div>
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-100 dark:border-slate-700 p-4 mb-8 overflow-x-auto custom-scroll">
@@ -821,7 +839,7 @@
                                     <div key={idx} className={`flex-1 min-w-[60px] flex flex-col items-center p-2 rounded border ${isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 'bg-slate-50 dark:bg-slate-700 border-transparent'}`}>
                                         <div className="text-[9px] font-bold text-slate-400 mb-1">{formatDateBR(d.date).slice(0,5)}</div>
                                         <div className="flex items-end gap-1 h-20 w-full justify-center">
-                                            <div className="w-3 bg-blue-600 rounded-t" style={{height: `${Math.min(100, (d.avgLoad/20)*100)}%`}} title={`Carga: ${d.avgLoad}`}></div>
+                                            <div className="w-3 bg-blue-600 rounded-t" style={{height: `${Math.min(100, (d.avgLoad/1000)*100)}%`}} title={`Carga: ${d.avgLoad}`}></div>
                                             <div className={`w-3 ${wColor} rounded-t`} style={{height: `${Math.min(100, (d.avgWell/35)*100)}%`}} title={`Wellness: ${d.avgWell}`}></div>
                                         </div>
                                         <div className="mt-1 text-[9px] font-bold text-slate-600 dark:text-slate-300">{d.avgLoad} | {d.avgWell}</div>
@@ -830,38 +848,28 @@
                             })}
                         </div>
                     </div>
-                    
                     <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">Status Individual ({formatDateBR(monitorDate)})</h3>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {safePs.map((p, i) => { 
                             if(!p) return null; 
                             const pLog = dailyData[i] || {}; 
                             const totalHooper = getWSum(pLog.wellness); 
-                            const totalDaily = (Number(pLog.rpe_am) || 0) + (Number(pLog.rpe_pm) || 0); 
+                            const totalDaily = calcDailyLoad(pLog); 
                             const painAlert = (Number(safeObj(pLog.wellness).soreness) || 0) >= 5; 
                             const painZones = Array.isArray(pLog.painZones) ? pLog.painZones : []; 
-                            const borderClass = painAlert ? 'border-red-500 animate-pulse border-4' : 'border-slate-200 dark:border-slate-700'; 
+                            
+                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
+                            const borderClass = painAlert ? 'border-red-500 animate-pulse border-4' : inTransition ? 'border-orange-500 border-2' : 'border-slate-200 dark:border-slate-700'; 
                             
                             const recentDates = getDatesInRange(monitorDate, 7); 
                             let minsLast7 = 0;
                             recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
 
-                            // Lógica de Transição (Se recebeu alta nos últimos 7 dias)
-                            let isTransition = false;
-                            const recs = safeArray(dmRecords).filter(r => r && r.playerId == i && r.status === 'Recovered' && r.dateOut);
-                            if (recs.length > 0) {
-                                recs.sort((a,b) => new Date(b.dateOut) - new Date(a.dateOut));
-                                const lastDischarge = recs[0];
-                                const outDate = new Date(lastDischarge.dateOut + 'T00:00:00');
-                                const todayD = new Date(monitorDate + 'T00:00:00');
-                                const diffDays = (todayD - outDate) / (1000 * 60 * 60 * 24);
-                                if (diffDays >= 0 && diffDays <= 7) isTransition = true;
-                            }
-
                             return (
                                 <div key={i} onClick={()=>setViewProfile(i)} className={`bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-sm flex flex-col gap-3 relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${borderClass}`}>
                                     {painAlert && <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-2 py-1 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO DE LESÃO</div>}
+                                    {inTransition && !painAlert && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[9px] font-bold px-2 py-1 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
+                                    
                                     <div className="flex items-center gap-4">
                                         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border-2 border-slate-200 dark:border-slate-600">
                                             {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={24}/></div>}
@@ -876,12 +884,9 @@
                                     <div className="flex justify-between mt-1 px-2 border-t dark:border-slate-700 pt-2 items-center">
                                         <div className="text-[10px] text-slate-400 font-bold">CARGA DIA: <span className="text-slate-700 dark:text-slate-200 text-lg">{totalDaily > 0 ? totalDaily : '-'}</span></div>
                                         
-                                        <MatchReadinessAI pLog={pLog} mins={minsLast7} isInjured={p.injured} isTransition={isTransition} />
+                                        <MatchReadinessAI pLog={pLog} mins={minsLast7} isInjured={p.injured} inTransition={inTransition} />
 
-                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10">
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase">MINUTOS JOGO:</span>
-                                            <input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} />
-                                        </div>
+                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400">MIN. JOGO:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} /></div>
                                     </div>
                                 </div>
                             ); 
@@ -960,90 +965,230 @@
             return (<div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in"><DayAnalysisModal /><div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0"><h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="calendar"/> PLANEJAMENTO SEMANAL</h2><button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button></div><div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container"><WeeklyCoach /><div className="flex gap-2 h-full min-w-max pb-4">{safeDays.map(day => (<div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 h-full border border-slate-300 dark:border-slate-700 shadow-sm"><div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative"><button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button><BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name} onSave={(val)=>updateHeader(day.id,'name',val)} /><div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1"><select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>{['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}</select></div></div><div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll">{['am','pm'].map(period => (<div key={period} className="flex-1 flex flex-col gap-0 relative"><div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div><div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">{(day[period] || []).map(ev => (<div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>{ev.type}<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button></div>))}<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button></div></div>))}</div></div>))}</div></div>{modalOpen && (<div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}><h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3><div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">{eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>))}</div><button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button></div></div>)}</div>);
         };
 
-        const MedicalView = ({ players, setPlayers, dmRecords, setDmRecords, themeColor }) => {
-            const [selectedPlayer, setSelectedPlayer] = useState('');
-            const [injuryType, setInjuryType] = useState('Muscular');
-            const [location, setLocation] = useState('');
-            const [dateIn, setDateIn] = useState(getTodayStr());
-            const [editingId, setEditingId] = useState(null); 
-            const records = safeArray(dmRecords);
-            const activeInjuries = records.filter(r => r && r.status === 'Active');
-            const commonDiagnoses = [ "Estiramento Posterior Coxa", "Estiramento Quadríceps", "Estiramento Adutor", "Estiramento Panturrilha", "Entorse Tornozelo", "Entorse Joelho", "Trauma Direto (Pancada)", "Edema Muscular", "Tendinite Patelar", "Tendinite Aquiles", "Pubalgia", "Contratura Muscular", "Fratura", "Luxação Ombro", "Desconforto Muscular", "Gripe / Virose", "Outro" ];
+        const AssessmentView = ({ players, themeColor, assessments, setAssessments }) => {
+            const [selectedPlayer, setSelectedPlayer] = useState(0);
+            const [viewMetric, setViewMetric] = useState('soccer_test'); 
+            const [form, setForm] = useState({ date: getTodayStr(), weight: '', height: '', age: '', chest: '', axilla: '', tricep: '', subscap: '', abdo: '', supra: '', thigh: '', soccer_test: '', sj: '', cmj: '', speed30: '' });
+            const calculateBF = () => { const sum = Number(form.chest)+Number(form.axilla)+Number(form.tricep)+Number(form.subscap)+Number(form.abdo)+Number(form.supra)+Number(form.thigh); if(sum===0||!form.age) return 0; const bd = 1.112 - (0.00043499*sum) + (0.00000055*sum*sum) - (0.00028826*form.age); return (((4.95/bd)-4.50)*100).toFixed(1); };
+            const saveAssessment = () => { const newRec = { ...form, bf: calculateBF() }; const h = Array.isArray(assessments[selectedPlayer]) ? assessments[selectedPlayer] : []; setAssessments({ ...assessments, [selectedPlayer]: [newRec, ...h] }); showToast("Avaliação Salva!"); };
+            const getRankings = (metric) => { const list = safeArray(players).map((p, i) => { if(!p) return null; const h = Array.isArray(assessments[i]) ? assessments[i] : []; const val = h.length > 0 ? parseFloat(h[0][metric]) : 0; return { name: p.name, val: isNaN(val) ? 0 : val }; }).filter(x => x && x.val > 0); if(metric === 'speed30') { list.sort((a,b) => a.val - b.val); } else { list.sort((a,b) => b.val - a.val); } return { top5: list.slice(0, 5), bottom5: list.slice(-5).reverse() }; };
+            const rankings = getRankings(viewMetric);
+            const RankChart = ({ title, data, color }) => ( <div className="mb-4"><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{title}</h4>{data.length === 0 ? <div className="text-xs text-slate-300 dark:text-slate-600">Sem dados</div> : data.map((d, i) => ( <div key={i} className="flex items-center gap-2 mb-1"><div className="text-[10px] font-bold w-4 text-slate-400">#{i+1}</div><div className="flex-1"><div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5"><span>{d.name}</span><span>{d.val}</span></div><div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width: '100%', backgroundColor: color}}></div></div></div></div> ))}</div> );
+            const history = Array.isArray(assessments[selectedPlayer]) ? assessments[selectedPlayer] : [];
+            const PhysicalAnalyst = () => { 
+                const bf = calculateBF(); let feedback = "Avaliação dentro dos parâmetros."; let plan = "Plano Sugerido: Treino padrão da equipe.";
+                if(bf > 15) { feedback = "Gordura acima do ideal."; plan = "Plano: Aeróbico contínuo + Dieta hipocalórica."; } 
+                else if(bf < 8) { feedback = "Gordura baixa (Elite)."; plan = "Plano: Manutenção de força e monitorar CK."; }
+                if(form.speed30 > 0 && form.speed30 < 4.0) feedback += " Velocidade excelente."; else if (form.speed30 > 4.4) plan += " + Pliometria 2x semana.";
+                return (<div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg"><div className="flex gap-3 items-center mb-2"><div className="text-emerald-600 dark:text-emerald-400"><Icon name="brain" size={24}/></div><div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Analista Físico IA</div></div><div className="text-xs text-emerald-900 dark:text-emerald-200 leading-snug mb-1">{feedback}</div><div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-white/50 dark:bg-black/20 p-1 rounded">{plan}</div></div>); 
+            };
+            return (<div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6 custom-scroll"><div className="flex flex-col lg:flex-row gap-6 h-full"><div className="w-full lg:w-60 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 overflow-y-auto h-64 lg:h-auto custom-scroll"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Atleta</h3>{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div><div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scroll"><div className="flex items-center gap-4 mb-6 border-b dark:border-slate-700 pb-4"><div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{players[selectedPlayer]?.image ? <img src={players[selectedPlayer].image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div><div className="flex-1"><h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase leading-none">{players[selectedPlayer]?.name || 'Selecione'}</h2><div className="text-xs font-bold text-slate-400 uppercase mt-1">Ficha de Avaliação Física</div></div><div className="text-right"><input type="date" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} className="border dark:border-slate-600 rounded px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700"/></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"><div><label className="text-[10px] font-bold text-slate-400 uppercase">Peso (kg)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.weight} onChange={e=>setForm({...form, weight: e.target.value})}/></div><div><label className="text-[10px] font-bold text-slate-400 uppercase">Altura (cm)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.height} onChange={e=>setForm({...form, height: e.target.value})}/></div><div><label className="text-[10px] font-bold text-slate-400 uppercase">Idade</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.age} onChange={e=>setForm({...form, age: e.target.value})}/></div><div className="bg-slate-100 dark:bg-slate-700 rounded p-2 flex flex-col items-center justify-center"><span className="text-[10px] font-bold text-slate-400 uppercase">Gordura Est.</span><span className="text-xl font-black text-slate-700 dark:text-slate-200">{calculateBF()}%</span></div></div><h3 className="text-xs font-bold text-slate-500 uppercase mb-2 border-b dark:border-slate-700 pb-1">Dobras (mm) & Testes</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">{[['chest','Peitoral'],['abdo','Abdominal'],['thigh','Coxa'],['soccer_test','Soccer Test'],['sj','Squat Jump'],['cmj','CMJ'],['speed30','Velocidade 30m']].map(([k,l]) => (<div key={k}><label className="text-[9px] font-bold text-slate-400 uppercase">{l}</label><input type="number" className="w-full border dark:border-slate-600 rounded p-1.5 text-sm dark:bg-slate-700 dark:text-white" value={form[k]} onChange={e=>setForm({...form, [k]: e.target.value})}/></div>))}</div><PhysicalAnalyst /><button onClick={saveAssessment} className="w-full py-3 bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-lg hover:opacity-90 flex items-center justify-center gap-2 mt-4"><Icon name="save"/> SALVAR AVALIAÇÃO</button><div className="mt-6"><h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Histórico</h3><div className="overflow-x-auto"><table className="w-full text-xs text-left"><thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300"><tr><th className="p-2">Data</th><th className="p-2">% Gord</th><th className="p-2">Soccer</th><th className="p-2">SJ</th><th className="p-2">CMJ</th><th className="p-2">30m</th></tr></thead><tbody>{history.map((h, i) => (<tr key={i} className="border-t dark:border-slate-600"><td className="p-2 dark:text-slate-300">{formatDateBR(h.date)}</td><td className="p-2 font-bold text-blue-600 dark:text-blue-400">{h.bf}%</td><td className="p-2 dark:text-slate-300">{h.soccer_test}</td><td className="p-2 dark:text-slate-300">{h.sj}</td><td className="p-2 dark:text-slate-300">{h.cmj}</td><td className="p-2 dark:text-slate-300">{h.speed30}</td></tr>))}</tbody></table></div></div></div><div className="w-full lg:w-64 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700"><h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Rankings</h3><select className="w-full mb-4 text-xs font-bold border dark:border-slate-600 rounded p-2 dark:bg-slate-700 dark:text-white" value={viewMetric} onChange={e=>setViewMetric(e.target.value)}><option value="soccer_test">Soccer Test</option><option value="sj">Squat Jump</option><option value="cmj">CMJ</option><option value="speed30">Velocidade 30m</option></select><RankChart title="Melhores" data={rankings.top5} color="#22c55e" /><div className="border-t dark:border-slate-700 my-2"></div><RankChart title="Abaixo" data={rankings.bottom5} color="#ef4444" /></div></div></div>);
+        };
+
+        const MainApp = ({ user, initialData }) => {
+            const [tab, setTab] = useState('squad'); 
             
-            const handleSave = () => { if(selectedPlayer==='') return alert('Selecione um atleta'); if (editingId) { const updated = records.map(r => r.id === editingId ? { ...r, playerId: selectedPlayer, type: injuryType, location, dateIn } : r); setDmRecords(updated); setEditingId(null); showToast('Registro atualizado'); } else { const newRecord = { id: Date.now(), playerId: selectedPlayer, type: injuryType, location, dateIn, dateOut: null, status: 'Active', rtpPhase: 1 }; setDmRecords([newRecord, ...records]); const updatedPlayers = [...players]; if(updatedPlayers[selectedPlayer]) updatedPlayers[selectedPlayer].injured = true; setPlayers(updatedPlayers); showToast('Atleta no DM'); } setLocation(''); if (!editingId) setSelectedPlayer(''); };
-            const handleEdit = (record) => { setEditingId(record.id); setSelectedPlayer(record.playerId); setInjuryType(record.type); setLocation(record.location); setDateIn(record.dateIn); };
-            const handleDelete = (id, playerId, status) => { if(!confirm('Excluir?')) return; const newRecords = records.filter(r => r.id !== id); setDmRecords(newRecords); if (status === 'Active') { const hasOtherActive = newRecords.some(r => r.playerId == playerId && r.status === 'Active'); if (!hasOtherActive) { const updatedPlayers = [...players]; if(updatedPlayers[playerId]) updatedPlayers[playerId].injured = false; setPlayers(updatedPlayers); } } showToast('Excluído'); };
-            const dischargePlayer = (recordId, playerId) => { if(!confirm('Dar alta?')) return; const updatedRecords = records.map(r => r.id === recordId ? { ...r, status: 'Recovered', dateOut: getTodayStr() } : r); setDmRecords(updatedRecords); const updatedPlayers = [...players]; if(updatedPlayers[playerId]) updatedPlayers[playerId].injured = false; setPlayers(updatedPlayers); showToast('Atleta liberado!'); };
+            const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
+            const [players, setPlayers] = useState(initialData?.players || []);
+            const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
+            const [assessments, setAssessments] = useState(initialData?.assessments || {});
+            const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
+            const [matchMinutes, setMatchMinutes] = useState(initialData?.matchMinutes || {});
+            const [header, setHeader] = useState(initialData?.header || {});
+            const [logo, setLogo] = useState(initialData?.logo || null);
+            const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
             
-            const ReturnToPlayMap = () => {
-                return (
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-4 mt-6">
-                        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2">
-                            <Icon name="activity"/> Mapa Return To Play
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {RTP_PHASES.map(ph => {
-                                const isPhaseActive = activeInjuries.some(r => r.rtpPhase === ph.id);
-                                return (
-                                    <div key={ph.id} className={`p-3 rounded-lg border transition-all ${isPhaseActive ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/40 dark:border-blue-400 ring-2 ring-blue-500/50' : 'bg-slate-50 border-slate-200 dark:bg-slate-700 dark:border-slate-600'}`}>
-                                        <div className={`text-xs font-black uppercase mb-1 ${isPhaseActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{ph.label}</div>
-                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">{ph.desc}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                );
+            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
+
+            const [showSettings, setShowSettings] = useState(false);
+            const [showNotifications, setShowNotifications] = useState(false);
+            const [isOnline, setIsOnline] = useState(navigator.onLine);
+            const [syncStatus, setSyncStatus] = useState(''); 
+
+            useEffect(() => {
+                if (darkMode) document.body.classList.add('dark');
+                else document.body.classList.remove('dark');
+            }, [darkMode]);
+
+            useEffect(() => {
+                const handleOnline = () => setIsOnline(true);
+                const handleOffline = () => setIsOnline(false);
+                window.addEventListener('online', handleOnline);
+                window.addEventListener('offline', handleOffline);
+                return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
+            }, []);
+
+            useEffect(() => {
+                if(!user) return;
+                const timeoutId = setTimeout(() => {
+                    setSyncStatus('Salvando...');
+                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days };
+                    db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
+                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
+                        .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
+                }, 2000); 
+                return () => clearTimeout(timeoutId);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, user]);
+
+            const activeAlerts = useMemo(() => {
+                const today = getTodayStr(); let alerts = [];
+                safeArray(players).forEach((p, i) => {
+                    if(!p || p.injured) return;
+                    const logObj = trainingLog[today]?.[i] || {};
+                    const wellness = safeObj(logObj.wellness);
+                    if(Number(wellness.soreness) >= 5) alerts.push({ type: 'danger', icon: 'bolt', text: `${p.name} relatou dor aguda (Nível ${wellness.soreness}).`});
+                    if(Number(wellness.sleep) >= 5) alerts.push({ type: 'warning', icon: 'moon', text: `${p.name} relatou sono ruim.`});
+                    
+                    const todayLoad = calcDailyLoad(logObj);
+                    if(todayLoad > 0) {
+                        const historyDates = getDatesInRange(today, 7).slice(1); let chronicLoad = 0; 
+                        historyDates.forEach(d => chronicLoad += calcDailyLoad(trainingLog[d]?.[i])); 
+                        const avgLoad = (chronicLoad + todayLoad) / 7;
+                        if(avgLoad > 0 && todayLoad > avgLoad * 1.5) alerts.push({ type: 'danger', icon: 'activity', text: `${p.name} com sobrecarga aguda hoje.`});
+                    }
+                    
+                    const recentDates = getDatesInRange(today, 7); let minsLast7 = 0;
+                    recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
+                    if (minsLast7 >= 150) alerts.push({ type: 'danger', icon: 'alert', text: `${p.name} acumulou ${minsLast7}min de jogo. Risco alto.`});
+                });
+                
+                const activeDm = safeArray(dmRecords).filter(r => r && r.status === 'Active');
+                activeDm.forEach(r => {
+                    const p = players[r.playerId];
+                    if(p) {
+                        const phaseLabel = RTP_PHASES.find(ph => ph.id === (r.rtpPhase || 1))?.label || `Fase ${r.rtpPhase}`;
+                        alerts.push({ type: 'warning', icon: 'medkit', text: `DM: ${p.name} está na ${phaseLabel}.` });
+                    }
+                });
+                
+                const dischargedToday = safeArray(dmRecords).filter(r => r && r.status === 'Recovered' && r.dateOut === getTodayStr());
+                dischargedToday.forEach(r => {
+                    const p = players[r.playerId];
+                    if(p) {
+                        alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` });
+                    }
+                });
+
+                return alerts;
+            }, [players, trainingLog, dmRecords, matchMinutes]);
+
+            const downloadCurrentView = async () => {
+                const el = document.getElementById('print-area');
+                if(!el) return;
+                showToast("Gerando imagem da tela...");
+                
+                const originalBg = el.style.backgroundColor;
+                el.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
+                
+                try {
+                    const canvas = await html2canvas(el, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' 
+                    });
+                    canvas.toBlob(blob => { 
+                        smartShare(blob, `procoach_view.png`, 'ProCoach Export'); 
+                    });
+                } catch(e) { 
+                    showToast("Erro ao exportar tela"); 
+                }
+                
+                el.style.backgroundColor = originalBg;
             };
 
-            const DrAI = ({ phaseId }) => { 
-                const phase = RTP_PHASES.find(p => p.id === parseInt(phaseId)) || RTP_PHASES[0];
-                return (<div className="mt-2 flex gap-2 items-center bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-[10px] text-blue-800 dark:text-blue-300"><Icon name="brain" size={14}/><span><strong>Dr. Virtual:</strong> {phase.desc}</span></div>); 
+            const handleRefresh = () => {
+                showToast("Atualizando dados...");
+                setTimeout(() => window.location.reload(), 500);
             };
-            
+
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6 custom-scroll">
-                    <div className="flex flex-col md:flex-row gap-6">
-                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 h-fit">
-                            <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-red-600 dark:text-red-500"><Icon name="medkit"/> {editingId ? 'Editar' : 'Entrada DM'}</h2>
-                            <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full bg-slate-100 overflow-hidden relative shadow-sm">{selectedPlayer!==''&&players[selectedPlayer]?.image?<img src={players[selectedPlayer].image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={40}/></div>}</div></div>
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Atleta</label>
-                            <select className="w-full border dark:border-slate-600 rounded p-2 mb-3 font-bold text-sm dark:bg-slate-700 dark:text-white" value={selectedPlayer} onChange={e=>setSelectedPlayer(e.target.value)} disabled={!!editingId}><option value="">Selecione...</option>{safeArray(players).map((p,i)=>{if(!p)return null; return <option key={i} value={i}>{p.name}</option>})}</select>
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tipo</label>
-                            <select className="w-full border dark:border-slate-600 rounded p-2 mb-3 text-sm dark:bg-slate-700 dark:text-white" value={injuryType} onChange={e=>setInjuryType(e.target.value)}><option>Muscular</option><option>Articular</option><option>Trauma/Pancada</option><option>Fratura</option><option>Doença</option><option>Outro</option></select>
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Diagnóstico</label>
-                            <select className="w-full border dark:border-slate-600 rounded p-2 mb-3 text-sm dark:bg-slate-700 dark:text-white" value={location} onChange={e=>setLocation(e.target.value)}><option value="">Selecione...</option>{commonDiagnoses.map(d=><option key={d} value={d}>{d}</option>)}</select>
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mt-2 block">Data Entrada</label>
-                            <input type="date" className="w-full border dark:border-slate-600 rounded p-2 mb-4 text-sm dark:bg-slate-700 dark:text-white" value={dateIn} onChange={e=>setDateIn(e.target.value)}/>
-                            <div className="flex gap-2"><button onClick={handleSave} className="flex-1 bg-red-600 text-white font-bold py-3 rounded hover:bg-red-700">SALVAR</button></div>
+                <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
+                    <SettingsModal show={showSettings} onClose={()=>setShowSettings(false)} themeColor={themeColor} setThemeColor={setThemeColor} header={header} setHeader={setHeader} logo={logo} setLogo={setLogo} onExport={()=>{}} onImport={()=>{}} />
+                    {showNotifications && <NotificationCenter alerts={activeAlerts} onClose={()=>setShowNotifications(false)} />}
+                    <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print transition-colors duration-300">
+                        <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
+                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V130 MAX</span></div>
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isOnline ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}><div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>{isOnline ? 'ONLINE' : 'OFFLINE'}</div>
+                            {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
-                        <div className="flex-1 space-y-4">
-                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-4">
-                                <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-2"><Icon name="activity"/> Tratamento (Ativos)</h3></div>
-                                {activeInjuries.length===0?<div className="text-slate-400 text-sm text-center py-4">Nenhum atleta no DM.</div>:<div className="space-y-3">{activeInjuries.map((r,idx)=>{
-                                    const progressPct=((r.rtpPhase||1)/9)*100;
-                                    return(
-                                        <div key={idx} className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm mb-2 relative">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border border-red-200">{players[r.playerId]?.image?<img src={players[r.playerId].image} className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-3 text-red-300"/>}</div>
-                                                    <div><div className="font-bold text-slate-800 dark:text-slate-100 text-lg">{players[r.playerId]?.name}</div><div className="text-xs text-red-600 font-bold">{r.location}</div></div>
-                                                </div>
-                                                <button onClick={()=>dischargePlayer(r.id,r.playerId)} className="bg-green-500 text-white px-3 py-1.5 rounded text-xs font-bold shadow hover:bg-green-600">DAR ALTA</button>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Evolução Clínica</div>
-                                                <select className="w-full text-xs font-bold border dark:border-slate-600 rounded p-1 mb-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 outline-none" value={r.rtpPhase||1} onChange={(e)=>{const u=records.map(x=>x.id===r.id?{...x,rtpPhase:parseInt(e.target.value)}:x);setDmRecords(u);}}>
-                                                    {RTP_PHASES.map(ph=>(<option key={ph.id} value={ph.id}>{ph.label}</option>))}
-                                                </select>
-                                                <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden mb-2"><div className="h-full bg-blue-500 transition-all duration-500" style={{width:`${progressPct}%`}}></div></div>
-                                                <DrAI phaseId={r.rtpPhase} />
-                                            </div>
-                                            <div className="absolute top-2 right-2 flex gap-1"><button onClick={()=>handleEdit(r)} className="text-slate-400 hover:text-blue-500"><Icon name="edit" size={14}/></button><button onClick={()=>handleDelete(r.id, r.playerId, r.status)} className="text-slate-400 hover:text-red-500"><Icon name="trash" size={14}/></button></div>
-                                        </div>
-                                    )
-                                })}</div>}
-                            </div>
-                            
-                            <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-6">
-                                <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2"><Icon name="list"/> Histórico Comple
+                        <div className="flex gap-1 items-center">
+                            <button onClick={handleRefresh} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Atualizar Dados"><Icon name="refresh" size={20}/></button>
+                            <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
+                            <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
+                            <button onClick={downloadCurrentView} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Baixar Tela"><Icon name="download"/></button>
+                            <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700" style={{color: themeColor}} title="Configurações"><Icon name="settings" size={24}/></button>
+                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" title="Sair"><Icon name="logout" size={20}/></button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
+                        <button onClick={()=>setTab('squad')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='squad'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>ELENCO</button>
+                        <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
+                        <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
+                        <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
+                        <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
+                        <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
+                        <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-hidden relative" id="print-area">
+                        {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                        {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} />}
+                        {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                        {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} />}
+                        {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
+                    </div>
+                </div>
+            );
+        };
+
+        const CloudWrapper = ({ user }) => {
+            const [initialData, setInitialData] = useState(null);
+            const [loadingCloud, setLoadingCloud] = useState(true);
+
+            useEffect(() => {
+                const unsubscribe = db.collection('coachData').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) { 
+                        setInitialData(sanitizeCloudData(doc.data())); 
+                    } else { 
+                        setInitialData(sanitizeCloudData({})); 
+                    }
+                    setLoadingCloud(false);
+                }, err => {
+                    console.error("Cloud fetch error:", err);
+                    setInitialData(sanitizeCloudData({}));
+                    setLoadingCloud(false);
+                });
+                return () => unsubscribe();
+            }, [user]);
+
+            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold"><Icon name="cloud" size={40} className="animate-bounce text-blue-500 mb-4"/>Sincronizando Módulo Blindado...</div>;
+            return <ErrorBoundary><MainApp user={user} initialData={initialData} /></ErrorBoundary>;
+        };
+
+        const RootApp = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(u => {
+                    setUser(u);
+                    setLoading(false);
+                    const loader = document.getElementById('loading-state');
+                    if(loader) loader.style.display = 'none';
+                });
+                return () => unsubscribe();
+            }, []);
+
+            if (loading) return null;
+            if (!user) return <LoginScreen onLogin={() => {}} />;
+            return <CloudWrapper user={user} />;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<RootApp />);
+    </script>
+</body>
+</html>
