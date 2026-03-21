@@ -2,11 +2,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProCoach V134 MAX</title>
+    <title>ProCoach V135 MAX</title>
     
-    <link rel="manifest" href="manifest.json?v=7">
-    <link rel="apple-touch-icon" href="logo.png?v=7">
-    <link rel="icon" type="image/png" href="logo.png?v=7">
+    <link rel="manifest" href="manifest.json?v=8">
+    <link rel="apple-touch-icon" href="logo.png?v=8">
+    <link rel="icon" type="image/png" href="logo.png?v=8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -64,13 +64,13 @@
         const { useState, useEffect, useRef, useMemo } = React;
 
         const DEFAULT_DAYS = [
-            { id: 1, md: 'MD-4', name: 'SEGUNDA', date:'', am: [], pm: [] },
-            { id: 2, md: 'MD-3', name: 'TERÇA', date:'', am: [], pm: [] },
-            { id: 3, md: 'MD-2', name: 'QUARTA', date:'', am: [], pm: [] },
-            { id: 4, md: 'MD-1', name: 'QUINTA', date:'', am: [], pm: [] },
-            { id: 5, md: 'JOGO', name: 'SEXTA', date:'', am: [], pm: [] },
-            { id: 6, md: 'MD+1', name: 'SÁBADO', date:'', am: [], pm: [] },
-            { id: 7, md: 'MD+2', name: 'DOMINGO', date:'', am: [], pm: [] }
+            { id: 1, md: 'MD-4', name: 'SEGUNDA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 2, md: 'MD-3', name: 'TERÇA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 3, md: 'MD-2', name: 'QUARTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 4, md: 'MD-1', name: 'QUINTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 5, md: 'JOGO', name: 'SEXTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 6, md: 'MD+1', name: 'SÁBADO', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 7, md: 'MD+2', name: 'DOMINGO', date:'', plannedMins: '', am: [], pm: [] }
         ];
 
         const RTP_PHASES = [ 
@@ -120,7 +120,7 @@
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             </div>
                             <h1 className="text-2xl font-bold mb-2">Erro de Nuvem Detectado</h1>
-                            <p className="text-slate-400 mb-8 max-w-md">Os dados antigos entraram em conflito com o novo sistema. Desative o Tradutor do Google Chrome e clique no botão abaixo para formatar o banco de dados.</p>
+                            <p className="text-slate-400 mb-8 max-w-md">Os dados antigos entraram em conflito com a nova estrutura. Por favor, desative o Tradutor da página e clique no botão abaixo.</p>
                             <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg uppercase tracking-wider flex items-center gap-2">
                                 {this.state.resetting ? "FORMATANDO A NUVEM..." : "LIMPAR E FORMATAR SISTEMA"}
                             </button>
@@ -211,7 +211,7 @@
                 header: safeObj(data.header),
                 logo: typeof data.logo === 'string' ? data.logo : null,
                 darkMode: !!data.darkMode,
-                days: safeArray(data.days, DEFAULT_DAYS) 
+                days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})) 
             };
         };
 
@@ -609,7 +609,7 @@
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
-            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
+            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
             
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
@@ -714,9 +714,10 @@
                 setLocalRPEs(prev => {
                     const next = {};
                     safeArray(players).forEach((_, i) => {
-                        next[i] = { ...prev[i], dur: num };
+                        next[i] = { ...(prev[i] || {am:0, pm:0}), dur: num };
                     });
-                    saveToMain(next);
+                    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                    saveTimeoutRef.current = setTimeout(() => { saveToMain(next); }, 1000);
                     return next;
                 });
             };
@@ -732,12 +733,12 @@
                         <div className="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto">
                             <div className="flex items-center gap-2 flex-1 md:flex-none">
                                 <span className="text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Tempo Geral:</span>
-                                <input type="number" placeholder="Minutos..." value={globalDur} onChange={e=>applyGlobalDur(e.target.value)} className="w-24 p-2 text-xs font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-700 dark:text-white" title="Aplica este tempo para todos os atletas"/>
+                                <input type="number" placeholder="Minutos..." value={globalDur} onChange={e=>applyGlobalDur(e.target.value)} className="w-24 p-2 text-xs font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-700 dark:text-white outline-none" title="Aplica este tempo para todos os atletas"/>
                             </div>
                             <div className="h-6 w-px bg-slate-300 dark:bg-slate-600 hidden md:block"></div>
                             <div className="flex gap-2 flex-1 md:flex-none justify-end">
                                 <button onClick={manualSave} className="bg-slate-200 dark:bg-slate-700 p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"><Icon name="save"/></button>
-                                <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 dark:text-white font-bold p-2 rounded border dark:border-slate-600 w-full md:w-auto"/>
+                                <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 dark:text-white font-bold p-2 rounded border dark:border-slate-600 w-full md:w-auto outline-none"/>
                             </div>
                         </div>
                     </div>
@@ -767,7 +768,7 @@
                                         </div>
                                         <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.am||0} onChange={e=>updateRPE(i,'am',e.target.value)} className="w-16 md:w-24 mr-2 accent-blue-600"/><span className="font-bold w-4 text-center text-blue-600 dark:text-blue-400">{localRPEs[i]?.am}</span></div>
                                         <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.pm||0} onChange={e=>updateRPE(i,'pm',e.target.value)} className="w-16 md:w-24 mr-2 accent-orange-500"/><span className="font-bold w-4 text-center text-orange-500 dark:text-orange-400">{localRPEs[i]?.pm}</span></div>
-                                        <div className="col-span-2 flex justify-center"><input type="number" min="0" placeholder="0" className="w-12 md:w-16 p-1 text-center text-sm font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-white" value={localRPEs[i]?.dur||''} onChange={e=>updateRPE(i,'dur',e.target.value)} /></div>
+                                        <div className="col-span-2 flex justify-center"><input type="number" min="0" placeholder="0" className="w-12 md:w-16 p-1 text-center text-sm font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-white outline-none" value={localRPEs[i]?.dur||''} onChange={e=>updateRPE(i,'dur',e.target.value)} /></div>
                                     </div>
                                 )
                             })}
@@ -912,7 +913,7 @@
                                         
                                         {renderMatchReadinessAI(pLog, minsLast7, p.injured, inTransition)}
 
-                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400">MIN. JOGO:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} title="Tempo de partida oficial" /></div>
+                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400">MIN. JOGO:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} title="Tempo de partida oficial" outline-none/></div>
                                     </div>
                                 </div>
                             ); 
@@ -926,7 +927,7 @@
             const [modalOpen, setModalOpen] = useState(false);
             const [aiModal, setAiModal] = useState(null); 
             const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null }); 
-            const safeDays = safeArray(days, DEFAULT_DAYS);
+            const safeDays = safeArray(days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''}));
             
             const eventTypes = [ 
                 { label: 'JOGO', color: 'bg-[#dc2626]', text: 'text-white', load: 100 }, 
@@ -971,24 +972,64 @@
             };
             
             const renderDayAnalysisModal = () => {
-                if(!aiModal) return null; const md = aiModal.md || ""; let advice = "", focus = "";
-                if(md.includes('MD-4')) { focus = "Aquisição (Força/Resistência)"; advice = "Dia longe do jogo. Ideal para cargas altas, treinos de força na academia ou resistência específica em campo. O volume pode ser elevado."; }
-                else if(md.includes('MD-3')) { focus = "Específico (Tática/Intensidade)"; advice = "Dia de 'choque'. Intensidade deve ser alta (simil jogo), mas o volume total começa a ser controlado. Treinos reduzidos e intensos."; }
-                else if(md.includes('MD-2')) { focus = "Velocidade / Polimento"; advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%). Foco em reatividade, velocidade curta e ajustes táticos finos."; }
-                else if(md.includes('MD-1')) { focus = "Ativação / Bola Parada"; advice = "Véspera de jogo. Carga mínima. Apenas ativação neural e ensaio de bolas paradas. Evite qualquer fadiga residual."; }
-                else if(md === 'JOGO') { focus = "COMPETIÇÃO"; advice = "Dia do jogo. Foco total em hidratação, nutrição e estratégia pré-jogo. Ajuste o ciclo de sono e a última refeição."; }
+                if(!aiModal) return null; 
+                const md = aiModal.md || ""; 
+                const mins = Number(aiModal.plannedMins) || 0;
+                let advice = "", focus = "", volAdvice = "";
+
+                if(md.includes('MD-4')) { focus = "Aquisição (Força/Resistência)"; advice = "Dia longe do jogo. Ideal para cargas altas, treinos de força na academia ou resistência específica em campo."; }
+                else if(md.includes('MD-3')) { focus = "Específico (Tática/Intensidade)"; advice = "Dia de 'choque'. Intensidade deve ser alta (simil jogo), mas o volume total começa a ser controlado."; }
+                else if(md.includes('MD-2')) { focus = "Velocidade / Polimento"; advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; }
+                else if(md.includes('MD-1')) { focus = "Ativação / Bola Parada"; advice = "Véspera de jogo. Carga mínima. Apenas ativação neural e ensaio de bolas paradas."; }
+                else if(md === 'JOGO') { focus = "COMPETIÇÃO"; advice = "Dia do jogo. Foco total em hidratação, nutrição e estratégia pré-jogo."; }
                 else if(md.includes('MD+1')) { focus = "Recuperação Passiva/Ativa"; advice = "Dia seguinte. Foco em remover metabólitos. Bicicleta, massagem, crioterapia ou folga total."; }
-                else if(md.includes('MD+2')) { focus = "Retorno / Compensatório"; advice = "Quem jogou: transição. Quem não jogou: carga alta (compensatório) para igualar o nível físico do elenco."; }
+                else if(md.includes('MD+2')) { focus = "Retorno / Compensatório"; advice = "Transição para quem jogou. Carga alta (compensatório) para quem não jogou."; }
                 else { focus = "Dia Normal"; advice = "Sem designação MD específica. Mantenha o equilíbrio da carga."; }
-                return (<div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}><div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden" onClick={e=>e.stopPropagation()}><div className="absolute top-0 left-0 w-full h-2 bg-green-600"></div><div className="flex flex-col items-center text-center gap-2 mb-4"><div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-full text-green-700 dark:text-green-400"><Icon name="brain" size={32}/></div><h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 uppercase">Análise {aiModal.name} <span className="text-green-600">({md})</span></h3></div><div className="bg-slate-50 dark:bg-slate-700 p-3 rounded-lg border border-slate-100 dark:border-slate-600 mb-4"><div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Foco Sugerido</div><div className="text-sm font-black text-slate-800 dark:text-slate-200">{focus}</div></div><div className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6">{advice}</div><button onClick={()=>setAiModal(null)} className="w-full bg-slate-800 dark:bg-slate-700 text-white font-bold py-3 rounded-lg hover:opacity-90">ENTENDIDO</button></div></div>);
+                
+                if (mins > 0) {
+                    if (md === 'MD-4') volAdvice = mins >= 70 && mins <= 100 ? "Volume Adequado (70-100 min)." : "Alerta: Volume fora do padrão para Aquisição.";
+                    else if (md === 'MD-3') volAdvice = mins >= 50 && mins <= 80 ? "Volume Adequado (50-80 min)." : "Alerta: Cuidado com volume muito alto. Foco na Intensidade!";
+                    else if (md === 'MD-2') volAdvice = mins <= 50 ? "Volume Tapering Correto (<50 min)." : "ALERTA CRÍTICO: Volume muito alto para Polimento!";
+                    else if (md === 'MD-1') volAdvice = mins <= 45 ? "Ativação Correta (<45 min)." : "ALERTA CRÍTICO: Risco severo de fadiga pré-jogo.";
+                    else if (md === 'MD+1') volAdvice = mins <= 40 ? "Recuperação Correta (<40 min)." : "Alerta: Volume alto para recuperação.";
+                    else if (md === 'MD+2') volAdvice = mins >= 45 && mins <= 70 ? "Compensatório Adequado (45-70 min)." : "Alerta: Ajuste o volume para compensar quem não jogou.";
+                    else volAdvice = `Volume registado: ${mins} minutos.`;
+                } else {
+                    volAdvice = "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
+                }
+
+                return (
+                    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden" onClick={e=>e.stopPropagation()}>
+                            <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
+                            <div className="flex flex-col items-center text-center gap-2 mb-4">
+                                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-700 dark:text-blue-400"><Icon name="brain" size={32}/></div>
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 uppercase">Análise {aiModal.name} <span className="text-blue-600">({md})</span></h3>
+                            </div>
+                            
+                            <div className="bg-slate-50 dark:bg-slate-700 p-3 rounded-lg border border-slate-100 dark:border-slate-600 mb-3">
+                                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Foco Sugerido</div>
+                                <div className="text-sm font-black text-slate-800 dark:text-slate-200">{focus}</div>
+                            </div>
+                            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">{advice}</div>
+                            
+                            <div className={`p-3 rounded-lg border mb-6 ${volAdvice.includes('ALERTA') ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-200'}`}>
+                                <div className="text-[10px] font-black uppercase mb-1">Análise de Carga sem GPS</div>
+                                <div className="text-xs font-bold">{volAdvice}</div>
+                            </div>
+
+                            <button onClick={()=>setAiModal(null)} className="w-full bg-slate-800 dark:bg-slate-700 text-white font-bold py-3 rounded-lg hover:opacity-90">ENTENDIDO</button>
+                        </div>
+                    </div>
+                );
             };
             
             const renderWeeklyCoach = () => {
                 let totalLoad = 0; let hasGame = false; safeDays.forEach((d) => { [...(d.am||[]), ...(d.pm||[])].forEach(ev => { totalLoad += (ev.load || 0); if(ev.type === 'JOGO') hasGame = true; }); }); const intensityPct = Math.min(100, (totalLoad / 800) * 100); const barColor = intensityPct > 80 ? 'bg-red-500' : intensityPct > 50 ? 'bg-yellow-500' : 'bg-green-500';
-                return (<div className="bg-white dark:bg-slate-800 p-3 mb-2 rounded-xl border-l-4 border-green-600 dark:border-green-500 shadow-sm flex items-center justify-between gap-4 mx-2"><div className="flex items-center gap-3"><div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full text-green-700 dark:text-green-400"><Icon name="info" size={20}/></div><div><h4 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Painel Tático IA</h4><p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{hasGame ? "Semana de Jogo. Atenção ao Tapering." : "Semana de Treinos. Foco no volume."}</p></div></div><div className="flex flex-col items-end min-w-[100px]"><span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Vol. Semanal Est.</span><div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${barColor}`} style={{width: `${intensityPct}%`}}></div></div></div></div>);
+                return (<div className="bg-white dark:bg-slate-800 p-3 mb-2 rounded-xl border-l-4 border-blue-600 dark:border-blue-500 shadow-sm flex items-center justify-between gap-4 mx-2"><div className="flex items-center gap-3"><div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-700 dark:text-blue-400"><Icon name="info" size={20}/></div><div><h4 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Painel Tático IA</h4><p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{hasGame ? "Semana de Jogo. Atenção ao Tapering e Volume." : "Semana de Treinos. Foco na Aquisição de Força/Volume."}</p></div></div><div className="flex flex-col items-end min-w-[100px]"><span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Intensidade Est.</span><div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${barColor}`} style={{width: `${intensityPct}%`}}></div></div></div></div>);
             };
             
-            return (<div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in">{renderDayAnalysisModal()}<div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0"><h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="calendar"/> PLANEJAMENTO SEMANAL</h2><button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button></div><div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container">{renderWeeklyCoach()}<div className="flex gap-2 h-full min-w-max pb-4">{safeDays.map(day => (<div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 h-full border border-slate-300 dark:border-slate-700 shadow-sm"><div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative"><button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button><BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name} onSave={(val)=>updateHeader(day.id,'name',val)} /><div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1"><select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>{['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}</select></div></div><div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll">{['am','pm'].map(period => (<div key={period} className="flex-1 flex flex-col gap-0 relative"><div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div><div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">{(day[period] || []).map(ev => (<div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>{ev.type}<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button></div>))}<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button></div></div>))}</div></div>))}</div></div>{modalOpen && (<div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}><h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3><div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">{eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>))}</div><button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button></div></div>)}</div>);
+            return (<div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in">{renderDayAnalysisModal()}<div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0"><h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="calendar"/> PLANEJAMENTO SEMANAL</h2><button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button></div><div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container">{renderWeeklyCoach()}<div className="flex gap-2 h-full min-w-max pb-4">{safeDays.map(day => (<div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 h-full border border-slate-300 dark:border-slate-700 shadow-sm"><div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative"><button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button><BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name} onSave={(val)=>updateHeader(day.id,'name',val)} /><div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1"><select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>{['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}</select></div><div className="flex items-center gap-1 mt-1 bg-white/10 rounded px-1 py-0.5" title="Tempo total previsto da sessão"><Icon name="activity" size={10} className="text-white/70" /><BufferedInput type="number" className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold placeholder-white/50" placeholder="Tempo (min)" value={day.plannedMins} onSave={(val)=>updateHeader(day.id,'plannedMins',val)} /></div></div><div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll">{['am','pm'].map(period => (<div key={period} className="flex-1 flex flex-col gap-0 relative"><div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div><div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">{(day[period] || []).map(ev => (<div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>{ev.type}<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button></div>))}<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button></div></div>))}</div></div>))}</div></div>{modalOpen && (<div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}><h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3><div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">{eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>))}</div><button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button></div></div>)}</div>);
         };
 
         const MedicalView = ({ players, setPlayers, dmRecords, setDmRecords, themeColor }) => {
@@ -1104,7 +1145,6 @@
             const [selectedPlayer, setSelectedPlayer] = useState(0);
             const [viewMetric, setViewMetric] = useState('fms_total'); 
             
-            // NOVO STATE COMPLETO (ANAMNESE + FMS + 1RM)
             const [form, setForm] = useState({ 
                 date: getTodayStr(), weight: '', height: '', age: '', 
                 chest: '', axilla: '', tricep: '', subscap: '', abdo: '', supra: '', thigh: '', 
@@ -1112,7 +1152,7 @@
                 anamnese: '', orto: '', squat_rm: '', assimetria: '',
                 fms_ds: '', fms_hs_l: '', fms_hs_r: '', fms_ill_l: '', fms_ill_r: '', 
                 fms_sm_l: '', fms_sm_r: '', fms_aslr_l: '', fms_aslr_r: '', 
-                fms_tspu: '', fms_rs_l: '', fms_rs_r: '', fms_total: ''
+                fms_tspu: '', fms_rs_l: '', fms_rs_r: ''
             });
 
             const calculateFMS = () => {
@@ -1136,9 +1176,23 @@
                 showToast("Avaliação Salva!"); 
             };
             
-            const getRankings = (metric) => { const list = safeArray(players).map((p, i) => { if(!p) return null; const h = Array.isArray(assessments[i]) ? assessments[i] : []; const val = h.length > 0 ? parseFloat(h[0][metric]) : 0; return { name: p.name, val: isNaN(val) ? 0 : val }; }).filter(x => x && x.val > 0); if(metric === 'speed30') { list.sort((a,b) => a.val - b.val); } else { list.sort((a,b) => b.val - a.val); } return { top5: list.slice(0, 5), bottom5: list.slice(-5).reverse() }; };
+            const getRankings = (metric) => { 
+                const list = safeArray(players).map((p, i) => { 
+                    if(!p) return null; 
+                    const h = Array.isArray(assessments[i]) ? assessments[i] : []; 
+                    if(h.length === 0 || !h[0][metric]) return null;
+                    const val = parseFloat(h[0][metric]); 
+                    return { name: p.name, val: isNaN(val) ? 0 : val }; 
+                }).filter(x => x && x.val > 0); 
+                
+                if(metric === 'speed30') { list.sort((a,b) => a.val - b.val); } 
+                else { list.sort((a,b) => b.val - a.val); } 
+                
+                return { top5: list.slice(0, 5), bottom5: list.slice(-5).reverse() }; 
+            };
+            
             const rankings = getRankings(viewMetric);
-            const RankChart = ({ title, data, color }) => ( <div className="mb-4"><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{title}</h4>{data.length === 0 ? <div className="text-xs text-slate-300 dark:text-slate-600">Sem dados</div> : data.map((d, i) => ( <div key={i} className="flex items-center gap-2 mb-1"><div className="text-[10px] font-bold w-4 text-slate-400">#{i+1}</div><div className="flex-1"><div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5"><span>{d.name}</span><span>{d.val}</span></div><div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width: '100%', backgroundColor: color}}></div></div></div></div> ))}</div> );
+            const RankChart = ({ title, data, color }) => ( <div className="mb-4"><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{title}</h4>{data.length === 0 ? <div className="text-xs text-slate-300 dark:text-slate-600">Sem dados válidos para a equipa</div> : data.map((d, i) => ( <div key={i} className="flex items-center gap-2 mb-1"><div className="text-[10px] font-bold w-4 text-slate-400">#{i+1}</div><div className="flex-1"><div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5"><span>{d.name}</span><span>{d.val}</span></div><div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width: '100%', backgroundColor: color}}></div></div></div></div> ))}</div> );
             const history = Array.isArray(assessments[selectedPlayer]) ? assessments[selectedPlayer] : [];
             
             const FmsRow = ({ label, id, isBilateral }) => {
@@ -1169,7 +1223,7 @@
                 const fmsScore = calculateFMS();
                 
                 let feedback = "Atleta apto. Parâmetros normais."; 
-                let plan = "Plano Sugerido: Treino padrão da equipe.";
+                let plan = "Plano Sugerido: Treino padrão da equipa.";
                 let isAlert = false;
 
                 if(fmsScore > 0 && fmsScore < 14) {
@@ -1185,7 +1239,7 @@
                 }
                 
                 if(form.speed30 > 0 && form.speed30 < 4.0) feedback += " Velocidade de Sprint acima da média."; 
-                else if (form.speed30 > 4.4) plan += " Sugerido Pliometria 2x semana.";
+                else if (form.speed30 > 4.4) plan += " Sugerida Pliometria 2x semana.";
 
                 const colors = isAlert ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200' : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200';
 
@@ -1309,7 +1363,7 @@
                     
                     {/* BARRA LATERAL DOS RANKINGS */}
                     <div className="w-full lg:w-64 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 h-fit">
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Rankings</h3>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Top 5 da Equipa</h3>
                         <select className="w-full mb-4 text-xs font-bold border dark:border-slate-600 rounded p-2 dark:bg-slate-700 dark:text-white outline-none" value={viewMetric} onChange={e=>setViewMetric(e.target.value)}>
                             <option value="fms_total">Escore FMS (Prevenção)</option>
                             <option value="squat_rm">Força Máx (1RM)</option>
