@@ -1,4 +1,4 @@
-const CACHE_NAME = 'procoach-v134';
+const CACHE_NAME = 'procoach-v135';
 const urlsToCache = [
   './',
   './index.html',
