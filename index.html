@@ -2,11 +2,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProCoach V137 MAX</title>
+    <title>ProCoach V138 MAX</title>
     
-    <link rel="manifest" href="manifest.json?v=10">
-    <link rel="apple-touch-icon" href="logo.png?v=10">
-    <link rel="icon" type="image/png" href="logo.png?v=10">
+    <link rel="manifest" href="manifest.json?v=11">
+    <link rel="apple-touch-icon" href="logo.png?v=11">
+    <link rel="icon" type="image/png" href="logo.png?v=11">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -94,18 +94,23 @@
                 this.setState({ resetting: true });
                 try {
                     localStorage.clear();
-                    const user = firebase.auth().currentUser;
-                    if (user) {
-                        await firebase.firestore().collection('coachData').doc(user.uid).set({
-                            players: [{name: "Novo Atleta 1", image: null, injured: false, position: 'Atleta', number: ''}],
-                            trainingLog: {},
-                            dmRecords: [],
-                            matchMinutes: {},
-                            assessments: {},
-                            days: DEFAULT_DAYS
-                        });
-                    }
-                    window.location.reload();
+                    // O novo código espera pela autenticação ser confirmada antes de apagar os dados!
+                    firebase.auth().onAuthStateChanged(async (user) => {
+                        if (user) {
+                            await firebase.firestore().collection('coachData').doc(user.uid).set({
+                                players: [{name: "Novo Atleta 1", image: null, injured: false, position: 'Atleta', number: ''}],
+                                trainingLog: {},
+                                dmRecords: [],
+                                matchMinutes: {},
+                                assessments: {},
+                                days: DEFAULT_DAYS,
+                                themeColor: '#1e3a8a',
+                                darkMode: true
+                            });
+                        }
+                        // Recarrega forçando a limpar cache no final da URL
+                        window.location.href = window.location.href.split('?')[0] + '?reset=1';
+                    });
                 } catch (e) {
                     console.error("Erro ao resetar:", e);
                     window.location.reload();
@@ -120,10 +125,11 @@
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             </div>
                             <h1 className="text-2xl font-bold mb-2">Erro de Nuvem Detectado</h1>
-                            <p className="text-slate-400 mb-8 max-w-md">Os dados antigos entraram em conflito com a nova estrutura. Por favor, desative o Tradutor e clique no botão abaixo.</p>
-                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg uppercase tracking-wider flex items-center gap-2">
+                            <p className="text-slate-400 mb-8 max-w-md">Os dados antigos entraram em conflito com a nova estrutura. O botão abaixo foi atualizado para garantir a formatação segura do sistema.</p>
+                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg uppercase tracking-wider flex items-center gap-2 mb-4">
                                 {this.state.resetting ? "A FORMATAR A NUVEM..." : "LIMPAR E FORMATAR SISTEMA"}
                             </button>
+                            <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-sm text-slate-500 hover:text-slate-300 underline">Ou Sair da Conta</button>
                         </div>
                     );
                 }
@@ -230,7 +236,7 @@
                 trophy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/></svg>,
                 check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
                 save: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-                settings: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+                settings: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0 2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
                 medkit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>,
                 x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
                 edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
@@ -451,7 +457,479 @@
             );
         };
 
-        const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
+        const PlayerProfileModal = ({ player, playerIndex, logs, onClose, themeColor, setPlayers, players }) => {
+            if (!player) return null;
+            const today = getTodayStr(); 
+            const currentLog = logs[today]?.[playerIndex] || {};
+            const wellness = safeObj(currentLog.wellness);
+            const dates = getDatesInRange(today, 7).reverse();
+            const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
+            
+            const getLoad = (d) => { 
+                const l = logs[d]?.[playerIndex]; 
+                if(!l) return 0;
+                const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
+                const dur = Number(l.duration) || 0;
+                return dur > 0 ? rpeSum * dur : rpeSum * 60; 
+            };
+
+            const todayLoad = getLoad(today);
+            const historyDates = getDatesInRange(today, 7).slice(1); 
+            let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
+            const avgLoad = (chronicLoad + todayLoad) / 7;
+            
+            let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
+            let loadColor = "text-green-500";
+            
+            if (avgLoad > 0) {
+                if (todayLoad > avgLoad * 1.4) { loadMsg = "Risco Agudo! Sobrecarga detectada. Sugestão: Recuperativo imediato."; loadColor = "text-red-500"; } 
+                else if (todayLoad < avgLoad * 0.6) { loadMsg = "Carga baixa hoje. Oportunidade para treino de força ou tático intenso."; loadColor = "text-yellow-500"; }
+            }
+
+            const HistoryAI = () => {
+                const painCounts = {};
+                dates.forEach(d => { const l = logs[d]?.[playerIndex] || {}; if(Array.isArray(l.painZones)) l.painZones.forEach(z => { painCounts[z] = (painCounts[z]||0) + 1; }); });
+                const chronic = Object.keys(painCounts).find(k => painCounts[k] >= 3);
+                if (chronic) return (<div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 mb-4 rounded-r-lg shadow-sm"><div className="flex items-center gap-2 mb-1"><Icon name="brain" className="text-red-600 dark:text-red-400" size={18}/><span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase">Fisiologista Virtual</span></div><div className="text-xs text-slate-700 dark:text-slate-300">Atenção: Dor recorrente em <strong>{chronic}</strong> detectada nesta semana. Risco elevado.</div></div>);
+                return null;
+            };
+
+            const generateShareCard = async () => {
+                const el = document.getElementById('export-card-' + playerIndex);
+                if(!el) return;
+                
+                el.style.left = '0'; el.style.top = '0'; el.style.position = 'absolute'; el.style.zIndex = '9999';
+                const originalBg = el.style.backgroundColor;
+                el.style.backgroundColor = '#0f172a'; 
+                
+                showToast("Gerando card...");
+                
+                try {
+                    const canvas = await html2canvas(el, {
+                        scale: 2, 
+                        useCORS: true, 
+                        backgroundColor: '#0f172a',
+                        logging: false
+                    });
+                    
+                    canvas.toBlob(blob => {
+                        smartShare(blob, `card_${player.name.replace(/\s+/g, '_')}.png`, `Status - ${player.name}`);
+                        el.style.left = '-9999px'; el.style.top = '-9999px';
+                        el.style.backgroundColor = originalBg;
+                    });
+                } catch(e) {
+                    showToast("Erro ao gerar card");
+                    el.style.left = '-9999px'; el.style.top = '-9999px';
+                    el.style.backgroundColor = originalBg;
+                }
+            };
+
+            const totalW = getWSum(wellness);
+            const wColor = totalW >= 25 ? 'text-red-500' : totalW >= 18 ? 'text-yellow-500' : 'text-green-500';
+
+            return (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
+                        
+                        <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
+                            <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
+                            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
+                            <h2 className="text-2xl font-bold uppercase">{player.name}</h2>
+                            <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
+                            <div className="flex gap-2 mt-2">
+                                <button onClick={toggleInjury} className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
+                            </div>
+                        </div>
+                        
+                        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
+                            
+                            <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 p-4 shadow-inner">
+                                <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-600 pb-2">
+                                    <Icon name="brain" className={loadColor} size={18}/>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider ${loadColor}`}>Assistente de Prontidão IA</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{loadMsg}</div>
+                            </div>
+
+                            <HistoryAI />
+                            
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="smile"/> Status ({formatDateBR(today)})</h3>
+                                <div className="grid grid-cols-2 gap-4">{Object.entries({Sono:wellness.sleep,Estresse:wellness.stress,Fadiga:wellness.fatigue,Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(<div key={k} className="bg-slate-50 dark:bg-slate-700 p-2 rounded border border-slate-100 dark:border-slate-600"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-500 dark:text-slate-400">{k}</span><span className="dark:text-white">{v||'-'}</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div></div></div>))}</div>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga (sRPE)</h3>
+                                <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
+                            </div>
+                            <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
+                        </div>
+                    </div>
+
+                    <div id={`export-card-${playerIndex}`} className="fixed z-[-1] bg-slate-900" style={{left:'-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
+                        <div className="p-6 rounded-3xl border-4 border-slate-700 text-white flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
+                            <div className="absolute top-0 left-0 w-full h-32 opacity-50" style={{background:`linear-gradient(to bottom, ${themeColor}, transparent)`}}></div>
+                            <div className="w-32 h-32 rounded-full border-4 border-slate-800 bg-slate-800 shadow-2xl mb-4 overflow-hidden z-10 relative">
+                                {player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-500"><Icon name="user" size={40}/></div>}
+                            </div>
+                            <h2 className="text-3xl font-black uppercase z-10 mb-1 text-white">{player.name}</h2>
+                            <p className="text-slate-400 font-bold z-10 mb-6 tracking-widest">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
+                            
+                            <div className="w-full bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700 flex justify-between items-center z-10 shadow-inner" style={{backgroundColor: '#1e293b'}}>
+                                <div className="text-center">
+                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Wellness Index</div>
+                                    <div className={`text-3xl font-black ${wColor}`}>{totalW > 0 ? totalW : '-'}</div>
+                                </div>
+                                <div className="h-10 w-px bg-slate-700"></div>
+                                <div className="text-center">
+                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Carga Hoje</div>
+                                    <div className="text-3xl font-black text-blue-400">{todayLoad || '-'}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10" style={{backgroundColor: '#1e293b'}}>
+                                <div className="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
+                                    <Icon name="brain" className={loadColor.replace('text-', 'text-')} size={16}/>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{color: loadColor === 'text-red-500' ? '#ef4444' : '#eab308'}}>{loadMsg}</span>
+                                </div>
+                                <div className="text-sm text-slate-300 leading-snug">
+                                    {totalW >= 25 ? "Alerta Crítico: Risco de Burnout ou Lesão." : totalW >= 18 ? "Atenção: Fadiga acumulada. Recuperação sugerida." : "Prontidão Alta: Atleta em boas condições."}
+                                    {Array.isArray(currentLog.painZones) && currentLog.painZones.length > 0 && <span className="block mt-1 text-red-400 font-bold text-xs">Dores: {currentLog.painZones.join(', ')}</span>}
+                                </div>
+                            </div>
+                            <div className="mt-4 text-[9px] text-slate-500 font-bold tracking-widest uppercase">Gerado por ProCoach Nuvem</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+            const [viewProfile, setViewProfile] = useState(null);
+            const [editPlayer, setEditPlayer] = useState(null); 
+            const today = getTodayStr(); 
+            const safePlayers = safeArray(players);
+            
+            const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
+            const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
+            
+            const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
+            const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
+            
+            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
+            
+            const injuredCount = safePlayers.filter(p=>p && p.injured).length;
+            const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
+                    <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
+                    {editPlayer!==null && <Editor/>}
+                    <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2><div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300"><Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}</div></div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {safePlayers.map((p, i) => { 
+                            if(!p) return null;
+                            const loadPct = getWeeklyLoad(i); 
+                            const dailyLog = trainingLog[today]?.[i] || {}; 
+                            const wellness = safeObj(dailyLog.wellness); 
+                            const soreness = Number(wellness.soreness) || 0; 
+                            const sleep = Number(wellness.sleep) || 0; 
+                            const isRisk = soreness >= 5; 
+                            const dmStatus = p.injured ? getPlayerDMStatus(i) : null; 
+                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
+                            
+                            return (
+                                <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-4 flex flex-col items-center gap-3 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured ? 'border-red-500 dark:border-red-500 ring-2 ring-red-100 dark:ring-red-900/50' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
+                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-2 right-2 text-slate-300 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-800 rounded-full p-1"><Icon name="edit" size={16}/></button>
+                                    
+                                    {isRisk && !p.injured && <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse z-10 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO</div>}
+                                    {p.injured && <div className="absolute top-2 left-2 bg-slate-800 dark:bg-slate-600 text-white p-1.5 rounded-full z-10"><Icon name="medkit" size={14}/></div>}
+                                    {inTransition && !p.injured && <div className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
+                                    
+                                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden relative border-2 shrink-0" style={{borderColor: p.injured ? '#1e293b' : inTransition ? '#f97316' : isRisk ? '#ef4444' : themeColor}}>
+                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><Icon name="user" size={32}/></div>}
+                                    </div>
+                                    <div className="text-center w-full">
+                                        <div className="font-bold text-slate-700 dark:text-slate-200 text-lg truncate">{p.name}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-1 flex justify-center gap-2">{p.number && <span className="bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-slate-600 dark:text-slate-300">#{p.number}</span>}<span>{p.position || 'Atleta'}</span></div>
+                                    </div>
+                                    
+                                    <div className="border-t dark:border-slate-700 pt-2 w-full flex justify-center items-center gap-2">
+                                        {p.injured && dmStatus ? (
+                                            <div className="w-full text-center">
+                                                <div className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase mb-1">{dmStatus.location}</div>
+                                                <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-2 py-1">{RTP_PHASES.find(ph=>ph.id==dmStatus.rtpPhase)?.label || 'Em tratamento'}</div>
+                                            </div>
+                                        ) : (
+                                            <><MiniGauge value={loadPct} min={0} max={100} label="Carga 7 Dias" />{sleep >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Sono Ruim"><Icon name="moon" size={12}/></div>}{soreness >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Dor Alta"><Icon name="bolt" size={12}/></div>}</>
+                                        )}
+                                    </div>
+                                </div>
+                            ) 
+                        })}
+                        <button onClick={addP} className="bg-white dark:bg-slate-800 rounded-xl shadow border border-dashed border-slate-300 dark:border-slate-600 p-4 flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:border-blue-500 dark:hover:border-blue-400 transition-all cursor-pointer h-40"><Icon name="plus" size={32}/><span className="font-bold text-sm">Adicionar Atleta</span></button>
+                    </div>
+                </div>
+            );
+        };
+
+        const PSEView = ({ players, themeColor, trainingLog, setTrainingLog }) => {
+            const [date, setDate] = useState(getTodayStr()); 
+            const [globalDur, setGlobalDur] = useState('');
+            const [localRPEs, setLocalRPEs] = useState({});
+            const [saveStatus, setSaveStatus] = useState('');
+            const saveTimeoutRef = useRef(null);
+
+            useEffect(() => { 
+                const c = {}; 
+                safeArray(players).forEach((_, i) => { 
+                    const log = trainingLog[date]?.[i] || {}; 
+                    c[i] = { am: Number(log.rpe_am) || 0, pm: Number(log.rpe_pm) || 0, dur: Number(log.duration) || 0 }; 
+                }); 
+                setLocalRPEs(c); 
+            }, [date, players, trainingLog]);
+
+            const saveToMain = (currentLocal) => { 
+                setSaveStatus('Salvando...'); 
+                const newLog = {...trainingLog}; 
+                if(!newLog[date]) newLog[date] = {}; 
+                safeArray(players).forEach((_, i) => { 
+                    if(!newLog[date][i]) newLog[date][i] = {}; 
+                    newLog[date][i].rpe_am = currentLocal[i].am; 
+                    newLog[date][i].rpe_pm = currentLocal[i].pm; 
+                    newLog[date][i].duration = currentLocal[i].dur;
+                }); 
+                setTrainingLog(newLog); 
+                setTimeout(() => setSaveStatus('Salvo'), 500); 
+                setTimeout(() => setSaveStatus(''), 2000); 
+            };
+
+            const updateRPE = (i, field, val) => { 
+                const newValue = parseInt(val) || 0; 
+                setLocalRPEs(prev => { 
+                    const next = {...prev, [i]: {...prev[i], [field]: newValue}}; 
+                    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); 
+                    saveTimeoutRef.current = setTimeout(() => { saveToMain(next); }, 1000); 
+                    return next; 
+                }); 
+            };
+
+            const applyGlobalDur = (val) => {
+                setGlobalDur(val);
+                const num = parseInt(val) || 0;
+                setLocalRPEs(prev => {
+                    const next = {};
+                    safeArray(players).forEach((_, i) => {
+                        next[i] = { ...(prev[i] || {am:0, pm:0}), dur: num };
+                    });
+                    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                    saveTimeoutRef.current = setTimeout(() => { saveToMain(next); }, 1000);
+                    return next;
+                });
+            };
+
+            const manualSave = () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); saveToMain(localRPEs); showToast("Salvo manualmente!"); };
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col relative custom-scroll">
+                    <div className={`status-badge ${saveStatus ? 'show' : ''} z-50`}>{saveStatus === 'Salvo' ? '💾 SALVO' : '⏳ SALVANDO...'}</div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0 gap-4">
+                        <div className="flex items-center gap-2"><h2 className="text-xl font-bold text-slate-700 dark:text-slate-100 flex items-center gap-2"><Icon name="activity"/> CONTROLE DE CARGA (sRPE)</h2></div>
+                        
+                        <div className="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700 w-full md:w-auto">
+                            <div className="flex items-center gap-2 flex-1 md:flex-none">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">Tempo Geral:</span>
+                                <input type="number" placeholder="Minutos..." value={globalDur} onChange={e=>applyGlobalDur(e.target.value)} className="w-24 p-2 text-xs font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-700 dark:text-white outline-none" title="Aplica este tempo para todos os atletas"/>
+                            </div>
+                            <div className="h-6 w-px bg-slate-300 dark:bg-slate-600 hidden md:block"></div>
+                            <div className="flex gap-2 flex-1 md:flex-none justify-end">
+                                <button onClick={manualSave} className="bg-slate-200 dark:bg-slate-700 p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300"><Icon name="save"/></button>
+                                <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 dark:text-white font-bold p-2 rounded border dark:border-slate-600 w-full md:w-auto outline-none"/>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1 min-h-0">
+                        <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-3 text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase shrink-0">
+                            <div className="col-span-4">Atleta</div>
+                            <div className="col-span-3 text-center">Manhã (0-10)</div>
+                            <div className="col-span-3 text-center">Tarde (0-10)</div>
+                            <div className="col-span-2 text-center">Duração (min)</div>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1 custom-scroll">
+                            {safeArray(players).map((p, i) => { 
+                                if(!p) return null; 
+                                const dur = localRPEs[i]?.dur||0;
+                                const sRPE = ((localRPEs[i]?.am||0) + (localRPEs[i]?.pm||0)) * (dur > 0 ? dur : 60);
+                                return (
+                                    <div key={i} className={`grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50`}>
+                                        <div className="col-span-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
+                                                <div>
+                                                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 truncate block">{p.name}</span>
+                                                    {sRPE > 0 && <span className="text-[9px] font-bold text-blue-500">Carga Real: {sRPE}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.am||0} onChange={e=>updateRPE(i,'am',e.target.value)} className="w-16 md:w-24 mr-2 accent-blue-600"/><span className="font-bold w-4 text-center text-blue-600 dark:text-blue-400">{localRPEs[i]?.am}</span></div>
+                                        <div className="col-span-3 flex justify-center"><input type="range" min="0" max="10" value={localRPEs[i]?.pm||0} onChange={e=>updateRPE(i,'pm',e.target.value)} className="w-16 md:w-24 mr-2 accent-orange-500"/><span className="font-bold w-4 text-center text-orange-500 dark:text-orange-400">{localRPEs[i]?.pm}</span></div>
+                                        <div className="col-span-2 flex justify-center"><input type="number" min="0" placeholder="0" className="w-12 md:w-16 p-1 text-center text-sm font-bold border dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-white outline-none" value={localRPEs[i]?.dur||''} onChange={e=>updateRPE(i,'dur',e.target.value)} /></div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TeamCoachAI = ({ activePlayers, pseAvg, dmCount }) => {
+            const numericAvg = parseFloat(pseAvg) || 0;
+            let title = "Diagnóstico da Equipa"; let suggestion = ""; let colorClass = "bg-slate-800 text-slate-300";
+            if (numericAvg >= 600) { title = "ALERTA VERMELHO (Sobrecarga)"; suggestion = "Carga Extremamente Alta. RISCO DE LESÃO ELEVADO. Amanhã: Recuperação passiva ou folga obrigatória."; colorClass = "bg-red-900 text-red-50"; } 
+            else if (numericAvg >= 400) { title = "Zona de Alta Intensidade"; suggestion = "Treino exigente. Amanhã: Carga baixa/moderada (foco tático sem contato) para supercompensação."; colorClass = "bg-orange-800 text-orange-50"; } 
+            else if (numericAvg >= 200) { title = "Zona de Manutenção/Desenvolvimento"; suggestion = "Carga Ideal. Amanhã: Pode manter a intensidade se não for véspera de jogo (MD-1)."; colorClass = "bg-green-800 text-green-50"; } 
+            else if (numericAvg > 0) { title = "Carga Baixa / Regenerativo"; suggestion = "Estímulo leve hoje. Amanhã: Oportunidade para 'Choque' (Força ou Resistência) se longe do jogo."; colorClass = "bg-blue-800 text-blue-50"; } 
+            else { title = "Sem Dados Suficientes"; suggestion = "Aguardando preenchimento de PSE e Duração (min) dos treinos."; colorClass = "bg-slate-800 text-slate-300"; }
+            if(dmCount >= 3) { suggestion += ` ALERTA: ${dmCount} atletas no DM. Atenção na rotação.`; }
+            return (<div className={`md:col-span-2 rounded-xl shadow p-5 border border-slate-700 flex flex-col justify-center relative overflow-hidden ${colorClass}`}><div className="absolute top-0 right-0 p-4 opacity-10"><Icon name="brain" size={80}/></div><div className="flex items-center gap-2 mb-2 z-10"><div className="bg-white/20 p-1.5 rounded-full"><Icon name="brain" size={20}/></div><h3 className="font-bold text-sm uppercase tracking-wider opacity-80">Técnico Virtual (Equipe)</h3></div><div className="z-10"><div className="text-xl font-black mb-1">{title}</div><div className="text-sm font-medium opacity-90 leading-snug">{suggestion}</div></div></div>);
+        };
+
+        const PreGameView = ({ players, setPlayers, themeColor, trainingLog, dmRecords, matchMinutes, setMatchMinutes }) => {
+            const [monitorDate, setMonitorDate] = useState(getTodayStr()); 
+            const dailyData = safeObj(trainingLog[monitorDate]);
+            const safePs = safeArray(players);
+            
+            const activePlayersIndices = [];
+            safePs.forEach((p, i) => { if(p && safeObj(dailyData[i]?.wellness).sleep) activePlayersIndices.push(i); });
+            
+            const teamHooperAvg = activePlayersIndices.length > 0 
+                ? Math.round(activePlayersIndices.reduce((acc, i) => acc + getWSum(dailyData[i]?.wellness), 0) / activePlayersIndices.length) 
+                : 0;
+
+            const rpePlayersIndices = [];
+            safePs.forEach((p, i) => { if(p && calcDailyLoad(dailyData[i]) > 0) rpePlayersIndices.push(i); });
+            
+            const pseSum = rpePlayersIndices.reduce((acc, i) => acc + calcDailyLoad(dailyData[i]), 0);
+            const pseAvgRaw = rpePlayersIndices.length > 0 ? Math.round(pseSum / rpePlayersIndices.length) : 0;
+            const pseColor = pseAvgRaw >= 600 ? '#ef4444' : pseAvgRaw >= 300 ? '#eab308' : '#22c55e';
+            
+            const dmCount = safePs.filter(p => p && p.injured).length;
+            
+            const weeklyDates = getDatesInRange(monitorDate, 7).reverse();
+            const weeklyData = weeklyDates.map(d => {
+                const dayLog = safeObj(trainingLog[d]);
+                let loadSum = 0, wellnessSum = 0, countLoad = 0, countWell = 0;
+                safePs.forEach((p, i) => {
+                    if(p) {
+                        const l = dayLog[i];
+                        if(l) { 
+                            const load = calcDailyLoad(l);
+                            if(load > 0) { loadSum += load; countLoad++; } 
+                            if(safeObj(l.wellness).sleep) { wellnessSum += getWSum(l.wellness); countWell++; } 
+                        }
+                    }
+                });
+                return { date: d, avgLoad: countLoad > 0 ? Math.round(loadSum/countLoad) : 0, avgWell: countWell > 0 ? Math.round(wellnessSum/countWell) : 0 };
+            });
+
+            const updateMinutes = (pIdx, val) => { const newMins = {...matchMinutes}; if(!newMins[monitorDate]) newMins[monitorDate] = {}; newMins[monitorDate][pIdx] = parseInt(val) || 0; setMatchMinutes(newMins); };
+
+            const [viewProfile, setViewProfile] = useState(null);
+
+            const renderMatchReadinessAI = (pLog, mins, isInjured, inTransition) => {
+                if (isInjured) return <div className="text-[9px] font-bold text-red-500 bg-red-900/30 px-2 py-0.5 rounded">Indisponível (DM)</div>;
+                if (inTransition) return <div className="text-[9px] font-bold text-orange-500 bg-orange-900/30 px-2 py-0.5 rounded">Transição - Limite: 30 a 45min</div>;
+                
+                const load = calcDailyLoad(pLog);
+                const wellness = getWSum(pLog?.wellness);
+                if (mins >= 150) return <div className="text-[9px] font-bold text-red-500 bg-red-900/30 px-2 py-0.5 rounded">Risco Máximo - POUPE O ATLETA</div>;
+                if (load >= 600 || wellness >= 20) return <div className="text-[9px] font-bold text-yellow-500 bg-yellow-900/30 px-2 py-0.5 rounded">Fadigado - Limitar 45 min</div>;
+                return <div className="text-[9px] font-bold text-green-500 bg-green-900/30 px-2 py-0.5 rounded">Apto para 90 min</div>;
+            };
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
+                    <PlayerProfileModal player={safePs[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePs} />
+                    
+                    <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-2"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="trophy"/> Performance & Carga</h2><div className="flex gap-2"><div className="flex items-center gap-2 text-xs bg-white dark:bg-slate-700 border dark:border-slate-600 rounded px-3 py-1.5 shadow-sm"><span className="font-bold text-slate-500 dark:text-slate-300 uppercase">Análise:</span><input type="date" value={monitorDate} onChange={e=>setMonitorDate(e.target.value)} className="bg-transparent text-slate-800 dark:text-slate-100 font-bold outline-none"/></div></div></div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center col-span-1"><SpeedometerGauge value={teamHooperAvg} /></div>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex items-center gap-4">
+                            <DonutChart value={Math.min(20, Math.round(pseAvgRaw/50))} max={20} color={pseColor} size={60} />
+                            <div><div className="text-xl font-black text-slate-800 dark:text-slate-200">{pseAvgRaw}</div><div className="text-[10px] text-slate-400 font-bold uppercase">sRPE Equipe</div></div>
+                        </div>
+                        <TeamCoachAI activePlayers={activePlayersIndices} pseAvg={pseAvgRaw} dmCount={dmCount} />
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-100 dark:border-slate-700 p-4 mb-8 overflow-x-auto custom-scroll">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><Icon name="barChart"/> Contexto Semanal (Média Equipe)</h3>
+                        <div className="flex gap-2 min-w-max">
+                            {weeklyData.map((d, idx) => {
+                                const isToday = d.date === monitorDate;
+                                const wColor = d.avgWell >= 20 ? 'bg-red-400' : d.avgWell >= 14 ? 'bg-yellow-400' : 'bg-green-400';
+                                return (
+                                    <div key={idx} className={`flex-1 min-w-[60px] flex flex-col items-center p-2 rounded border ${isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 'bg-slate-50 dark:bg-slate-700 border-transparent'}`}>
+                                        <div className="text-[9px] font-bold text-slate-400 mb-1">{formatDateBR(d.date).slice(0,5)}</div>
+                                        <div className="flex items-end gap-1 h-20 w-full justify-center">
+                                            <div className="w-3 bg-blue-600 rounded-t" style={{height: `${Math.min(100, (d.avgLoad/1000)*100)}%`}} title={`Carga: ${d.avgLoad}`}></div>
+                                            <div className={`w-3 ${wColor} rounded-t`} style={{height: `${Math.min(100, (d.avgWell/35)*100)}%`}} title={`Wellness: ${d.avgWell}`}></div>
+                                        </div>
+                                        <div className="mt-1 text-[9px] font-bold text-slate-600 dark:text-slate-300">{d.avgLoad} | {d.avgWell}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4">Status Individual ({formatDateBR(monitorDate)})</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {safePs.map((p, i) => { 
+                            if(!p) return null; 
+                            const pLog = dailyData[i] || {}; 
+                            const totalHooper = getWSum(pLog.wellness); 
+                            const totalDaily = calcDailyLoad(pLog); 
+                            const painAlert = (Number(safeObj(pLog.wellness).soreness) || 0) >= 5; 
+                            const painZones = Array.isArray(pLog.painZones) ? pLog.painZones : []; 
+                            
+                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
+                            const borderClass = painAlert ? 'border-red-500 animate-pulse border-4' : inTransition ? 'border-orange-500 border-2' : 'border-slate-200 dark:border-slate-700'; 
+                            
+                            const recentDates = getDatesInRange(monitorDate, 7); 
+                            let minsLast7 = 0;
+                            recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
+
+                            return (
+                                <div key={i} onClick={()=>setViewProfile(i)} className={`bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-sm flex flex-col gap-3 relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${borderClass}`}>
+                                    {painAlert && <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold px-2 py-1 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO DE LESÃO</div>}
+                                    {inTransition && !painAlert && <div className="absolute top-0 right-0 bg-orange-500 text-white text-[9px] font-bold px-2 py-1 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
+                                    
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border-2 border-slate-200 dark:border-slate-600">
+                                            {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={24}/></div>}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase truncate">{p.name}</h3>
+                                            <div className="flex gap-2 text-[10px] font-bold mt-1 text-slate-500"><span>SONO: {safeObj(pLog.wellness).sleep || '-'}</span> | <span>FADIGA: {safeObj(pLog.wellness).fatigue || '-'}</span></div>
+                                        </div>
+                                        <div className="w-20"><MiniGauge value={totalHooper}/></div>
+                                    </div>
+                                    {painZones.length > 0 && (<div className="bg-red-50 dark:bg-red-900/30 p-1 rounded border border-red-100 dark:border-red-800"><span className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase flex flex-wrap gap-1 items-center"><Icon name="medkit" size={10}/> DORES: {painZones.join(', ')}</span></div>)}
+                                    <div className="flex justify-between mt-1 px-2 border-t dark:border-slate-700 pt-2 items-center">
+                                        <div className="text-[10px] text-slate-400 font-bold">CARGA sRPE: <span className="text-slate-700 dark:text-slate-200 text-lg">{totalDaily > 0 ? totalDaily : '-'}</span></div>
+                                        
+                                        {renderMatchReadinessAI(pLog, minsLast7, p.injured, inTransition)}
+
+                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400">MIN. JOGO:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} title="Tempo de partida oficial" outline-none/></div>
+                                    </div>
+                                </div>
+                            ); 
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const MicrocycleView = ({ days, setDays, themeColor }) => {
             const [modalOpen, setModalOpen] = useState(false);
             const [aiModal, setAiModal] = useState(null); 
             const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null }); 
@@ -482,7 +960,7 @@
             const exportAsImage = async () => { 
                 const element = document.getElementById('microcycle-container'); 
                 if(!element) return; 
-                showToast("A gerar PNG...");
+                showToast("Gerando PNG...");
                 const originalBg = element.style.backgroundColor;
                 element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
                 try { 
@@ -494,28 +972,10 @@
                         windowWidth: document.documentElement.scrollWidth,
                         backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
                     }); 
-                    canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planeamento Semanal'); }); 
+                    canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planejamento Semanal'); }); 
                 } catch(e) { showToast("Erro ao exportar"); } 
                 element.style.backgroundColor = originalBg;
             };
-
-            // Cálculo da fadiga da equipa (para termómetro de risco dinâmico)
-            const getTeamFatigue = () => {
-                const today = getTodayStr();
-                let totalFatigue = 0; let count = 0;
-                safeArray(players).forEach((p, i) => {
-                    if(p && !p.injured) {
-                        const w = safeObj(trainingLog[today]?.[i]?.wellness);
-                        if(w.sleep) {
-                            totalFatigue += (Number(w.fatigue) || 1) + (Number(w.soreness) || 1);
-                            count++;
-                        }
-                    }
-                });
-                const avgFatigue = count > 0 ? (totalFatigue / count) : 2; 
-                return avgFatigue >= 8; // Risco se média (Fadiga + Dor) >= 8
-            };
-            const isTeamFatigued = getTeamFatigue();
             
             const renderDayAnalysisModal = () => {
                 if(!aiModal) return null; 
@@ -565,7 +1025,6 @@
                     sugTime = "60 min"; sugRPE = "5 a 6 (Moderado)";
                 }
                 
-                // Validação do Tempo
                 if (mins > 0) {
                     if (md === 'MD-4') volAdvice = mins >= 70 && mins <= 100 ? "Volume Adequado." : "Alerta: Volume fora do padrão para Aquisição.";
                     else if (md === 'MD-3') volAdvice = mins >= 50 && mins <= 80 ? "Volume Adequado." : "Alerta: Cuidado com volume muito alto. Foco na Intensidade!";
@@ -576,12 +1035,6 @@
                     else volAdvice = `Volume registado: ${mins} minutos.`;
                 } else {
                     volAdvice = "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
-                }
-
-                // Ajuste Dinâmico (Fadiga)
-                let fatigueWarning = null;
-                if(isTeamFatigued && (md.includes('MD-3') || md.includes('MD-4') || md.includes('MD+2'))) {
-                    fatigueWarning = "⚠️ Equipa com fadiga acumulada hoje. Considere reduzir o tempo em 15-20 min.";
                 }
 
                 return (
@@ -609,12 +1062,6 @@
                                     <span className="text-sm font-black text-orange-500 dark:text-orange-400">{sugRPE}</span>
                                 </div>
                             </div>
-                            
-                            {fatigueWarning && (
-                                <div className="p-2 mb-4 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-[10px] font-bold border border-red-200 dark:border-red-800 leading-tight">
-                                    {fatigueWarning}
-                                </div>
-                            )}
 
                             <div className={`p-3 rounded-lg border mb-6 ${volAdvice.includes('ALERTA') ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-200'}`}>
                                 <div className="text-[10px] font-black uppercase mb-1">Análise de Tempo (Sem GPS)</div>
@@ -632,7 +1079,7 @@
                 return (<div className="bg-white dark:bg-slate-800 p-3 mb-2 rounded-xl border-l-4 border-blue-600 dark:border-blue-500 shadow-sm flex items-center justify-between gap-4 mx-2"><div className="flex items-center gap-3"><div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-700 dark:text-blue-400"><Icon name="info" size={20}/></div><div><h4 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Painel Tático IA</h4><p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{hasGame ? "Semana de Jogo. Atenção ao Tapering e Volume." : "Semana de Treinos. Foco na Aquisição de Força/Volume."}</p></div></div><div className="flex flex-col items-end min-w-[100px]"><span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Intensidade Est.</span><div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${barColor}`} style={{width: `${intensityPct}%`}}></div></div></div></div>);
             };
             
-            return (<div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in">{renderDayAnalysisModal()}<div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0"><h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="calendar"/> PLANEAMENTO SEMANAL</h2><button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button></div><div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container">{renderWeeklyCoach()}<div className="flex gap-2 h-full min-w-max pb-4">{safeDays.map(day => (<div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 h-full border border-slate-300 dark:border-slate-700 shadow-sm"><div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative"><button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button><BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name} onSave={(val)=>updateHeader(day.id,'name',val)} /><div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1"><select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>{['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}</select></div><div className="flex items-center gap-1 mt-1 bg-white/10 rounded px-1 py-0.5" title="Tempo total previsto da sessão"><Icon name="activity" size={10} className="text-white/70" /><BufferedInput type="number" className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold placeholder-white/50" placeholder="Tempo (min)" value={day.plannedMins} onSave={(val)=>updateHeader(day.id,'plannedMins',val)} /></div></div><div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll">{['am','pm'].map(period => (<div key={period} className="flex-1 flex flex-col gap-0 relative"><div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div><div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">{(day[period] || []).map(ev => (<div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>{ev.type}<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button></div>))}<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button></div></div>))}</div></div>))}</div></div>{modalOpen && (<div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}><h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3><div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">{eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>))}</div><button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button></div></div>)}</div>);
+            return (<div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in">{renderDayAnalysisModal()}<div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0"><h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="calendar"/> PLANEJAMENTO SEMANAL</h2><button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button></div><div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container">{renderWeeklyCoach()}<div className="flex gap-2 h-full min-w-max pb-4">{safeDays.map(day => (<div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 h-full border border-slate-300 dark:border-slate-700 shadow-sm"><div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative"><button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button><BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name} onSave={(val)=>updateHeader(day.id,'name',val)} /><div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1"><select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>{['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}</select></div><div className="flex items-center gap-1 mt-1 bg-white/10 rounded px-1 py-0.5" title="Tempo total previsto da sessão"><Icon name="activity" size={10} className="text-white/70" /><BufferedInput type="number" className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold placeholder-white/50" placeholder="Tempo (min)" value={day.plannedMins} onSave={(val)=>updateHeader(day.id,'plannedMins',val)} /></div></div><div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll">{['am','pm'].map(period => (<div key={period} className="flex-1 flex flex-col gap-0 relative"><div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div><div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">{(day[period] || []).map(ev => (<div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>{ev.type}<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button></div>))}<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button></div></div>))}</div></div>))}</div></div>{modalOpen && (<div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}><h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3><div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">{eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>))}</div><button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button></div></div>)}</div>);
         };
 
         const MedicalView = ({ players, setPlayers, dmRecords, setDmRecords, themeColor }) => {
@@ -1056,7 +1503,7 @@
             useEffect(() => {
                 if(!user) return;
                 const timeoutId = setTimeout(() => {
-                    setSyncStatus('Salvando...');
+                    setSyncStatus('A Guardar...');
                     const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days };
                     db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
@@ -1143,7 +1590,7 @@
                     {showNotifications && <NotificationCenter alerts={activeAlerts} onClose={()=>setShowNotifications(false)} />}
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print transition-colors duration-300">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V137 MAX</span></div>
+                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V138 MAX</span></div>
                             <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isOnline ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}><div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>{isOnline ? 'ONLINE' : 'OFFLINE'}</div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
