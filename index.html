@@ -1231,14 +1231,16 @@
                             <button onClick={exportAsPDF} className="bg-red-600 dark:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="download" size={14}/> PDF</button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-x-auto overflow-y-hidden p-2 flex flex-col custom-scroll" id="microcycle-container">
+                    
+                    {/* AQUI ESTÁ A CORREÇÃO DE SCROLL GLOBAL */}
+                    <div className="flex-1 overflow-auto p-2 flex flex-col custom-scroll" id="microcycle-container" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {renderWeeklyCoach()}
-                        <div className="flex gap-2 h-full min-w-max pb-4 items-stretch">
+                        <div className="flex gap-3 min-w-max pb-12 items-stretch" style={{ minHeight: 'max-content' }}>
                             {safeDays.map(day => { 
                                 if(!day) return null; 
                                 return (
-                                    <div key={day.id} className="w-40 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 border border-slate-300 dark:border-slate-700 shadow-sm" style={{maxHeight: '100%'}}>
-                                        <div className="micro-header p-1 text-center shrink-0 rounded-t-xl relative">
+                                    <div key={day.id} className="w-44 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 border border-slate-300 dark:border-slate-700 shadow-sm">
+                                        <div className="micro-header p-2 text-center shrink-0 relative">
                                             <button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button>
                                             <BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name || ''} onSave={(val)=>updateHeader(day.id,'name',val)} />
                                             <div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1">
@@ -1252,10 +1254,9 @@
                                             </div>
                                         </div>
                                         
-                                        {/* AQUI ESTÁ A CORREÇÃO DE SCROLL MOBILE / IPAD */}
-                                        <div className="flex-1 flex flex-col p-2 gap-2 overflow-y-auto custom-scroll min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                        <div className="flex flex-col p-2 gap-3 pb-4">
                                             {['am','pm'].map(period => (
-                                                <div key={period} className="flex-1 flex flex-col gap-0 relative min-h-[180px] shrink-0">
+                                                <div key={period} className="flex flex-col gap-0 relative min-h-[160px]">
                                                     <div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div>
                                                     <div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">
                                                         {(day[period] || []).map(ev => { 
