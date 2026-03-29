@@ -1845,7 +1845,7 @@
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
 
-            // ADMIN CHECK
+            // 👑 IDENTIFICAÇÃO DO ADMIN (Adicionado logo abaixo dos estados)
             const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
 
             useEffect(() => {
@@ -1953,67 +1953,38 @@
                         </div>
                     </div>
                     
+                    {/* BARRA DE MENU RESTAURADA - TOTALMENTE LIBERADA */}
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
                         <button onClick={()=>setTab('squad')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='squad'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>ELENCO</button>
                         <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
                         <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
-                        
-                        {(plan === 'pro' || plan === 'elite') && (
-                            <>
-                                <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
-                                <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO (GIFs)</button>
-                                <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
-                                <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
-                            </>
-                        )}
+                        <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
+                        <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
+                        <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
+                        <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
 
-                        {plan === 'elite' && (
-                            <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
-                        )}
-
-                        {/* ABA PREVIEW ATLETA (BÓNUS) */}
+                        {/* NOVAS ABAS INCLUÍDAS */}
+                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
                         <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
 
+                        {/* ABA SECRETA DO ADMIN */}
                         {isAdmin && (
                             <button onClick={() => setTab('admin')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-auto border ${tab==='admin'?'bg-slate-800 text-yellow-400 border-yellow-500 shadow-lg':'text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-white'}`}>👑 ADMIN</button>
                         )}
                     </div>
                     
+                    {/* RENDERIZAÇÃO DAS TELAS ABERTAS */}
                     <div className="flex-1 overflow-hidden relative" id="print-area">
                         {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
                         {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                         {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                        {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
+                        {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                         
-                        {tab === 'pse' && (
-                            plan === 'pro' || plan === 'elite' 
-                            ? <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />
-                            : <LockedFeatureView title="Controle de Carga (sRPE)" description="Meça o desgaste real da sua equipa cruzando o Tempo de Treino com a Percepção Subjetiva de Esforço (PSE). Evite o Overtraining." requiredPlan="PRO" themeColor={themeColor} />
-                        )}
-
-                        {tab === 'workout' && (
-                            plan === 'pro' || plan === 'elite' 
-                            ? <WorkoutBuilderView themeColor={themeColor} />
-                            : <LockedFeatureView title="Prescrição em Vídeo & Prevenção IA" description="Envie o treino do dia para o celular do atleta com GIFs animados. O sistema monta protocolos preventivos automáticos baseados na ficha clínica." requiredPlan="PRO" themeColor={themeColor} />
-                        )}
-
-                        {tab === 'match' && (
-                            plan === 'pro' || plan === 'elite'
-                            ? <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />
-                            : <LockedFeatureView title="Match Performance" description="Análise de IA para o dia do jogo. Controle a minutagem da temporada, Carga Aguda vs Crônica (ACWR) e saiba quem está apto para 90 minutos." requiredPlan="PRO" themeColor={themeColor} />
-                        )}
-
-                        {tab === 'dm' && (
-                            plan === 'pro' || plan === 'elite'
-                            ? <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />
-                            : <LockedFeatureView title="Departamento Médico" description="Faça a gestão completa de lesões, acompanhe o mapa de Return to Play (RTP) de 9 fases e libere atletas com segurança." requiredPlan="PRO" themeColor={themeColor} />
-                        )}
-
-                        {tab === 'assessment' && (
-                            plan === 'elite'
-                            ? <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />
-                            : <LockedFeatureView title="Fisiologia & Avaliações" description="Acesse a Inteligência Artificial completa. Calcule percentual de gordura, 1RM, testes de velocidade e o protocolo de movimento FMS com rankings da equipa." requiredPlan="ELITE" themeColor={themeColor} />
-                        )}
-
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} />}
+                        
                         {tab === 'preview' && (
                             <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} />
                         )}
