@@ -2,7 +2,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal do Atleta - ProCoach</title>
+    <title>Portal do Atleta - ProCoach MAX</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -20,9 +20,12 @@
         .animate-fade-in { animation: fadeIn 0.4s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pulse-slow { animation: pulse 2s infinite; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col">
+<body class="h-screen w-screen overflow-hidden flex flex-col font-sans">
     <div id="root" class="h-full w-full"></div>
 
     <script type="text/babel">
@@ -48,16 +51,23 @@
         
         const BODY_PARTS = ["Cabeça", "Pescoço", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"];
         const SIDES = [{id: '', label: 'Central/Ambos'}, {id: '(Dir)', label: 'Direito'}, {id: '(Esq)', label: 'Esquerdo'}];
+        const safeArray = (arr, fallback=[]) => (Array.isArray(arr) && arr.length > 0) ? arr : fallback;
+        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
 
-        const Icon = ({ name, size=24, className="" }) => {
+        const Icon = ({ name, size=24, className="", onClick }) => {
             const icons = {
                 user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
                 check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
                 x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
                 send: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-                alert: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                alert: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+                activity: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+                medkit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>,
+                bolt: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+                image: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+                play: <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
             };
-            return <span className={className}>{icons[name]}</span>;
+            return <span className={`cursor-pointer ${className}`} onClick={onClick}>{icons[name]}</span>;
         };
 
         const AthletePortal = () => {
@@ -65,18 +75,20 @@
             const [coachDocId, setCoachDocId] = useState(null);
             const [trainingLog, setTrainingLog] = useState({});
             const [themeColor, setThemeColor] = useState('#1e3a8a');
+            const [exercises, setExercises] = useState([]);
+            const [dmRecords, setDmRecords] = useState([]);
             
             const [step, setStep] = useState(1); 
             const [selectedIdx, setSelectedIdx] = useState(null);
             
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
             const [painZones, setPainZones] = useState([]);
-            
             const [tempPart, setTempPart] = useState('');
             const [tempSide, setTempSide] = useState('');
             
             const [loading, setLoading] = useState(true);
             const [submitting, setSubmitting] = useState(false);
+            const [expandedGif, setExpandedGif] = useState(null);
 
             useEffect(() => {
                 db.collection('coachData').limit(1).get().then(snap => {
@@ -86,6 +98,8 @@
                         setCoachDocId(doc.id);
                         setPlayers(data.players || []);
                         setTrainingLog(data.trainingLog || {});
+                        setExercises(data.exercises || []);
+                        setDmRecords(data.dmRecords || []);
                         if(data.themeColor) setThemeColor(data.themeColor);
                     } else {
                         alert("Erro: Banco de dados da equipe não encontrado.");
@@ -102,34 +116,30 @@
                 setSelectedIdx(idx);
                 const today = getTodayStr();
                 const existingLog = trainingLog[today]?.[idx]?.wellness;
-                if(existingLog) {
-                    setScores(existingLog);
-                    setPainZones(trainingLog[today][idx].painZones || []);
+                
+                // Se já respondeu hoje, vai direto para a tela de Treino (Step 3)
+                if(existingLog && existingLog.sleep) {
+                    setStep(3);
                 } else {
+                    // Se não respondeu, vai para o formulário (Step 2)
                     setScores({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
                     setPainZones([]);
+                    setStep(2);
                 }
-                setStep(2);
             };
 
             const addPain = () => {
                 if(!tempPart) return;
                 const zoneString = tempSide ? `${tempPart} ${tempSide}` : tempPart;
-                if(!painZones.includes(zoneString)) {
-                    setPainZones([...painZones, zoneString]);
-                }
-                setTempPart('');
-                setTempSide('');
+                if(!painZones.includes(zoneString)) { setPainZones([...painZones, zoneString]); }
+                setTempPart(''); setTempSide('');
             };
 
-            const removePain = (zone) => {
-                setPainZones(painZones.filter(z => z !== zone));
-            };
+            const removePain = (zone) => { setPainZones(painZones.filter(z => z !== zone)); };
 
             const submitData = () => {
                 setSubmitting(true);
                 const today = getTodayStr();
-                
                 const newLog = { ...trainingLog };
                 if (!newLog[today]) newLog[today] = {};
                 if (!newLog[today][selectedIdx]) newLog[today][selectedIdx] = {};
@@ -139,13 +149,30 @@
 
                 db.collection('coachData').doc(coachDocId).set({ trainingLog: newLog }, { merge: true })
                     .then(() => {
+                        // Atualiza o estado local para refletir que respondeu
+                        setTrainingLog(newLog);
                         setSubmitting(false);
-                        setStep(3); 
+                        setStep(3); // Vai para a linha do tempo do treino!
                     })
                     .catch(err => {
                         setSubmitting(false);
                         alert("Erro ao enviar dados. Verifique a internet.");
                     });
+            };
+
+            const getPlayerDMStatus = (pId) => {
+                const records = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Active');
+                if (records.length > 0) return 'DM';
+                
+                const todayDate = new Date(getTodayStr());
+                const recoveredRecords = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Recovered' && r.dateOut);
+                for(let r of recoveredRecords) {
+                    const outDate = new Date(r.dateOut);
+                    if(isNaN(outDate.getTime())) continue;
+                    const diffDays = Math.ceil(Math.abs(todayDate - outDate) / (1000 * 60 * 60 * 24));
+                    if(diffDays <= 7) return 'TRANSIÇÃO'; 
+                }
+                return 'APTO';
             };
 
             if (loading) {
@@ -155,23 +182,27 @@
             // --- TELA 1: MURAL DE SELEÇÃO ---
             if (step === 1) {
                 return (
-                    <div className="h-full flex flex-col p-4 animate-fade-in">
-                        <div className="text-center mt-6 mb-8">
+                    <div className="h-full flex flex-col p-4 animate-fade-in custom-scroll overflow-y-auto">
+                        <div className="text-center mt-6 mb-8 shrink-0">
                             <h1 className="text-3xl font-black text-white italic tracking-wider flex items-center justify-center gap-2">
                                 <span style={{color: themeColor}}>PRO</span>COACH 
-                                <span className="text-[9px] not-italic bg-slate-800 text-white px-1.5 py-0.5 rounded border border-slate-700">V129 MAX</span>
+                                <span className="text-[9px] not-italic bg-slate-800 text-white px-1.5 py-0.5 rounded border border-slate-700">V144 MAX</span>
                             </h1>
                             <p className="text-slate-400 text-sm mt-1 uppercase font-bold">Portal do Atleta</p>
                             <h2 className="text-xl font-bold mt-6 text-slate-100">Quem é você?</h2>
-                            <p className="text-xs text-slate-500 mt-1">Toque na sua foto para preencher o formulário</p>
+                            <p className="text-xs text-slate-500 mt-1">Toque na sua foto para ver o treino de hoje</p>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto pb-10">
+                        <div className="flex-1 pb-10">
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
                                 {players.map((p, i) => (
                                     <div key={i} onClick={() => selectPlayer(i)} className="flex flex-col items-center gap-2 cursor-pointer group transform transition-transform active:scale-95">
-                                        <div className="w-20 h-20 rounded-full border-2 border-slate-700 bg-slate-800 overflow-hidden shadow-lg group-hover:border-blue-500 transition-colors">
+                                        <div className="w-20 h-20 rounded-full border-2 border-slate-700 bg-slate-800 overflow-hidden shadow-lg group-hover:border-blue-500 transition-colors relative">
                                             {p.image ? <img src={p.image} className="w-full h-full object-cover object-top" /> : <div className="w-full h-full flex items-center justify-center text-slate-600"><Icon name="user" size={32}/></div>}
+                                            {/* Bolinha verde se já respondeu hoje */}
+                                            {trainingLog[getTodayStr()]?.[i]?.wellness?.sleep && (
+                                                <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-slate-800 rounded-full"></div>
+                                            )}
                                         </div>
                                         <span className="text-xs font-bold text-slate-300 text-center leading-tight truncate w-full px-1">{p.name}</span>
                                     </div>
@@ -193,12 +224,12 @@
                                 {p.image ? <img src={p.image} className="w-full h-full object-cover object-top" /> : <Icon name="user" className="m-3 text-slate-500"/>}
                             </div>
                             <div>
-                                <div className="text-[10px] font-bold uppercase tracking-wider" style={{color: themeColor}}>Avaliando Hoje</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider" style={{color: themeColor}}>Passo 1: Prontidão</div>
                                 <h2 className="text-lg font-black text-white leading-none truncate">{p.name}</h2>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28 custom-scroll">
                             {[
                                 {id:'sleep', label:'😴 Qualidade do Sono', desc:'1 = Excelente | 7 = Péssimo/Insônia', color:'#3b82f6'},
                                 {id:'stress', label:'🤯 Nível de Estresse', desc:'1 = Muito Relaxado | 7 = Muito Estressado', color:'#8b5cf6'},
@@ -251,24 +282,146 @@
 
                         <div className="absolute bottom-0 left-0 w-full p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 z-20">
                             <button onClick={submitData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl shadow-xl shadow-blue-900/50 flex items-center justify-center gap-2 text-lg transition-transform active:scale-95" style={{backgroundColor: themeColor}}>
-                                {submitting ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <><Icon name="send"/> ENVIAR AVALIAÇÃO</>}
+                                {submitting ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : <><Icon name="send"/> ENVIAR E VER TREINO</>}
                             </button>
                         </div>
                     </div>
                 );
             }
 
-            // --- TELA 3: SUCESSO ---
+            // --- TELA 3: LINHA DO TEMPO DO TREINO (Novo) ---
             if (step === 3) {
+                const p = players[selectedIdx];
+                const dmStatus = p.injured ? 'DM' : getPlayerDMStatus(selectedIdx);
+                const isInjured = dmStatus === 'DM'; 
+                const inTransition = dmStatus === 'TRANSIÇÃO';
+                const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
+
+                // Aqui futuramente você vai cruzar com a Anamnese do banco de dados dele. 
+                // Por enquanto simulamos que ele tem recomendação preventiva se houver exercicios salvos.
+                const prevExercises = exercises.filter(ex => ex.target !== 'Geral');
+                const genExercises = exercises.filter(ex => ex.target === 'Geral');
+
                 return (
-                    <div className="h-full flex flex-col items-center justify-center p-6 text-center animate-fade-in bg-slate-900">
-                        <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-green-900/50 mb-6 pulse-slow">
-                            <Icon name="check" size={48}/>
+                    <div className="flex flex-col h-full bg-slate-950 overflow-hidden font-sans relative">
+                        {/* BOTÃO VOLTAR (Para escolher outro atleta se for num tablet partilhado) */}
+                        <button onClick={()=>setStep(1)} className="absolute top-4 right-4 text-white/50 hover:text-white z-50 bg-black/20 p-2 rounded-full backdrop-blur-md"><Icon name="x" size={20}/></button>
+
+                        <div className="p-6 rounded-b-3xl shadow-2xl shrink-0" style={{ background: `linear-gradient(to bottom, ${headerBg}, #020617)` }}>
+                            <div className="flex items-center gap-4 mb-4 mt-4">
+                                <div className="w-16 h-16 rounded-full border-2 border-white/50 overflow-hidden bg-slate-800 shadow-lg">{p?.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={30} className="m-4 text-white/50"/>}</div>
+                                <div>
+                                    <h1 className="text-xl font-black uppercase text-white tracking-wider">{p?.name}</h1>
+                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-1 rounded backdrop-blur-sm">{isInjured?'DEPARTAMENTO MÉDICO':inTransition?'TRANSIÇÃO':'TREINO REGULAR'}</span>
+                                </div>
+                            </div>
                         </div>
-                        <h2 className="text-3xl font-black text-white mb-2">Tudo Certo!</h2>
-                        <p className="text-slate-400 mb-8 max-w-xs">Seus dados de prontidão foram enviados diretamente para a comissão técnica.</p>
-                        <p className="font-bold text-lg" style={{color: themeColor}}>Bom treino!</p>
-                        <button onClick={()=>setStep(1)} className="mt-12 text-slate-500 text-sm underline font-bold">Voltar para o Início</button>
+                        
+                        <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto custom-scroll pb-10">
+                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between opacity-60 grayscale"><div className="flex items-center gap-3"><div className="bg-green-500/20 p-2 rounded-full text-green-500"><Icon name="check" size={20}/></div><div><h3 className="font-bold text-sm text-white">Wellness</h3><p className="text-[10px] text-slate-400">Respondido hoje</p></div></div></div>
+                            
+                            {/* PREVENÇÃO */}
+                            {!isInjured && prevExercises.length > 0 && (
+                                <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded-xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> Prevenção Específica</h3>
+                                    {prevExercises.map(ex => (
+                                        <div key={ex.id} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2">
+                                            <div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setExpandedGif(ex)}>
+                                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}
+                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                <div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Repouso: ${ex.rest}s`}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button onClick={(e)=>{e.target.innerText = 'CONCLUÍDO ✅'; e.target.classList.add('bg-yellow-600', 'text-white')}} className="w-full mt-2 border border-yellow-600 text-yellow-500 font-bold text-[10px] py-2 rounded uppercase transition-colors">Marcar como Feito</button>
+                                </div>
+                            )}
+
+                            {/* ACADEMIA */}
+                            {!isInjured && !inTransition && (
+                                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                                    <div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">Academia</h3></div>
+                                    <div className="p-4 flex flex-col gap-3">
+                                        {genExercises.length === 0 ? (
+                                            <div className="text-center text-slate-500 text-xs py-4">A ficha de hoje ainda não foi enviada.</div>
+                                        ) : genExercises.map(ex => (
+                                            <div key={ex.id} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3">
+                                                <div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setExpandedGif(ex)}>
+                                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}
+                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div>
+                                                </div>
+                                                <div className="flex-1 flex flex-col justify-between">
+                                                    <div>
+                                                        <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                        <div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Repouso: ${ex.rest}s`}</div>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
+                                                        <input type="checkbox" className="w-4 h-4 rounded bg-slate-800 accent-green-500 cursor-pointer"/>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase cursor-pointer">Feito</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* FISIOTERAPIA */}
+                            {isInjured && (
+                                <div className="bg-red-900/20 border border-red-800 rounded-xl p-4">
+                                    <div className="flex items-center justify-center mb-4"><div className="bg-red-500/20 p-3 rounded-full"><Icon name="medkit" size={24} className="text-red-500"/></div></div>
+                                    <h3 className="text-center font-black text-red-500 uppercase text-sm mb-4">Fisioterapia</h3>
+                                    <div className="space-y-2">
+                                        <div className="bg-slate-900 p-3 rounded border border-red-900/50 flex justify-between items-center">
+                                            <div><div className="text-xs font-bold text-white">Comparecer ao DM</div><div className="text-[10px] text-slate-400">Tratamento obrigatório</div></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PÓS TREINO IA */}
+                            <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
+                                <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação sugerida: <strong>Bota Pneumática ou Crioterapia (15 min)</strong> no DM.</p></div>
+                            </div>
+                        </div>
+
+                        {/* MODAL DO GIF (Ecrã Inteiro) */}
+                        {expandedGif && (
+                            <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col animate-fade-in font-sans">
+                                <div className="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Detalhes da Execução</span>
+                                    <button onClick={() => setExpandedGif(null)} className="text-white bg-slate-800 p-2 rounded-full"><Icon name="x" size={16}/></button>
+                                </div>
+                                <div className="flex-1 flex flex-col justify-center items-center bg-black p-4 relative">
+                                    {expandedGif.gifUrl ? <img src={expandedGif.gifUrl} className="w-full max-h-[50vh] object-contain rounded-lg shadow-2xl"/> : <Icon name="image" size={60} className="text-slate-700"/>}
+                                </div>
+                                <div className="bg-slate-900 p-6 rounded-t-3xl border-t border-slate-800 pb-10">
+                                    <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
+                                    <h2 className="text-2xl font-black text-white uppercase mb-2 text-center">{expandedGif.title}</h2>
+                                    <div className="flex justify-center gap-4 mt-6">
+                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
+                                            <span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span>
+                                            <div className="text-xl font-black text-blue-400">{expandedGif.sets}</div>
+                                        </div>
+                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
+                                            <span className="text-[10px] text-slate-400 uppercase font-bold">Repetições</span>
+                                            <div className="text-xl font-black text-green-400">{expandedGif.reps}</div>
+                                        </div>
+                                        {expandedGif.rest && (
+                                            <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
+                                                <span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span>
+                                                <div className="text-xl font-black text-yellow-400">{expandedGif.rest}s</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button onClick={() => setExpandedGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             }
@@ -279,4 +432,3 @@
     </script>
 </body>
 </html>
-
