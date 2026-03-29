@@ -12,9 +12,9 @@
         }
     </script>
 
-    <link rel="manifest" href="manifest.json?v=24">
-    <link rel="apple-touch-icon" href="logo.png?v=24">
-    <link rel="icon" type="image/png" href="logo.png?v=24">
+    <link rel="manifest" href="manifest.json?v=25">
+    <link rel="apple-touch-icon" href="logo.png?v=25">
+    <link rel="icon" type="image/png" href="logo.png?v=25">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -62,6 +62,7 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
 
+        /* Estilo para manter as setinhas de rolagem visíveis nos inputs numéricos */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { opacity: 1; }
     </style>
@@ -119,8 +120,8 @@
                     return (
                         <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-white p-6 text-center">
                             <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-500/50"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-                            <h1 className="text-2xl font-bold mb-2">Conflito de Dados Antigos!</h1>
-                            <p className="text-slate-400 mb-6 text-sm">O sistema foi atualizado para uma versão superior. Pressione o botão abaixo para limpar a cache.</p>
+                            <h1 className="text-2xl font-bold mb-2">Conflito de Dados Resolvido!</h1>
+                            <p className="text-slate-400 mb-6 text-sm">O sistema foi atualizado. Pressione o botão abaixo para limpar a cache e voltar à plataforma.</p>
                             <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">{this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}</button>
                             <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-xs text-slate-500 hover:text-slate-300 underline">Ou Terminar Sessão</button>
                         </div>
@@ -159,8 +160,11 @@
         const getDatesInRange = (startDate, daysBack) => { const dates = []; const end = new Date(startDate); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for (let i = 0; i < daysBack; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
 
         const formatDateBR = (dateString) => { if(!dateString) return '-'; const [y, m, d] = dateString.split('-'); return `${d}/${m}/${y}`; };
+        
+        // FUNÇÃO DE SEGURANÇA TOTAL PARA ARRAYS E OBJETOS (Evita a Tela Vermelha)
+        const safeArray = (arr) => (Array.isArray(arr) ? arr : []);
         const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
-        const safeArray = (arr, fallback=[]) => (Array.isArray(arr) && arr.length > 0) ? arr : fallback;
+        
         const getWSum = (w) => { if (w && typeof w === 'object' && !Array.isArray(w)) { return Object.values(w).reduce((a, b) => Number(a) + Number(b), 0) || 0; } return 0; };
         const calcDailyLoad = (log) => { if(!log) return 0; const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0); const dur = Number(log.duration) || 0; return rpe * (dur > 0 ? dur : 60); };
         const isPlayerInTransition = (pId, dmRecords) => { const todayDate = new Date(getTodayStr()); const records = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Recovered' && r.dateOut); for(let r of records) { const outDate = new Date(r.dateOut); if(isNaN(outDate.getTime())) continue; const diffTime = Math.abs(todayDate - outDate); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); if(diffDays <= 7) return true; } return false; };
@@ -178,9 +182,9 @@
                 logo: typeof data.logo === 'string' ? data.logo : null,
                 darkMode: !!data.darkMode,
                 plan: typeof data.plan === 'string' ? data.plan : 'starter',
-                days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
+                days: safeArray(data.days).length > 0 ? safeArray(data.days) : DEFAULT_DAYS,
                 exercises: safeArray(data.exercises),
-                gifLibrary: safeArray(data.gifLibrary), // Nova trava de segurança
+                gifLibrary: safeArray(data.gifLibrary),
                 postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)'
             };
         };
@@ -377,9 +381,10 @@
             );
         };
 
-        // --- ABA PRESCRIÇÃO (COM BIBLIOTECA E AÇÃO PÓS-TREINO) ---
+        // --- ABA DE PRESCRIÇÃO (COM BIBLIOTECA E AÇÃO PÓS-TREINO) ---
         const WorkoutBuilderView = ({ themeColor, exercises, setExercises, gifLibrary, setGifLibrary, postWorkout, setPostWorkout }) => {
             const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
+            const [expandedGif, setExpandedGif] = useState(null);
             
             const addExercise = () => {
                 if(!form.title) return showToast("Digite o nome do exercício!");
@@ -391,7 +396,7 @@
             const removeExercise = (id) => setExercises((exercises || []).filter(ex => ex.id !== id));
 
             const saveToLibrary = () => {
-                if(!form.title || !form.gifUrl) return showToast("Preencha Nome e Link para salvar!");
+                if(!form.title || !form.gifUrl) return showToast("Preencha Nome e Link para salvar na Biblioteca!");
                 setGifLibrary([{ id: Date.now(), title: form.title, url: form.gifUrl }, ...(gifLibrary || [])]);
                 showToast("Salvo na Biblioteca!");
             };
@@ -402,7 +407,7 @@
             };
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6 relative">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0">
                         {/* CONSTRUTOR DE EXERCÍCIOS */}
                         <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -421,15 +426,16 @@
 
                                 <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
                                 <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                                <div className="md:col-span-2"><button onClick={saveToLibrary} className="w-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-xs flex items-center justify-center gap-1"><Icon name="save" size={14}/> Salvar GIF</button></div>
+                                <div className="md:col-span-2"><button onClick={saveToLibrary} className="w-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-xs flex items-center justify-center gap-1"><Icon name="save" size={14}/> Guardar GIF</button></div>
                                 
+                                {/* NUMEROS DE ROLAGEM */}
                                 <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" min="1" placeholder="3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
                                 <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Repetições</label><input type="number" min="1" placeholder="10" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                                <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (Segundos)</label><input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                                <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (s)</label><input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
 
-                                <div className="md:col-span-3">
+                                <div className="md:col-span-4">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label>
-                                    <select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
+                                    <select className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
                                         <option value="Geral">Elenco Geral</option>
                                         <option value="LCA">Prevenção LCA</option>
                                         <option value="Pubalgia">Pubalgia</option>
@@ -466,8 +472,10 @@
                             <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
                                 <button onClick={()=>removeExercise(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
                                 <div className="absolute top-2 left-2 z-10"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded shadow ${ex.target==='Geral'?'bg-blue-500 text-white':'bg-yellow-500 text-slate-900'}`}>{ex.target}</span></div>
-                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">
-                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
+                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative cursor-pointer group-hover:opacity-90" onClick={() => setExpandedGif(ex)}>
+                                    {/* Removido o onError agressivo para garantir que o GIF tenta carregar sempre */}
+                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="play" size={30} className="text-white"/></div>
                                 </div>
                                 <div className="p-3">
                                     <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight mb-1 truncate">{ex.title}</h3>
@@ -476,12 +484,35 @@
                             </div>
                         ))}
                     </div>
+
+                    {/* MODAL DO GIF PARA O TREINADOR TAMBÉM VER */}
+                    {expandedGif && (
+                        <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col animate-fade-in font-sans">
+                            <div className="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800">
+                                <span className="text-xs font-bold text-slate-400 uppercase">Detalhes da Execução</span>
+                                <button onClick={() => setExpandedGif(null)} className="text-white bg-slate-800 p-2 rounded-full"><Icon name="x" size={16}/></button>
+                            </div>
+                            <div className="flex-1 flex flex-col justify-center items-center bg-black p-4 relative">
+                                {expandedGif.gifUrl ? <img src={expandedGif.gifUrl} className="w-full max-h-[60vh] object-contain rounded-lg shadow-2xl"/> : <Icon name="image" size={60} className="text-slate-700"/>}
+                            </div>
+                            <div className="bg-slate-900 p-6 rounded-t-3xl border-t border-slate-800 pb-10 max-w-2xl mx-auto w-full">
+                                <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
+                                <h2 className="text-2xl font-black text-white uppercase mb-2 text-center">{expandedGif.title}</h2>
+                                <div className="flex justify-center gap-4 mt-6">
+                                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-xl font-black text-blue-400">{expandedGif.sets}</div></div>
+                                    <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repetições</span><div className="text-xl font-black text-green-400">{expandedGif.reps}</div></div>
+                                    {expandedGif.rest && <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-xl font-black text-yellow-400">{expandedGif.rest}s</div></div>}
+                                </div>
+                                <button onClick={() => setExpandedGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
 
         const AthleteMobilePortal = ({ player, dmStatus, themeColor, exercises, postWorkout, isStandalone = false }) => {
-            const hasACL = true; // Simulação: Puxaria da ficha clínica
+            const hasACL = true; // Simulação de Anamnese
             const isInjured = dmStatus === 'DM'; 
             const inTransition = dmStatus === 'TRANSIÇÃO';
             const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
@@ -512,11 +543,11 @@
                             
                             {hasACL && !isInjured && prevExercises.length > 0 && (
                                 <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded-xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-2"><Icon name="alert" size={14}/> Prevenção Específica</h3>
+                                    <div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-2"><Icon name="alert" size={14}/> Prevenção / Protocolo</h3>
                                     {prevExercises.map(ex => (
                                         <div key={ex.id} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2">
                                             <div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setExpandedGif(ex)}>
-                                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}
+                                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" /> : <Icon name="image" className="m-5 text-slate-500"/>}
                                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                                             </div>
                                             <div className="flex-1">
@@ -538,7 +569,7 @@
                                         ) : genExercises.map(ex => (
                                             <div key={ex.id} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3">
                                                 <div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setExpandedGif(ex)}>
-                                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}
+                                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" /> : <Icon name="image" className="m-6 text-slate-500"/>}
                                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div>
                                                 </div>
                                                 <div className="flex-1 flex flex-col justify-between">
@@ -566,7 +597,7 @@
                             )}
                             <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
                                 <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
-                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recomendação da IA de hoje: <strong>{postWorkout}</strong> no DM.</p></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação recomendada: <strong>{postWorkout}</strong> no DM.</p></div>
                             </div>
                         </div>
 
@@ -583,20 +614,9 @@
                                     <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
                                     <h2 className="text-2xl font-black text-white uppercase mb-2 text-center">{expandedGif.title}</h2>
                                     <div className="flex justify-center gap-4 mt-6">
-                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span>
-                                            <div className="text-xl font-black text-blue-400">{expandedGif.sets}</div>
-                                        </div>
-                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold">Repetições</span>
-                                            <div className="text-xl font-black text-green-400">{expandedGif.reps}</div>
-                                        </div>
-                                        {expandedGif.rest && (
-                                            <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24">
-                                                <span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span>
-                                                <div className="text-xl font-black text-yellow-400">{expandedGif.rest}s</div>
-                                            </div>
-                                        )}
+                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-xl font-black text-blue-400">{expandedGif.sets}</div></div>
+                                        <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repetições</span><div className="text-xl font-black text-green-400">{expandedGif.reps}</div></div>
+                                        {expandedGif.rest && <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-xl font-black text-yellow-400">{expandedGif.rest}s</div></div>}
                                     </div>
                                     <button onClick={() => setExpandedGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button>
                                 </div>
@@ -622,7 +642,7 @@
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
             const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
             
-            // NOVOS ESTADOS (Evitam Red Screen inicializando garantidamente como arrays/strings)
+            // INICIALIZAÇÃO SEGURA (Evita ecrã vermelho)
             const [exercises, setExercises] = useState(safeArray(initialData?.exercises)); 
             const [gifLibrary, setGifLibrary] = useState(safeArray(initialData?.gifLibrary)); 
             const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
@@ -695,7 +715,7 @@
             const handleRefresh = () => { showToast("A atualizar dados..."); setTimeout(() => window.location.reload(), 500); };
 
             if (forceAthleteView) {
-                return <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={true} />;
+                return <AthleteMobilePortal player={safeArray(players)[0] || {name: 'Atleta Demonstração'}} dmStatus={safeArray(players)[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={true} />;
             }
 
             return (
@@ -719,21 +739,21 @@
                         </div>
                     </div>
                     
-                    {/* ESTRUTURA ORIGINAL 100% INTACTA AQUI */}
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
                         <button onClick={()=>setTab('squad')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='squad'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>ELENCO</button>
                         <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
                         <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
                         <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
+                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
                         <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
                         <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
                         <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
 
-                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ml-4 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
-                        <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
+                        <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
 
+                        {/* Botão de abrir em nova aba como App (Passa o parâmetro ?atleta=true) */}
                         {tab === 'preview' && (
-                            <button onClick={() => window.open(window.location.href + '?atleta=true', '_blank')} className="px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 shadow ml-2">🔗 ABRIR COMO APP REAL</button>
+                            <button onClick={() => window.open(window.location.pathname + '?atleta=true', '_blank')} className="px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 shadow ml-2">🔗 ABRIR COMO APP REAL</button>
                         )}
 
                         {isAdmin && (
@@ -751,7 +771,8 @@
                         {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
                         
                         {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} gifLibrary={gifLibrary} setGifLibrary={setGifLibrary} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
-                        {tab === 'preview' && <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={false} />}
+                        {tab === 'preview' && <AthleteMobilePortal player={safeArray(players)[0] || {name: 'Atleta Demonstração'}} dmStatus={safeArray(players)[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={false} />}
+
                         {tab === 'admin' && isAdmin && <AdminDashboard themeColor={themeColor} />}
                     </div>
                 </div>
@@ -764,6 +785,8 @@
 
             useEffect(() => {
                 if (forceAthleteView) {
+                    // Para o link direto do atleta, não precisamos esperar que os dados do login atualizem.
+                    // Isso será conectado futuramente para cada clube específico através da URL.
                     setInitialData(sanitizeCloudData({}));
                     setLoadingCloud(false);
                     return;
@@ -789,8 +812,10 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             
+            // LÓGICA MÁGICA: Se abrir o atleta.html, vira aplicativo de celular na hora!
             const urlParams = new URLSearchParams(window.location.search);
-            const isAthleteMode = urlParams.get('atleta') === 'true';
+            const isAthleteFile = window.location.pathname.includes('atleta.html');
+            const isAthleteMode = urlParams.get('atleta') === 'true' || isAthleteFile;
 
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged(u => {
