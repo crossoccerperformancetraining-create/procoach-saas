@@ -12,9 +12,9 @@
         }
     </script>
 
-    <link rel="manifest" href="manifest.json?v=22">
-    <link rel="apple-touch-icon" href="logo.png?v=22">
-    <link rel="icon" type="image/png" href="logo.png?v=22">
+    <link rel="manifest" href="manifest.json?v=24">
+    <link rel="apple-touch-icon" href="logo.png?v=24">
+    <link rel="icon" type="image/png" href="logo.png?v=24">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -62,7 +62,6 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
 
-        /* Estilo para input number sem as setas feias padrão, mantendo clicável */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { opacity: 1; }
     </style>
@@ -104,14 +103,12 @@
             handleHardReset = () => {
                 this.setState({ resetting: true });
                 localStorage.clear();
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(regs => { for (let r of regs) r.unregister(); });
-                }
+                if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(regs => { for (let r of regs) r.unregister(); }); }
                 const user = firebase.auth().currentUser;
                 if (user) {
                     firebase.firestore().collection('coachData').doc(user.uid).set({
                         players: [], trainingLog: {}, dmRecords: [], matchMinutes: {}, assessments: {},
-                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: []
+                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: [], gifLibrary: [], postWorkout: 'Bota Pneumática (15 min)'
                     });
                 }
                 setTimeout(() => { window.location.href = window.location.pathname + '?clear=' + Date.now(); }, 1000);
@@ -121,13 +118,10 @@
                 if (this.state.hasError) {
                     return (
                         <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-white p-6 text-center">
-                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-500/50">
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                            </div>
+                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-500/50"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                             <h1 className="text-2xl font-bold mb-2">Conflito de Dados Antigos!</h1>
-                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">
-                                {this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}
-                            </button>
+                            <p className="text-slate-400 mb-6 text-sm">O sistema foi atualizado para uma versão superior. Pressione o botão abaixo para limpar a cache.</p>
+                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">{this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}</button>
                             <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-xs text-slate-500 hover:text-slate-300 underline">Ou Terminar Sessão</button>
                         </div>
                     );
@@ -155,21 +149,14 @@
                 try { await navigator.share({ files: [file], title: title }); return; } catch (err) {}
             }
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename; document.body.appendChild(a); a.click();
-            document.body.removeChild(a); URL.revokeObjectURL(url);
+            const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         };
 
         const showToast = (msg, color = '#333') => { const t = document.getElementById('toast'); if(t){ t.innerText = msg; t.style.backgroundColor = color; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3000); } };
         const compressImage = (file, maxWidth=150, quality=0.5) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (event) => { const img = new Image(); img.src = event.target.result; img.onload = () => { const elem = document.createElement('canvas'); const scaleFactor = maxWidth / img.width; elem.width = maxWidth; elem.height = img.height * scaleFactor; const ctx = elem.getContext('2d'); ctx.drawImage(img, 0, 0, elem.width, elem.height); resolve(elem.toDataURL('image/jpeg', quality)); }; }; }); };
         
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
-        
-        const getDatesInRange = (startDate, daysBack) => { 
-            const dates = []; const end = new Date(startDate); end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
-            for (let i = 0; i < daysBack; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } 
-            return dates; 
-        };
+        const getDatesInRange = (startDate, daysBack) => { const dates = []; const end = new Date(startDate); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for (let i = 0; i < daysBack; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
 
         const formatDateBR = (dateString) => { if(!dateString) return '-'; const [y, m, d] = dateString.split('-'); return `${d}/${m}/${y}`; };
         const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
@@ -192,7 +179,9 @@
                 darkMode: !!data.darkMode,
                 plan: typeof data.plan === 'string' ? data.plan : 'starter',
                 days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
-                exercises: safeArray(data.exercises)
+                exercises: safeArray(data.exercises),
+                gifLibrary: safeArray(data.gifLibrary), // Nova trava de segurança
+                postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)'
             };
         };
 
@@ -285,6 +274,34 @@
             return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p></div></div></div></div>);
         };
 
+        const LockedFeatureView = ({ title, description, requiredPlan, themeColor }) => {
+            return (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in bg-slate-50 dark:bg-slate-900 custom-scroll overflow-y-auto w-full">
+                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-md w-full relative overflow-hidden mt-auto mb-auto">
+                        <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: themeColor }}></div>
+                        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <Icon name="lock" size={40} className="text-slate-400 dark:text-slate-500" />
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2">Recurso Bloqueado</h2>
+                        <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">{title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">{description}</p>
+                        <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-4 mb-6 border border-slate-100 dark:border-slate-600">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Plano Necessário</span>
+                            <span className="text-lg font-black" style={{ color: themeColor }}>PLANO {requiredPlan.toUpperCase()}</span>
+                        </div>
+                        <button 
+                            onClick={() => window.open('https://wa.me/5582999999999?text=Olá, quero fazer o upgrade do meu ProCoach para o plano ' + requiredPlan, '_blank')}
+                            className="w-full text-white font-bold py-4 px-4 rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                            style={{ backgroundColor: themeColor }}
+                        >
+                            <Icon name="trophy" size={18} /> FAZER UPGRADE AGORA
+                        </button>
+                        <p className="text-[9px] text-slate-400 mt-4 uppercase">Fale com o suporte comercial</p>
+                    </div>
+                </div>
+            );
+        };
+
         const AdminDashboard = ({ themeColor }) => {
             const [clients, setClients] = useState([]);
             const [loading, setLoading] = useState(true);
@@ -315,7 +332,7 @@
                 }
             };
 
-            if (loading) return <div className="p-6 flex justify-center items-center h-full text-slate-500 font-bold animate-pulse">A carregar base de clientes...</div>;
+            if (loading) return <div className="p-6 flex justify-center items-center h-full text-slate-500 font-bold animate-pulse">A carregar base...</div>;
 
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
@@ -334,7 +351,7 @@
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-[10px] font-black">
-                                    <tr><th className="p-4">ID do Sistema</th><th className="p-4">Equipa</th><th className="p-4 text-center">Plano Atual</th><th className="p-4 text-center">Ação / Status</th></tr>
+                                    <tr><th className="p-4">ID</th><th className="p-4">Clube</th><th className="p-4 text-center">Plano Atual</th><th className="p-4 text-center">Status</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                                     {clients.map(client => {
@@ -360,77 +377,101 @@
             );
         };
 
-        const WorkoutBuilderView = ({ themeColor, exercises, setExercises }) => {
+        // --- ABA PRESCRIÇÃO (COM BIBLIOTECA E AÇÃO PÓS-TREINO) ---
+        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, gifLibrary, setGifLibrary, postWorkout, setPostWorkout }) => {
             const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
             
             const addExercise = () => {
                 if(!form.title) return showToast("Digite o nome do exercício!");
-                setExercises([{ id: Date.now(), ...form }, ...exercises]);
+                setExercises([{ id: Date.now(), ...form }, ...(exercises || [])]);
                 setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
                 showToast("Adicionado à ficha do dia!");
             };
-            const removeExercise = (id) => setExercises(exercises.filter(ex => ex.id !== id));
+
+            const removeExercise = (id) => setExercises((exercises || []).filter(ex => ex.id !== id));
+
+            const saveToLibrary = () => {
+                if(!form.title || !form.gifUrl) return showToast("Preencha Nome e Link para salvar!");
+                setGifLibrary([{ id: Date.now(), title: form.title, url: form.gifUrl }, ...(gifLibrary || [])]);
+                showToast("Salvo na Biblioteca!");
+            };
+
+            const loadFromLibrary = (id) => {
+                const item = (gifLibrary || []).find(g => g.id == id);
+                if(item) setForm({...form, title: item.title, gifUrl: item.url});
+            };
 
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária</h2>
-                            <button onClick={()=>showToast("Prescrição salva automaticamente na nuvem!")} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow"><Icon name="save" size={14}/> SALVAR FICHA NA NUVEM</button>
-                        </div>
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">Cadastre exercícios, adicione o link do GIF e defina as séries, reps e repouso (segundos).</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-3">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label>
-                                <input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label>
-                                <input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} />
-                            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0">
+                        {/* CONSTRUTOR DE EXERCÍCIOS */}
+                        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-6 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária (GIFs)</h2>
                             
-                            {/* Ajuste: Transformados em campos numéricos de rolagem */}
-                            <div className="md:col-span-1">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label>
-                                <input type="number" min="1" placeholder="3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} />
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Repetições</label>
-                                <input type="number" min="1" placeholder="10" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} />
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (Segundos)</label>
-                                <input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} />
-                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                <div className="md:col-span-12 flex gap-2">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Carregar da Biblioteca 📚</label>
+                                        <select className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" onChange={(e) => loadFromLibrary(e.target.value)}>
+                                            <option value="">Selecione um GIF salvo...</option>
+                                            {(gifLibrary || []).map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
 
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label>
-                                <select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
-                                    <option value="Geral">Elenco Geral</option>
-                                    <option value="LCA">Prevenção LCA</option>
-                                    <option value="Pubalgia">Pubalgia</option>
-                                    <option value="Posterior">Posterior</option>
-                                </select>
+                                <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                                <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
+                                <div className="md:col-span-2"><button onClick={saveToLibrary} className="w-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-xs flex items-center justify-center gap-1"><Icon name="save" size={14}/> Salvar GIF</button></div>
+                                
+                                <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" min="1" placeholder="3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
+                                <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Repetições</label><input type="number" min="1" placeholder="10" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
+                                <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (Segundos)</label><input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+
+                                <div className="md:col-span-3">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label>
+                                    <select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
+                                        <option value="Geral">Elenco Geral</option>
+                                        <option value="LCA">Prevenção LCA</option>
+                                        <option value="Pubalgia">Pubalgia</option>
+                                        <option value="Posterior">Risco Posterior de Coxa</option>
+                                        <option value="Manutenção">Manutenção (Histórico Lesão)</option>
+                                        <option value="Transição">Transição (Retorno DM)</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2"><button onClick={addExercise} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700"><Icon name="plus"/></button></div>
                             </div>
-                            <div className="md:col-span-1">
-                                <button onClick={addExercise} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700"><Icon name="plus"/></button>
-                            </div>
+                        </div>
+
+                        {/* DIRETRIZ PÓS-TREINO */}
+                        <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                            <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2"><Icon name="activity"/> Ação Pós-Treino (IA)</h2>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-4">Isto irá piscar no telemóvel do atleta ao final do treino.</p>
+                            <select className="w-full border-2 border-blue-500 rounded-xl p-3 text-sm font-bold dark:bg-slate-900 dark:text-white outline-none cursor-pointer" value={postWorkout} onChange={(e) => setPostWorkout(e.target.value)}>
+                                <option value="Bota Pneumática (15 min)">Bota Pneumática (15 min)</option>
+                                <option value="Bota Pneumática (30 min)">Bota Pneumática (30 min)</option>
+                                <option value="Crioterapia / Gelo (10 min)">Crioterapia / Gelo (10 min)</option>
+                                <option value="Banheira de Contraste">Banheira de Contraste</option>
+                                <option value="Liberação Miofascial">Liberação Miofascial (Rolo)</option>
+                                <option value="Massagem Desportiva">Massagem Desportiva</option>
+                                <option value="Bicicleta / Recuperação Ativa">Bicicleta / Recup. Ativa (15 min)</option>
+                                <option value="Repouso Absoluto">Repouso Absoluto (Casa)</option>
+                            </select>
+                            <div className="mt-auto pt-4 text-[9px] text-slate-400 uppercase text-center flex items-center justify-center gap-1"><Icon name="check" size={12}/> Ficha salva na nuvem automaticamente</div>
                         </div>
                     </div>
                     
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {exercises.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Nenhum exercício cadastrado.</div>}
-                        {exercises.map(ex => (
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {(exercises || []).length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Nenhum exercício cadastrado hoje.</div>}
+                        {(exercises || []).map(ex => (
                             <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
                                 <button onClick={()=>removeExercise(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
                                 <div className="absolute top-2 left-2 z-10"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded shadow ${ex.target==='Geral'?'bg-blue-500 text-white':'bg-yellow-500 text-slate-900'}`}>{ex.target}</span></div>
-                                <div className="w-full h-40 bg-slate-200 dark:bg-slate-700 relative">
+                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">
                                     {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
                                 </div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase leading-tight mb-1">{ex.title}</h3>
-                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Repouso: ${ex.rest}s`}</p>
+                                <div className="p-3">
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight mb-1 truncate">{ex.title}</h3>
+                                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}s`}</p>
                                 </div>
                             </div>
                         ))}
@@ -439,19 +480,18 @@
             );
         };
 
-        const AthleteMobilePortal = ({ player, dmStatus, themeColor, exercises, isStandalone = false }) => {
-            const hasACL = true; 
+        const AthleteMobilePortal = ({ player, dmStatus, themeColor, exercises, postWorkout, isStandalone = false }) => {
+            const hasACL = true; // Simulação: Puxaria da ficha clínica
             const isInjured = dmStatus === 'DM'; 
             const inTransition = dmStatus === 'TRANSIÇÃO';
             const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
 
-            const prevExercises = exercises.filter(ex => ex.target !== 'Geral');
-            const genExercises = exercises.filter(ex => ex.target === 'Geral');
+            const safeEx = safeArray(exercises);
+            const prevExercises = safeEx.filter(ex => ex.target !== 'Geral');
+            const genExercises = safeEx.filter(ex => ex.target === 'Geral');
 
-            // Estado para abrir o GIF em Ecrã Inteiro
             const [expandedGif, setExpandedGif] = useState(null);
 
-            // Container principal muda se for a rota Standalone (Tela Cheia) ou Mockup
             const containerClass = isStandalone 
                 ? "flex flex-col h-screen w-screen bg-slate-950 overflow-hidden font-sans" 
                 : "w-[375px] h-full bg-slate-950 rounded-[40px] border-[8px] border-slate-800 shadow-2xl overflow-hidden relative flex flex-col font-sans";
@@ -459,7 +499,6 @@
             return (
                 <div className={`flex justify-center h-full bg-slate-900 overflow-hidden ${!isStandalone && 'py-4'}`}>
                     <div className={containerClass}>
-                        
                         <div className="p-6 rounded-b-3xl shadow-2xl shrink-0" style={{ background: `linear-gradient(to bottom, ${headerBg}, #020617)` }}>
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 rounded-full border-2 border-white/50 overflow-hidden bg-slate-800 shadow-lg">{player?.image ? <img src={player.image} className="w-full h-full object-cover"/> : <Icon name="user" size={30} className="m-4 text-white/50"/>}</div>
@@ -481,7 +520,7 @@
                                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                                             </div>
                                             <div className="flex-1">
-                                                <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                <div className="font-bold text-xs text-white leading-tight">{ex.title}</div>
                                                 <div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div>
                                             </div>
                                         </div>
@@ -504,11 +543,11 @@
                                                 </div>
                                                 <div className="flex-1 flex flex-col justify-between">
                                                     <div>
-                                                        <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                        <div className="font-bold text-xs text-white leading-tight">{ex.title}</div>
                                                         <div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div>
                                                     </div>
                                                     <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
-                                                        <input type="checkbox" className="w-4 h-4 rounded bg-slate-800 accent-green-500 cursor-pointer"/>
+                                                        <input type="checkbox" className="w-5 h-5 rounded bg-slate-800 accent-green-500 cursor-pointer"/>
                                                         <span className="text-[10px] font-bold text-slate-400 uppercase cursor-pointer">Feito</span>
                                                     </label>
                                                 </div>
@@ -522,16 +561,15 @@
                                 <div className="bg-red-900/20 border border-red-800 rounded-xl p-4">
                                     <div className="flex items-center justify-center mb-4"><div className="bg-red-500/20 p-3 rounded-full"><Icon name="medkit" size={24} className="text-red-500"/></div></div>
                                     <h3 className="text-center font-black text-red-500 uppercase text-sm mb-4">Fisioterapia</h3>
-                                    <div className="space-y-2"><div className="bg-slate-900 p-3 rounded border border-red-900/50 flex justify-between items-center"><div><div className="text-xs font-bold text-white">Crioterapia</div><div className="text-[10px] text-slate-400">20 Minutos</div></div><input type="checkbox" className="w-5 h-5 accent-green-500 cursor-pointer"/></div></div>
+                                    <div className="space-y-2"><div className="bg-slate-900 p-3 rounded border border-red-900/50 flex justify-between items-center"><div><div className="text-xs font-bold text-white">Comparecer ao DM</div><div className="text-[10px] text-slate-400">Tratamento obrigatório</div></div></div></div>
                                 </div>
                             )}
                             <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
                                 <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
-                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação ativa recomendada: <strong>Bota Pneumática (15 min)</strong> no DM.</p></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recomendação da IA de hoje: <strong>{postWorkout}</strong> no DM.</p></div>
                             </div>
                         </div>
 
-                        {/* MODAL DO EXERCÍCIO (TELA CHEIA) */}
                         {expandedGif && (
                             <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col animate-fade-in font-sans">
                                 <div className="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800">
@@ -539,7 +577,7 @@
                                     <button onClick={() => setExpandedGif(null)} className="text-white bg-slate-800 p-2 rounded-full"><Icon name="x" size={16}/></button>
                                 </div>
                                 <div className="flex-1 flex flex-col justify-center items-center bg-black p-4 relative">
-                                    {expandedGif.gifUrl ? <img src={expandedGif.gifUrl} className="w-full max-h-80 object-contain rounded-lg shadow-2xl"/> : <Icon name="image" size={60} className="text-slate-700"/>}
+                                    {expandedGif.gifUrl ? <img src={expandedGif.gifUrl} className="w-full max-h-[50vh] object-contain rounded-lg shadow-2xl"/> : <Icon name="image" size={60} className="text-slate-700"/>}
                                 </div>
                                 <div className="bg-slate-900 p-6 rounded-t-3xl border-t border-slate-800 pb-10">
                                     <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div>
@@ -560,375 +598,10 @@
                                             </div>
                                         )}
                                     </div>
-                                    <button onClick={() => setExpandedGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">VOLTAR PARA FICHA</button>
+                                    <button onClick={() => setExpandedGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button>
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
-            );
-        };
-
-        const WellnessDashboard = ({ players, themeColor, trainingLog, setTrainingLog }) => {
-            const [mode, setMode] = useState('dashboard');
-            const [wellnessDate, setWellnessDate] = useState(getTodayStr()); 
-            
-            const [selectedPlayer, setSelectedPlayer] = useState(0);
-            const [localScores, setLocalScores] = useState({sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
-            const [localPainZones, setLocalPainZones] = useState([]);
-            const bodyParts = ["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"];
-
-            useEffect(() => { 
-                if(mode === 'manual') {
-                    const logObj = trainingLog[wellnessDate]?.[selectedPlayer] || {}; 
-                    const validW = safeObj(logObj.wellness);
-                    setLocalScores(validW.sleep ? validW : {sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
-                    setLocalPainZones(Array.isArray(logObj.painZones) ? logObj.painZones : []); 
-                }
-            }, [wellnessDate, selectedPlayer, trainingLog, mode]);
-
-            const handleScoreChange = (metric, val) => { setLocalScores(prev => ({...prev, [metric]: parseInt(val)})); };
-            const togglePainZone = (zone) => { let n = [...localPainZones]; if(n.includes(zone)) n = n.filter(z=>z!==zone); else n.push(zone); setLocalPainZones(n); };
-            
-            const confirmData = () => { 
-                const newLog = {...trainingLog}; 
-                if(!newLog[wellnessDate]) newLog[wellnessDate] = {}; 
-                if(!newLog[wellnessDate][selectedPlayer]) newLog[wellnessDate][selectedPlayer] = {}; 
-                newLog[wellnessDate][selectedPlayer].wellness = localScores; 
-                newLog[wellnessDate][selectedPlayer].painZones = localPainZones; 
-                setTrainingLog(newLog); 
-                showToast("Dados Salvos!"); 
-                setMode('dashboard');
-            };
-
-            if (mode === 'dashboard') {
-                const safePlayers = safeArray(players);
-                const filledCount = safePlayers.filter((p,i) => safeObj(trainingLog[wellnessDate]?.[i]?.wellness).sleep).length;
-                
-                const renderStatusBadge = (log, pain) => {
-                    if (!log || !log.sleep) return <span className="bg-slate-200 dark:bg-slate-700 text-slate-500 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="calendar" size={12}/> Pendente</span>;
-                    if (Number(log.soreness) >= 5 || pain.length > 0) return <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-md uppercase animate-pulse flex items-center gap-1 whitespace-nowrap"><Icon name="alert" size={12}/> RISCO DE LESÃO</span>;
-                    const total = getWSum(log);
-                    if (total >= 18) return <span className="bg-yellow-400 text-yellow-900 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="alert" size={12}/> ATENÇÃO</span>;
-                    return <span className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="check" size={12}/> APTO</span>;
-                };
-
-                const MetricBadge = ({ label, val }) => {
-                    if(!val) return null;
-                    const numVal = Number(val);
-                    const isBad = numVal >= 5;
-                    const isWarn = numVal === 4;
-                    let colorClass = "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500"; 
-                    if(isBad) colorClass = "bg-red-100 text-red-600 border border-red-300 dark:bg-red-900/50 dark:text-red-400 dark:border-red-800 font-bold";
-                    else if(isWarn) colorClass = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400";
-                    return (
-                        <div className="flex flex-col items-center justify-center min-w-[36px]">
-                            <span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">{label}</span>
-                            <span className={`text-xs w-full text-center rounded px-1 py-0.5 ${colorClass}`}>{numVal}</span>
-                        </div>
-                    );
-                };
-                
-                return (
-                    <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 h-full flex flex-col gap-4 animate-fade-in">
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                            <div>
-                                <h2 className="text-lg font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="list"/> PRANCHETA MÉDICA (WELLNESS)</h2>
-                                <p className="text-[10px] text-slate-500 uppercase mt-1 font-bold">{filledCount} de {safePlayers.length} atletas responderam hoje</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <input type="date" value={wellnessDate} onChange={e=>setWellnessDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded px-2 py-1 outline-none border border-slate-200 dark:border-slate-600 cursor-pointer"/>
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1">
-                            <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-3 text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase shrink-0 hidden lg:grid">
-                                <div className="col-span-3">Atleta</div>
-                                <div className="col-span-3 text-center">Status Fisiológico</div>
-                                <div className="col-span-4 flex justify-center gap-4">Métricas Críticas</div>
-                                <div className="col-span-2">Dores Focais</div>
-                            </div>
-                            
-                            <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1">
-                                {safePlayers.map((p, i) => {
-                                    if(!p) return null;
-                                    const logObj = trainingLog[wellnessDate]?.[i] || {};
-                                    const log = safeObj(logObj.wellness);
-                                    const pain = Array.isArray(logObj.painZones) ? logObj.painZones : [];
-                                    const isFilled = !!log.sleep;
-                                    
-                                    return (
-                                        <div key={i} className={`flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-0 items-start lg:items-center p-3 md:p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${!isFilled ? 'opacity-60' : ''}`}>
-                                            <div className="col-span-3 flex items-center gap-3 w-full">
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
-                                                    {p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={20} className="m-2 text-slate-400"/>}
-                                                </div>
-                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{p.name}</span>
-                                            </div>
-                                            <div className="col-span-3 flex justify-start lg:justify-center w-full">
-                                                {isFilled ? renderStatusBadge(log, pain) : (
-                                                    <button onClick={()=>{setSelectedPlayer(i); setMode('manual');}} className="bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 text-[10px] font-black px-3 py-1.5 rounded shadow-sm uppercase flex items-center gap-2 transition-colors border border-dashed border-slate-300 dark:border-slate-500">
-                                                        <Icon name="calendar" size={12}/> Pendente - Preencher
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="col-span-4 flex justify-start lg:justify-center gap-2 md:gap-4 w-full overflow-x-auto pb-1 lg:pb-0">
-                                                {isFilled ? (
-                                                    <>
-                                                        <MetricBadge label="Sono" val={log.sleep} />
-                                                        <MetricBadge label="Estr." val={log.stress} />
-                                                        <MetricBadge label="Fadig." val={log.fatigue} />
-                                                        <MetricBadge label="Dor" val={log.soreness} />
-                                                        <MetricBadge label="Humor" val={log.mood} />
-                                                    </>
-                                                ) : <span className="text-[10px] text-slate-400 italic hidden lg:block">Aguardando envio do atleta...</span>}
-                                            </div>
-                                            <div className="col-span-2 w-full flex justify-start lg:justify-end">
-                                                {pain.length > 0 ? (
-                                                    <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2 py-1 rounded text-[9px] font-bold text-red-600 dark:text-red-400 uppercase leading-tight w-full truncate">
-                                                        <Icon name="alert" size={10} className="inline mr-1 -mt-0.5"/> {pain.join(', ')}
-                                                    </div>
-                                                ) : isFilled ? <span className="text-[10px] text-slate-400">- Sem queixas -</span> : null}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto flex flex-col gap-6 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center gap-4">
-                        <h2 className="text-lg font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="edit"/> PREENCHIMENTO MANUAL</h2>
-                        <button onClick={()=>setMode('dashboard')} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-300"><Icon name="x" size={14}/> VOLTAR AO PAINEL</button>
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-6 flex-1">
-                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 flex flex-col"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Selecionar Atleta</h3><div className="space-y-2 flex-1 overflow-y-auto pr-2">{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border group transition-colors ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div></div>
-                        <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 flex flex-col gap-4 overflow-y-auto relative">
-                            <div className="flex justify-between items-center border-b dark:border-slate-700 pb-4"><div><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{players[selectedPlayer]?.name}</h2></div></div>
-                            <div className="space-y-4">{[{id:'sleep',label:'Qualidade do Sono (1=Excelente | 7=Péssimo)'},{id:'stress',label:'Estresse (1=Relaxado | 7=Estressado)'},{id:'fatigue',label:'Fadiga (1=Muita Energia | 7=Exausto)'},{id:'soreness',label:'Dor Muscular (1=Sem Dor | 7=Muita Dor)'}, {id:'mood', label:'Humor (1=Animado | 7=Irritado)'}].map(m=>(<div key={m.id}><div className="flex justify-between text-sm font-bold text-slate-700 dark:text-slate-300 mb-2"><span>{m.label}</span><span className="text-white px-2 rounded font-bold" style={{backgroundColor: themeColor}}>{localScores[m.id]}</span></div><input type="range" min="1" max="7" step="1" value={localScores[m.id]} onChange={(e)=>handleScoreChange(m.id, e.target.value)} className="hooper-slider" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}}/></div>))}</div>
-                            <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Local da Dor</h4><select className="w-full p-2 border dark:border-slate-600 rounded text-xs mb-2 bg-white dark:bg-slate-700 dark:text-white" onChange={(e)=>{if(e.target.value) togglePainZone(e.target.value); e.target.value='';}}><option value="">+ Adicionar Local</option>{bodyParts.map(p=><option key={p} value={p}>{p}</option>)}</select><div className="flex flex-wrap gap-1">{localPainZones.map(z=><span key={z} onClick={()=>togglePainZone(z)} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-red-200 dark:hover:bg-red-800">{z} ×</span>)}</div></div>
-                            <div className="flex gap-2 mt-4"><button onClick={confirmData} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:opacity-90 flex items-center justify-center gap-2"><Icon name="save"/> SALVAR DADOS</button></div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const PlayerProfileModal = ({ player, playerIndex, logs, onClose, themeColor, setPlayers, players }) => {
-            if (!player) return null;
-            const today = getTodayStr(); 
-            const currentLog = logs[today]?.[playerIndex] || {};
-            const wellness = safeObj(currentLog.wellness);
-            const dates = getDatesInRange(today, 7).reverse();
-            const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
-            
-            const getLoad = (d) => { 
-                const l = logs[d]?.[playerIndex]; 
-                if(!l) return 0;
-                const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
-                const dur = Number(l.duration) || 0;
-                return dur > 0 ? rpeSum * dur : rpeSum * 60; 
-            };
-
-            const todayLoad = getLoad(today);
-            const historyDates = getDatesInRange(today, 7).slice(1); 
-            let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
-            const avgLoad = (chronicLoad + todayLoad) / 7;
-            
-            let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
-            let loadColor = "text-green-500";
-            
-            if (avgLoad > 0) {
-                if (todayLoad > avgLoad * 1.4) { loadMsg = "Risco Agudo! Sobrecarga detectada. Sugestão: Recuperativo imediato."; loadColor = "text-red-500"; } 
-                else if (todayLoad < avgLoad * 0.6) { loadMsg = "Carga baixa hoje. Oportunidade para treino de força ou tático intenso."; loadColor = "text-yellow-500"; }
-            }
-
-            const HistoryAI = () => {
-                const painCounts = {};
-                dates.forEach(d => { const l = logs[d]?.[playerIndex] || {}; if(Array.isArray(l.painZones)) l.painZones.forEach(z => { painCounts[z] = (painCounts[z]||0) + 1; }); });
-                const chronic = Object.keys(painCounts).find(k => painCounts[k] >= 3);
-                if (chronic) return (<div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 mb-4 rounded-r-lg shadow-sm"><div className="flex items-center gap-2 mb-1"><Icon name="brain" className="text-red-600 dark:text-red-400" size={18}/><span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase">Fisiologista Virtual</span></div><div className="text-xs text-slate-700 dark:text-slate-300">Atenção: Dor recorrente em <strong>{chronic}</strong> detectada nesta semana. Risco elevado.</div></div>);
-                return null;
-            };
-
-            const generateShareCard = async () => {
-                const el = document.getElementById('export-card-' + playerIndex);
-                if(!el) return;
-                
-                el.style.left = '0'; el.style.top = '0'; el.style.position = 'absolute'; el.style.zIndex = '9999';
-                const originalBg = el.style.backgroundColor;
-                el.style.backgroundColor = '#0f172a'; 
-                
-                showToast("Gerando card...");
-                
-                try {
-                    const canvas = await html2canvas(el, {
-                        scale: 2, 
-                        useCORS: true, 
-                        backgroundColor: '#0f172a',
-                        logging: false
-                    });
-                    
-                    canvas.toBlob(blob => {
-                        smartShare(blob, `card_${player.name.replace(/\s+/g, '_')}.png`, `Status - ${player.name}`);
-                        el.style.left = '-9999px'; el.style.top = '-9999px';
-                        el.style.backgroundColor = originalBg;
-                    });
-                } catch(e) {
-                    showToast("Erro ao gerar card");
-                    el.style.left = '-9999px'; el.style.top = '-9999px';
-                    el.style.backgroundColor = originalBg;
-                }
-            };
-
-            const totalW = getWSum(wellness);
-            const wColor = totalW >= 25 ? 'text-red-500' : totalW >= 18 ? 'text-yellow-500' : 'text-green-500';
-
-            return (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
-                        
-                        <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
-                            <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
-                            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
-                            <h2 className="text-2xl font-bold uppercase">{player.name}</h2>
-                            <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
-                            <div className="flex gap-2 mt-2">
-                                <button onClick={toggleInjury} className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
-                            </div>
-                        </div>
-                        
-                        <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
-                            
-                            <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 p-4 shadow-inner">
-                                <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-600 pb-2">
-                                    <Icon name="brain" className={loadColor} size={18}/>
-                                    <span className={`text-[10px] font-black uppercase tracking-wider ${loadColor}`}>Assistente de Prontidão IA</span>
-                                </div>
-                                <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{loadMsg}</div>
-                            </div>
-
-                            <HistoryAI />
-                            
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="smile"/> Status ({formatDateBR(today)})</h3>
-                                <div className="grid grid-cols-2 gap-4">{Object.entries({Sono:wellness.sleep,Estresse:wellness.stress,Fadiga:wellness.fatigue,Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(<div key={k} className="bg-slate-50 dark:bg-slate-700 p-2 rounded border border-slate-100 dark:border-slate-600"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-500 dark:text-slate-400">{k}</span><span className="dark:text-white">{v||'-'}</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div></div></div>))}</div>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga (sRPE)</h3>
-                                <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
-                            </div>
-                            <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
-                        </div>
-                    </div>
-
-                    <div id={`export-card-${playerIndex}`} className="fixed z-[-1] bg-slate-900" style={{left:'-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
-                        <div className="p-6 rounded-3xl border-4 border-slate-700 text-white flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
-                            <div className="absolute top-0 left-0 w-full h-32 opacity-50" style={{background:`linear-gradient(to bottom, ${themeColor}, transparent)`}}></div>
-                            <div className="w-32 h-32 rounded-full border-4 border-slate-800 bg-slate-800 shadow-2xl mb-4 overflow-hidden z-10 relative">
-                                {player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-500"><Icon name="user" size={40}/></div>}
-                            </div>
-                            <h2 className="text-3xl font-black uppercase z-10 mb-1 text-white">{player.name}</h2>
-                            <p className="text-slate-400 font-bold z-10 mb-6 tracking-widest">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
-                            
-                            <div className="w-full bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700 flex justify-between items-center z-10 shadow-inner" style={{backgroundColor: '#1e293b'}}>
-                                <div className="text-center">
-                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Wellness Index</div>
-                                    <div className={`text-3xl font-black ${wColor}`}>{totalW > 0 ? totalW : '-'}</div>
-                                </div>
-                                <div className="h-10 w-px bg-slate-700"></div>
-                                <div className="text-center">
-                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Carga Hoje</div>
-                                    <div className="text-3xl font-black text-blue-400">{todayLoad || '-'}</div>
-                                </div>
-                            </div>
-                            
-                            <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10" style={{backgroundColor: '#1e293b'}}>
-                                <div className="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
-                                    <Icon name="brain" className={loadColor.replace('text-', 'text-')} size={16}/>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{color: loadColor === 'text-red-500' ? '#ef4444' : '#eab308'}}>{loadMsg}</span>
-                                </div>
-                                <div className="text-sm text-slate-300 leading-snug">
-                                    {totalW >= 25 ? "Alerta Crítico: Risco de Burnout ou Lesão." : totalW >= 18 ? "Atenção: Fadiga acumulada. Recuperação sugerida." : "Prontidão Alta: Atleta em boas condições."}
-                                    {Array.isArray(currentLog.painZones) && currentLog.painZones.length > 0 && <span className="block mt-1 text-red-400 font-bold text-xs">Dores: {currentLog.painZones.join(', ')}</span>}
-                                </div>
-                            </div>
-                            <div className="mt-4 text-[9px] text-slate-500 font-bold tracking-widest uppercase">Gerado por ProCoach Nuvem</div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
-            const [viewProfile, setViewProfile] = useState(null);
-            const [editPlayer, setEditPlayer] = useState(null); 
-            const today = getTodayStr(); 
-            const safePlayers = safeArray(players);
-            
-            const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
-            const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
-            
-            const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
-            const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
-            
-            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
-            
-            const injuredCount = safePlayers.filter(p=>p && p.injured).length;
-            const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
-                    <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
-                    {editPlayer!==null && <Editor/>}
-                    <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2><div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300"><Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}</div></div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {safePlayers.map((p, i) => { 
-                            if(!p) return null;
-                            const loadPct = getWeeklyLoad(i); 
-                            const dailyLog = trainingLog[today]?.[i] || {}; 
-                            const wellness = safeObj(dailyLog.wellness); 
-                            const soreness = Number(wellness.soreness) || 0; 
-                            const sleep = Number(wellness.sleep) || 0; 
-                            const isRisk = soreness >= 5; 
-                            const dmStatus = p.injured ? getPlayerDMStatus(i) : null; 
-                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
-                            
-                            return (
-                                <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-4 flex flex-col items-center gap-3 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured ? 'border-red-500 dark:border-red-500 ring-2 ring-red-100 dark:ring-red-900/50' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
-                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-2 right-2 text-slate-300 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-800 rounded-full p-1"><Icon name="edit" size={16}/></button>
-                                    
-                                    {isRisk && !p.injured && <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse z-10 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO</div>}
-                                    {p.injured && <div className="absolute top-2 left-2 bg-slate-800 dark:bg-slate-600 text-white p-1.5 rounded-full z-10"><Icon name="medkit" size={14}/></div>}
-                                    {inTransition && !p.injured && <div className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
-                                    
-                                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden relative border-2 shrink-0" style={{borderColor: p.injured ? '#1e293b' : inTransition ? '#f97316' : isRisk ? '#ef4444' : themeColor}}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><Icon name="user" size={32}/></div>}
-                                    </div>
-                                    <div className="text-center w-full">
-                                        <div className="font-bold text-slate-700 dark:text-slate-200 text-lg truncate">{p.name}</div>
-                                        <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-1 flex justify-center gap-2">{p.number && <span className="bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-slate-600 dark:text-slate-300">#{p.number}</span>}<span>{p.position || 'Atleta'}</span></div>
-                                    </div>
-                                    
-                                    <div className="border-t dark:border-slate-700 pt-2 w-full flex justify-center items-center gap-2">
-                                        {p.injured && dmStatus ? (
-                                            <div className="w-full text-center">
-                                                <div className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase mb-1">{dmStatus.location}</div>
-                                                <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-2 py-1">{RTP_PHASES.find(ph=>ph.id==dmStatus.rtpPhase)?.label || 'Em tratamento'}</div>
-                                            </div>
-                                        ) : (
-                                            <><MiniGauge value={loadPct} min={0} max={100} label="Carga 7 Dias" />{sleep >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Sono Ruim"><Icon name="moon" size={12}/></div>}{soreness >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Dor Alta"><Icon name="bolt" size={12}/></div>}</>
-                                        )}
-                                    </div>
-                                </div>
-                            ) 
-                        })}
-                        <button onClick={addP} className="bg-white dark:bg-slate-800 rounded-xl shadow border border-dashed border-slate-300 dark:border-slate-600 p-4 flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:border-blue-500 dark:hover:border-blue-400 transition-all cursor-pointer h-40"><Icon name="plus" size={32}/><span className="font-bold text-sm">Adicionar Atleta</span></button>
                     </div>
                 </div>
             );
@@ -949,7 +622,10 @@
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
             const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
             
-            const [exercises, setExercises] = useState(initialData?.exercises || []); 
+            // NOVOS ESTADOS (Evitam Red Screen inicializando garantidamente como arrays/strings)
+            const [exercises, setExercises] = useState(safeArray(initialData?.exercises)); 
+            const [gifLibrary, setGifLibrary] = useState(safeArray(initialData?.gifLibrary)); 
+            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
 
             const [showSettings, setShowSettings] = useState(false);
             const [showNotifications, setShowNotifications] = useState(false);
@@ -975,13 +651,13 @@
                 if(!user || forceAthleteView) return;
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises };
+                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, gifLibrary, postWorkout };
                     db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
                 }, 2000); 
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, gifLibrary, postWorkout, user]);
 
             const activeAlerts = useMemo(() => {
                 const today = getTodayStr(); let alerts = [];
@@ -1018,9 +694,8 @@
 
             const handleRefresh = () => { showToast("A atualizar dados..."); setTimeout(() => window.location.reload(), 500); };
 
-            // Se o link for do modo Atleta Independente (Standalone)
             if (forceAthleteView) {
-                return <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} isStandalone={true} />;
+                return <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={true} />;
             }
 
             return (
@@ -1044,19 +719,19 @@
                         </div>
                     </div>
                     
+                    {/* ESTRUTURA ORIGINAL 100% INTACTA AQUI */}
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
                         <button onClick={()=>setTab('squad')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='squad'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>ELENCO</button>
                         <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
                         <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
                         <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
-                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
                         <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
                         <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
                         <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
 
-                        <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
+                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ml-4 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
+                        <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
 
-                        {/* Botão de abrir em nova aba como App */}
                         {tab === 'preview' && (
                             <button onClick={() => window.open(window.location.href + '?atleta=true', '_blank')} className="px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 shadow ml-2">🔗 ABRIR COMO APP REAL</button>
                         )}
@@ -1071,18 +746,13 @@
                         {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                         {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                         {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} />}
                         {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
                         {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                         {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
-
-                        {tab === 'preview' && (
-                            <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} isStandalone={false} />
-                        )}
-
-                        {tab === 'admin' && isAdmin && (
-                            <AdminDashboard themeColor={themeColor} />
-                        )}
+                        
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} gifLibrary={gifLibrary} setGifLibrary={setGifLibrary} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
+                        {tab === 'preview' && <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={false} />}
+                        {tab === 'admin' && isAdmin && <AdminDashboard themeColor={themeColor} />}
                     </div>
                 </div>
             );
@@ -1093,9 +763,7 @@
             const [loadingCloud, setLoadingCloud] = useState(true);
 
             useEffect(() => {
-                // Se for o Atleta a abrir (simulação por URL), pega um documento de demonstração ou o primeiro que achar (para visualização)
                 if (forceAthleteView) {
-                    // Para demonstração sem login, vamos usar dados estáticos ou tentar ler público
                     setInitialData(sanitizeCloudData({}));
                     setLoadingCloud(false);
                     return;
@@ -1121,7 +789,6 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             
-            // VERIFICA SE A URL TEM O PARÂMETRO "?atleta=true"
             const urlParams = new URLSearchParams(window.location.search);
             const isAthleteMode = urlParams.get('atleta') === 'true';
 
@@ -1136,11 +803,7 @@
             }, []);
 
             if (loading) return null;
-            
-            // Se não tiver login e NÃO for o modo atleta, mostra o login
             if (!user && !isAthleteMode) return <LoginScreen onLogin={() => {}} />;
-            
-            // Se for modo atleta, ele passa para o wrapper que exibe tela cheia (mesmo sem login, para efeito de demonstração de visual)
             return <CloudWrapper user={user} forceAthleteView={isAthleteMode} />;
         };
 
