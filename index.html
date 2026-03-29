@@ -12,9 +12,9 @@
         }
     </script>
 
-    <link rel="manifest" href="manifest.json?v=25">
-    <link rel="apple-touch-icon" href="logo.png?v=25">
-    <link rel="icon" type="image/png" href="logo.png?v=25">
+    <link rel="manifest" href="manifest.json?v=26">
+    <link rel="apple-touch-icon" href="logo.png?v=26">
+    <link rel="icon" type="image/png" href="logo.png?v=26">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -120,9 +120,9 @@
                     return (
                         <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-white p-6 text-center">
                             <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-500/50"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-                            <h1 className="text-2xl font-bold mb-2">Conflito de Dados Resolvido!</h1>
-                            <p className="text-slate-400 mb-6 text-sm">O sistema foi atualizado. Pressione o botão abaixo para limpar a cache e voltar à plataforma.</p>
-                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">{this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}</button>
+                            <h1 className="text-2xl font-bold mb-2">Ajuste Rápido de Sistema!</h1>
+                            <p className="text-slate-400 mb-6 text-sm">O sistema otimizou a base de dados para a nova versão. Clique abaixo para carregar as novidades.</p>
+                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">{this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR CACHE E ATUALIZAR"}</button>
                             <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-xs text-slate-500 hover:text-slate-300 underline">Ou Terminar Sessão</button>
                         </div>
                     );
@@ -161,14 +161,15 @@
 
         const formatDateBR = (dateString) => { if(!dateString) return '-'; const [y, m, d] = dateString.split('-'); return `${d}/${m}/${y}`; };
         
-        // FUNÇÃO DE SEGURANÇA TOTAL PARA ARRAYS E OBJETOS (Evita a Tela Vermelha)
-        const safeArray = (arr) => (Array.isArray(arr) ? arr : []);
+        // FUNÇÃO DE SEGURANÇA TOTAL PARA ARRAYS E OBJETOS (Blindagem contra Ecrã Vermelho)
+        const safeArray = (arr) => Array.isArray(arr) ? arr : [];
         const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
         
         const getWSum = (w) => { if (w && typeof w === 'object' && !Array.isArray(w)) { return Object.values(w).reduce((a, b) => Number(a) + Number(b), 0) || 0; } return 0; };
         const calcDailyLoad = (log) => { if(!log) return 0; const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0); const dur = Number(log.duration) || 0; return rpe * (dur > 0 ? dur : 60); };
         const isPlayerInTransition = (pId, dmRecords) => { const todayDate = new Date(getTodayStr()); const records = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Recovered' && r.dateOut); for(let r of records) { const outDate = new Date(r.dateOut); if(isNaN(outDate.getTime())) continue; const diffTime = Math.abs(todayDate - outDate); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); if(diffDays <= 7) return true; } return false; };
 
+        // TRATAMENTO DOS DADOS DA NUVEM COM SEGURANÇA
         const sanitizeCloudData = (data) => {
             if (!data || typeof data !== 'object') return {};
             return {
@@ -182,7 +183,7 @@
                 logo: typeof data.logo === 'string' ? data.logo : null,
                 darkMode: !!data.darkMode,
                 plan: typeof data.plan === 'string' ? data.plan : 'starter',
-                days: safeArray(data.days).length > 0 ? safeArray(data.days) : DEFAULT_DAYS,
+                days: Array.isArray(data.days) && data.days.length > 0 ? data.days : DEFAULT_DAYS,
                 exercises: safeArray(data.exercises),
                 gifLibrary: safeArray(data.gifLibrary),
                 postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)'
@@ -381,7 +382,7 @@
             );
         };
 
-        // --- ABA DE PRESCRIÇÃO (COM BIBLIOTECA E AÇÃO PÓS-TREINO) ---
+        // --- ABA DE PRESCRIÇÃO (COM BIBLIOTECA, REPOUSO, E AÇÃO PÓS-TREINO DINÂMICA) ---
         const WorkoutBuilderView = ({ themeColor, exercises, setExercises, gifLibrary, setGifLibrary, postWorkout, setPostWorkout }) => {
             const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
             const [expandedGif, setExpandedGif] = useState(null);
@@ -409,9 +410,12 @@
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6 relative">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0">
-                        {/* CONSTRUTOR DE EXERCÍCIOS */}
+                        
                         <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-                            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-6 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária (GIFs)</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária (GIFs)</h2>
+                                <button onClick={()=>showToast("Prescrição salva automaticamente na nuvem!")} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow"><Icon name="save" size={14}/> SALVAR NA NUVEM</button>
+                            </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                                 <div className="md:col-span-12 flex gap-2">
@@ -428,19 +432,18 @@
                                 <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
                                 <div className="md:col-span-2"><button onClick={saveToLibrary} className="w-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold p-2 rounded hover:bg-slate-300 dark:hover:bg-slate-600 text-xs flex items-center justify-center gap-1"><Icon name="save" size={14}/> Guardar GIF</button></div>
                                 
-                                {/* NUMEROS DE ROLAGEM */}
                                 <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" min="1" placeholder="3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
                                 <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Repetições</label><input type="number" min="1" placeholder="10" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                                <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (s)</label><input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                                <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso (s)</label><input type="number" min="0" step="5" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
 
-                                <div className="md:col-span-4">
+                                <div className="md:col-span-3">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label>
                                     <select className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
                                         <option value="Geral">Elenco Geral</option>
                                         <option value="LCA">Prevenção LCA</option>
                                         <option value="Pubalgia">Pubalgia</option>
                                         <option value="Posterior">Risco Posterior de Coxa</option>
-                                        <option value="Manutenção">Manutenção (Histórico Lesão)</option>
+                                        <option value="Manutenção">Manutenção (Histórico)</option>
                                         <option value="Transição">Transição (Retorno DM)</option>
                                     </select>
                                 </div>
@@ -448,7 +451,6 @@
                             </div>
                         </div>
 
-                        {/* DIRETRIZ PÓS-TREINO */}
                         <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
                             <h2 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2 border-b dark:border-slate-700 pb-2"><Icon name="activity"/> Ação Pós-Treino (IA)</h2>
                             <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-4">Isto irá piscar no telemóvel do atleta ao final do treino.</p>
@@ -473,7 +475,6 @@
                                 <button onClick={()=>removeExercise(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
                                 <div className="absolute top-2 left-2 z-10"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded shadow ${ex.target==='Geral'?'bg-blue-500 text-white':'bg-yellow-500 text-slate-900'}`}>{ex.target}</span></div>
                                 <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative cursor-pointer group-hover:opacity-90" onClick={() => setExpandedGif(ex)}>
-                                    {/* Removido o onError agressivo para garantir que o GIF tenta carregar sempre */}
                                     {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="play" size={30} className="text-white"/></div>
                                 </div>
@@ -485,7 +486,6 @@
                         ))}
                     </div>
 
-                    {/* MODAL DO GIF PARA O TREINADOR TAMBÉM VER */}
                     {expandedGif && (
                         <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col animate-fade-in font-sans">
                             <div className="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800">
@@ -512,7 +512,7 @@
         };
 
         const AthleteMobilePortal = ({ player, dmStatus, themeColor, exercises, postWorkout, isStandalone = false }) => {
-            const hasACL = true; // Simulação de Anamnese
+            const hasACL = true; 
             const isInjured = dmStatus === 'DM'; 
             const inTransition = dmStatus === 'TRANSIÇÃO';
             const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
@@ -595,9 +595,9 @@
                                     <div className="space-y-2"><div className="bg-slate-900 p-3 rounded border border-red-900/50 flex justify-between items-center"><div><div className="text-xs font-bold text-white">Comparecer ao DM</div><div className="text-[10px] text-slate-400">Tratamento obrigatório</div></div></div></div>
                                 </div>
                             )}
-                            <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
+                            <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4 mt-4">
                                 <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
-                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação recomendada: <strong>{postWorkout}</strong> no DM.</p></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação recomendada: <strong className="text-white">{postWorkout}</strong> no DM.</p></div>
                             </div>
                         </div>
 
@@ -640,9 +640,8 @@
             const [header, setHeader] = useState(initialData?.header || {});
             const [logo, setLogo] = useState(initialData?.logo || null);
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
-            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
+            const [days, setDays] = useState(safeArray(initialData?.days).length > 0 ? safeArray(initialData?.days) : DEFAULT_DAYS);
             
-            // INICIALIZAÇÃO SEGURA (Evita ecrã vermelho)
             const [exercises, setExercises] = useState(safeArray(initialData?.exercises)); 
             const [gifLibrary, setGifLibrary] = useState(safeArray(initialData?.gifLibrary)); 
             const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
@@ -751,7 +750,6 @@
 
                         <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
 
-                        {/* Botão de abrir em nova aba como App (Passa o parâmetro ?atleta=true) */}
                         {tab === 'preview' && (
                             <button onClick={() => window.open(window.location.pathname + '?atleta=true', '_blank')} className="px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 shadow ml-2">🔗 ABRIR COMO APP REAL</button>
                         )}
@@ -766,11 +764,11 @@
                         {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                         {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                         {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} gifLibrary={gifLibrary} setGifLibrary={setGifLibrary} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
                         {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
                         {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                         {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
                         
-                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} gifLibrary={gifLibrary} setGifLibrary={setGifLibrary} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
                         {tab === 'preview' && <AthleteMobilePortal player={safeArray(players)[0] || {name: 'Atleta Demonstração'}} dmStatus={safeArray(players)[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} postWorkout={postWorkout} isStandalone={false} />}
 
                         {tab === 'admin' && isAdmin && <AdminDashboard themeColor={themeColor} />}
@@ -785,8 +783,6 @@
 
             useEffect(() => {
                 if (forceAthleteView) {
-                    // Para o link direto do atleta, não precisamos esperar que os dados do login atualizem.
-                    // Isso será conectado futuramente para cada clube específico através da URL.
                     setInitialData(sanitizeCloudData({}));
                     setLoadingCloud(false);
                     return;
@@ -812,7 +808,6 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             
-            // LÓGICA MÁGICA: Se abrir o atleta.html, vira aplicativo de celular na hora!
             const urlParams = new URLSearchParams(window.location.search);
             const isAthleteFile = window.location.pathname.includes('atleta.html');
             const isAthleteMode = urlParams.get('atleta') === 'true' || isAthleteFile;
