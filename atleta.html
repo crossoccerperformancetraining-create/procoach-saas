@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -77,6 +78,7 @@
             const [themeColor, setThemeColor] = useState('#1e3a8a');
             const [exercises, setExercises] = useState([]);
             const [dmRecords, setDmRecords] = useState([]);
+            const [postWorkout, setPostWorkout] = useState('Bota Pneumática (15 min)');
             
             const [step, setStep] = useState(1); 
             const [selectedIdx, setSelectedIdx] = useState(null);
@@ -90,57 +92,60 @@
             const [submitting, setSubmitting] = useState(false);
             const [expandedGif, setExpandedGif] = useState(null);
 
-            // NOVO BLOCO: LÊ O ID PELA URL
-useEffect(() => {
-    // 1. Pega o ID do treinador na URL do navegador
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlId = urlParams.get('id');
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlId = urlParams.get('id');
 
-    if (urlId) {
-        // 2. Se tem o ID, busca exatamente os SEUS dados
-        db.collection('coachData').doc(urlId).get().then(doc => {
-            if(doc.exists) {
-                const data = doc.data();
-                setCoachDocId(doc.id);
-                setPlayers(data.players || []);
-                setTrainingLog(data.trainingLog || {});
-                setExercises(data.exercises || []);
-                setDmRecords(data.dmRecords || []);
-                if(data.themeColor) setThemeColor(data.themeColor);
-            } else {
-                alert("Treinador não encontrado com este ID.");
-            }
-            setLoading(false);
-        }).catch(e => {
-            console.error(e); alert("Erro de conexão."); setLoading(false);
-        });
-    } else {
-        // 3. Se acessar sem ID, tenta puxar o primeiro (fallback)
-        db.collection('coachData').limit(1).get().then(snap => {
-            if(!snap.empty) {
-                const doc = snap.docs[0];
-                const data = doc.data();
-                setCoachDocId(doc.id);
-                setPlayers(data.players || []);
-                setTrainingLog(data.trainingLog || {});
-                setExercises(data.exercises || []);
-                setDmRecords(data.dmRecords || []);
-                if(data.themeColor) setThemeColor(data.themeColor);
-            }
-            setLoading(false);
-        }).catch(e => { console.error(e); setLoading(false); });
-    }
-}, []);
+                if (urlId) {
+                    db.collection('coachData').doc(urlId).get().then(doc => {
+                        if(doc.exists) {
+                            const data = doc.data();
+                            setCoachDocId(doc.id);
+                            setPlayers(data.players || []);
+                            setTrainingLog(data.trainingLog || {});
+                            setExercises(data.exercises || []);
+                            setDmRecords(data.dmRecords || []);
+                            if(data.themeColor) setThemeColor(data.themeColor);
+                            if(data.postWorkout) setPostWorkout(data.postWorkout);
+                        } else {
+                            alert("Treinador não encontrado com este ID.");
+                        }
+                        setLoading(false);
+                    }).catch(e => {
+                        console.error(e); alert("Erro de conexão."); setLoading(false);
+                    });
+                } else {
+                    db.collection('coachData').limit(1).get().then(snap => {
+                        if(!snap.empty) {
+                            const doc = snap.docs[0];
+                            const data = doc.data();
+                            setCoachDocId(doc.id);
+                            setPlayers(data.players || []);
+                            setTrainingLog(data.trainingLog || {});
+                            setExercises(data.exercises || []);
+                            setDmRecords(data.dmRecords || []);
+                            if(data.themeColor) setThemeColor(data.themeColor);
+                            if(data.postWorkout) setPostWorkout(data.postWorkout);
+                        } else {
+                            alert("Erro: Banco de dados da equipe não encontrado.");
+                        }
+                        setLoading(false);
+                    }).catch(e => {
+                        console.error(e);
+                        alert("Erro ao conectar com a nuvem.");
+                        setLoading(false);
+                    });
+                }
+            }, []);
+
             const selectPlayer = (idx) => {
                 setSelectedIdx(idx);
                 const today = getTodayStr();
                 const existingLog = trainingLog[today]?.[idx]?.wellness;
                 
-                // Se já respondeu hoje, vai direto para a tela de Treino (Step 3)
                 if(existingLog && existingLog.sleep) {
                     setStep(3);
                 } else {
-                    // Se não respondeu, vai para o formulário (Step 2)
                     setScores({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
                     setPainZones([]);
                     setStep(2);
@@ -168,10 +173,9 @@ useEffect(() => {
 
                 db.collection('coachData').doc(coachDocId).set({ trainingLog: newLog }, { merge: true })
                     .then(() => {
-                        // Atualiza o estado local para refletir que respondeu
                         setTrainingLog(newLog);
                         setSubmitting(false);
-                        setStep(3); // Vai para a linha do tempo do treino!
+                        setStep(3);
                     })
                     .catch(err => {
                         setSubmitting(false);
@@ -198,7 +202,6 @@ useEffect(() => {
                 return <div className="h-full flex flex-col items-center justify-center text-blue-500 animate-pulse"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div><p className="font-bold uppercase tracking-widest">Carregando Elenco...</p></div>;
             }
 
-            // --- TELA 1: MURAL DE SELEÇÃO ---
             if (step === 1) {
                 return (
                     <div className="h-full flex flex-col p-4 animate-fade-in custom-scroll overflow-y-auto">
@@ -218,7 +221,6 @@ useEffect(() => {
                                     <div key={i} onClick={() => selectPlayer(i)} className="flex flex-col items-center gap-2 cursor-pointer group transform transition-transform active:scale-95">
                                         <div className="w-20 h-20 rounded-full border-2 border-slate-700 bg-slate-800 overflow-hidden shadow-lg group-hover:border-blue-500 transition-colors relative">
                                             {p.image ? <img src={p.image} className="w-full h-full object-cover object-top" /> : <div className="w-full h-full flex items-center justify-center text-slate-600"><Icon name="user" size={32}/></div>}
-                                            {/* Bolinha verde se já respondeu hoje */}
                                             {trainingLog[getTodayStr()]?.[i]?.wellness?.sleep && (
                                                 <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-slate-800 rounded-full"></div>
                                             )}
@@ -232,7 +234,6 @@ useEffect(() => {
                 );
             }
 
-            // --- TELA 2: FORMULÁRIO DE WELLNESS ---
             if (step === 2) {
                 const p = players[selectedIdx];
                 return (
@@ -308,7 +309,6 @@ useEffect(() => {
                 );
             }
 
-            // --- TELA 3: LINHA DO TEMPO DO TREINO (Novo) ---
             if (step === 3) {
                 const p = players[selectedIdx];
                 const dmStatus = p.injured ? 'DM' : getPlayerDMStatus(selectedIdx);
@@ -316,14 +316,11 @@ useEffect(() => {
                 const inTransition = dmStatus === 'TRANSIÇÃO';
                 const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
 
-                // Aqui futuramente você vai cruzar com a Anamnese do banco de dados dele. 
-                // Por enquanto simulamos que ele tem recomendação preventiva se houver exercicios salvos.
                 const prevExercises = exercises.filter(ex => ex.target !== 'Geral');
                 const genExercises = exercises.filter(ex => ex.target === 'Geral');
 
                 return (
                     <div className="flex flex-col h-full bg-slate-950 overflow-hidden font-sans relative">
-                        {/* BOTÃO VOLTAR (Para escolher outro atleta se for num tablet partilhado) */}
                         <button onClick={()=>setStep(1)} className="absolute top-4 right-4 text-white/50 hover:text-white z-50 bg-black/20 p-2 rounded-full backdrop-blur-md"><Icon name="x" size={20}/></button>
 
                         <div className="p-6 rounded-b-3xl shadow-2xl shrink-0" style={{ background: `linear-gradient(to bottom, ${headerBg}, #020617)` }}>
@@ -339,7 +336,6 @@ useEffect(() => {
                         <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto custom-scroll pb-10">
                             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between opacity-60 grayscale"><div className="flex items-center gap-3"><div className="bg-green-500/20 p-2 rounded-full text-green-500"><Icon name="check" size={20}/></div><div><h3 className="font-bold text-sm text-white">Wellness</h3><p className="text-[10px] text-slate-400">Respondido hoje</p></div></div></div>
                             
-                            {/* PREVENÇÃO */}
                             {!isInjured && prevExercises.length > 0 && (
                                 <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded-xl relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> Prevenção Específica</h3>
@@ -359,7 +355,6 @@ useEffect(() => {
                                 </div>
                             )}
 
-                            {/* ACADEMIA */}
                             {!isInjured && !inTransition && (
                                 <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
                                     <div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">Academia</h3></div>
@@ -388,7 +383,6 @@ useEffect(() => {
                                 </div>
                             )}
 
-                            {/* FISIOTERAPIA */}
                             {isInjured && (
                                 <div className="bg-red-900/20 border border-red-800 rounded-xl p-4">
                                     <div className="flex items-center justify-center mb-4"><div className="bg-red-500/20 p-3 rounded-full"><Icon name="medkit" size={24} className="text-red-500"/></div></div>
@@ -401,14 +395,12 @@ useEffect(() => {
                                 </div>
                             )}
 
-                            {/* PÓS TREINO IA */}
                             <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
                                 <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
-                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação sugerida: <strong>Bota Pneumática ou Crioterapia (15 min)</strong> no DM.</p></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação sugerida: <strong>{postWorkout}</strong>.</p></div>
                             </div>
                         </div>
 
-                        {/* MODAL DO GIF (Ecrã Inteiro) */}
                         {expandedGif && (
                             <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col animate-fade-in font-sans">
                                 <div className="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800">
