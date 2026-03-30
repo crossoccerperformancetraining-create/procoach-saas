@@ -1,864 +1,225 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ProCoach V144 MAX - SaaS Edition</title>
-    
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) { registration.unregister(); }
-            });
-        }
-    </script>
-
-    <link rel="manifest" href="manifest.json?v=21">
-    <link rel="apple-touch-icon" href="logo.png?v=21">
-    <link rel="icon" type="image/png" href="logo.png?v=21">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { darkMode: 'class', }</script>
-    
+    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(regs => { for(let r of regs) r.unregister(); });</script>
+    <script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { darkMode: 'class' }</script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
     <style>
-        body { overscroll-behavior-y: contain; touch-action: pan-x pan-y; background-color: #f8fafc; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
-        body.dark { background-color: #0f172a; color: #f8fafc; }
-        .glass-input { background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 4px; color: white; outline: none; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .hooper-slider { -webkit-appearance: none; width: 100%; height: 10px; border-radius: 5px; background: #cbd5e1; outline: none; }
-        .dark .hooper-slider { background: #334155; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .micro-header { background-color: #1a4a3e; color: white; }
-        .dashed-btn { border: 2px dashed #cbd5e1; color: #94a3b8; font-weight: bold; font-size: 9px; width: 100%; padding: 4px; border-radius: 6px; transition: all 0.2s; }
-        .dark .dashed-btn { border-color: #475569; color: #cbd5e1; }
-        .dashed-btn:hover { border-color: #1a4a3e; color: #1a4a3e; background-color: #f0fdf4; }
-        .dark .dashed-btn:hover { border-color: #10b981; color: #10b981; background-color: rgba(16, 185, 129, 0.1); }
-        .gauge-container { width: 220px; height: 110px; overflow: hidden; position: relative; margin: 0 auto; }
-        .gauge-needle { width: 4px; height: 100px; background: #475569; position: absolute; left: 108px; top: 10px; transform-origin: bottom center; transition: transform 0.5s cubic-bezier(0.4, 2.08, 0.55, 0.44); border-radius: 2px; z-index: 10; }
-        .dark .gauge-needle { background: #e2e8f0; }
-        .gauge-center { width: 16px; height: 16px; background: #334155; border-radius: 50%; position: absolute; bottom: -8px; left: 102px; z-index: 11; }
-        .dark .gauge-center { background: #cbd5e1; }
-        .mini-gauge-container { width: 80px; height: 40px; overflow: hidden; position: relative; }
-        .mini-gauge-needle { width: 2px; height: 35px; background: #334155; position: absolute; left: 39px; top: 5px; transform-origin: bottom center; transition: transform 0.5s ease-out; border-radius: 1px; z-index: 10; }
-        .dark .mini-gauge-needle { background: #cbd5e1; }
-        @media print { .no-print { display: none !important; } .page-break { page-break-inside: avoid; } body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; } * { color: black !important; } #print-area { padding: 0; } .overflow-y-auto { overflow: visible !important; height: auto !important; } }
-        #loading-state { display: flex; height: 100vh; width: 100vw; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #64748b; flex-direction: column; gap: 10px; }
-        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; z-index: 9999; display: none; font-size: 12px; font-weight: bold; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .status-badge { position: absolute; top: 10px; right: 10px; background: #dcfce7; color: #166534; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-        .status-badge.show { opacity: 1; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        body { overscroll-behavior-y: contain; background-color: #f8fafc; color: #0f172a; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body.dark { background-color: #0f172a; color: #f8fafc; } .hooper-slider { -webkit-appearance: none; width: 100%; height: 10px; border-radius: 5px; background: #cbd5e1; outline: none; }
+        .dark .hooper-slider { background: #334155; } .animate-fade-in { animation: fadeIn 0.3s; } @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .micro-header { background-color: #1a4a3e; color: white; } .dashed-btn { border: 2px dashed #cbd5e1; color: #94a3b8; font-weight: bold; font-size: 9px; width: 100%; padding: 4px; border-radius: 6px; }
+        .dark .dashed-btn { border-color: #475569; color: #cbd5e1; } .custom-scroll::-webkit-scrollbar { width: 6px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col safe-area-inset">
-    <div id="toast"></div>
-    <div id="root" class="h-full w-full"><div id="loading-state">A Iniciar Sistema V144 MAX...</div></div>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-xl z-[9999] hidden text-xs font-bold shadow-lg"></div>
+    <div id="root" class="h-full w-full"><div class="flex h-screen items-center justify-center font-bold text-slate-500">A Carregar V144 MAX...</div></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
-
-        const DEFAULT_DAYS = [
-            { id: 1, md: 'MD-4', name: 'SEGUNDA', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 2, md: 'MD-3', name: 'TERÇA', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 3, md: 'MD-2', name: 'QUARTA', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 4, md: 'MD-1', name: 'QUINTA', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 5, md: 'JOGO', name: 'SEXTA', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 6, md: 'MD+1', name: 'SÁBADO', date:'', plannedMins: '', am: [], pm: [] },
-            { id: 7, md: 'MD+2', name: 'DOMINGO', date:'', plannedMins: '', am: [], pm: [] }
-        ];
-
-        const RTP_PHASES = [ 
-            {id:1, label:"Fase 1: Aguda", desc:"Controle do quadro álgico/inflamatório. Fisioterapia."}, 
-            {id:2, label:"Fase 2: Sub-aguda", desc:"Reabilitação do segmento lesado + Fortalecimento não envolvidos. Fisioterapia."}, 
-            {id:3, label:"Fase 3: Transição I", desc:"Força segmentada (não envolvidos) + Cardio sem impacto. Fisio + Transição."}, 
-            {id:4, label:"Fase 4: Transição II", desc:"Funcionais + cardio sem impacto. Força com restrição. Introdução Pliometria/Corrida."}, 
-            {id:5, label:"Fase 5: Transição III", desc:"Força sem restrições funcionais. Cardio com impacto. Fisio + Transição Campo."}, 
-            {id:6, label:"Fase 6: Performance I", desc:"Potência na Academia. Aceleração e Pliometria sem restrições."}, 
-            {id:7, label:"Fase 7: Performance II", desc:"Potência especifica do esporte. Preparação individual e parcial com grupo."}, 
-            {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo com minutagem controlada em jogo. Liberado treino com o grupo sem restrições."}, 
-            {id:9, label:"Fase 9: Liberação", desc:"Responsabilidade do atleta com cuidados antes e após treinos e jogos."} 
-        ];
-
-        class ErrorBoundary extends React.Component {
-            constructor(props) { super(props); this.state = { hasError: false, resetting: false }; }
-            static getDerivedStateFromError(error) { return { hasError: true }; }
-            componentDidCatch(error, errorInfo) { console.error("ProCoach Error:", error, errorInfo); }
-            handleHardReset = () => {
-                this.setState({ resetting: true });
-                localStorage.clear();
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                        for (let r of regs) r.unregister();
-                    });
-                }
-                const user = firebase.auth().currentUser;
-                if (user) {
-                    firebase.firestore().collection('coachData').doc(user.uid).set({
-                        players: [], trainingLog: {}, dmRecords: [], matchMinutes: {}, assessments: {},
-                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: [], activationExercises: [], library: [], postWorkout: 'Bota Pneumática (15 min)'
-                    });
-                }
-                setTimeout(() => { window.location.href = window.location.pathname + '?clear=' + Date.now(); }, 1000);
-            }
-            render() {
-                if (this.state.hasError) {
-                    return (
-                        <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-white p-6 text-center">
-                            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-500/50">
-                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                            </div>
-                            <h1 className="text-2xl font-bold mb-2">Conflito de Dados Antigos!</h1>
-                            <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">
-                                {this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}
-                            </button>
-                            <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-xs text-slate-500 hover:text-slate-300 underline">Ou Terminar Sessão</button>
-                        </div>
-                    );
-                }
-                return this.props.children; 
-            }
-        }
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco",
-            authDomain: "prosaude-e9130.firebaseapp.com",
-            projectId: "prosaude-e9130",
-            storageBucket: "prosaude-e9130.firebasestorage.app",
-            messagingSenderId: "999318121562",
-            appId: "1:999318121562:web:1f192d4c0f14a64fb57c63"
-        };
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        db.enablePersistence().catch((err) => { console.warn("Offline Persistence Error:", err.code); });
-
-        const smartShare = async (blob, filename, title) => {
-            const file = new File([blob], filename, { type: blob.type });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try { await navigator.share({ files: [file], title: title }); return; } catch (err) { console.log("Compartilhamento cancelado", err); }
-            }
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-        };
-
-        const showToast = (msg, color = '#333') => { const t = document.getElementById('toast'); if(t){ t.innerText = msg; t.style.backgroundColor = color; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3000); } };
-        const compressImage = (file, maxWidth=150, quality=0.5) => { return new Promise((resolve) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = (event) => { const img = new Image(); img.src = event.target.result; img.onload = () => { const elem = document.createElement('canvas'); const scaleFactor = maxWidth / img.width; elem.width = maxWidth; elem.height = img.height * scaleFactor; const ctx = elem.getContext('2d'); ctx.drawImage(img, 0, 0, elem.width, elem.height); resolve(elem.toDataURL('image/jpeg', quality)); }; }; }); };
+        const DEFAULT_DAYS = [ { id: 1, md: 'MD-4', name: 'SEGUNDA', plannedMins: '', am: [], pm: [] }, { id: 2, md: 'MD-3', name: 'TERÇA', plannedMins: '', am: [], pm: [] }, { id: 3, md: 'MD-2', name: 'QUARTA', plannedMins: '', am: [], pm: [] }, { id: 4, md: 'MD-1', name: 'QUINTA', plannedMins: '', am: [], pm: [] }, { id: 5, md: 'JOGO', name: 'SEXTA', plannedMins: '', am: [], pm: [] }, { id: 6, md: 'MD+1', name: 'SÁBADO', plannedMins: '', am: [], pm: [] }, { id: 7, md: 'MD+2', name: 'DOMINGO', plannedMins: '', am: [], pm: [] } ];
+        const RTP_PHASES = [ {id:1, label:"Fase 1: Aguda", desc:"Fisio."}, {id:2, label:"Fase 2: Sub-aguda", desc:"Fisio + Força não envolvidos."}, {id:3, label:"Fase 3: Transição I", desc:"Cardio sem impacto."}, {id:4, label:"Fase 4: Transição II", desc:"Força restrita. Intro Pliometria."}, {id:5, label:"Fase 5: Transição III", desc:"Cardio com impacto. Campo."}, {id:6, label:"Fase 6: Performance I", desc:"Pliometria sem restrição."}, {id:7, label:"Fase 7: Performance II", desc:"Parcial com grupo."}, {id:8, label:"Fase 8: Performance III", desc:"Treino sem restrição."}, {id:9, label:"Fase 9: Liberação", desc:"Alta total."} ];
         
-        const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
+        class ErrorBoundary extends React.Component { constructor(props){super(props);this.state={hasError:false};} static getDerivedStateFromError(e){return {hasError:true};} render(){if(this.state.hasError)return <div className="p-6 text-white bg-red-600">Erro Fatal no React. <button onClick={()=>window.location.reload()}>Recarregar</button></div>; return this.props.children;} }
+
+        if (!firebase.apps.length) firebase.initializeApp({apiKey:"AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco",authDomain:"prosaude-e9130.firebaseapp.com",projectId:"prosaude-e9130",storageBucket:"prosaude-e9130.firebasestorage.app",messagingSenderId:"999318121562",appId:"1:999318121562:web:1f192d4c0f14a64fb57c63"});
+        const auth = firebase.auth(); const db = firebase.firestore();
+
+        const showToast = (msg) => { const t = document.getElementById('toast'); if(t){ t.innerText=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); } };
+        const getTodayStr = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
+        const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
+        const formatDateBR = (ds) => { if(!ds) return '-'; const [y,m,d]=ds.split('-'); return `${d}/${m}/${y}`; };
+        const safeObj = (o) => (o&&typeof o==='object'&&!Array.isArray(o))?o:{}; const safeArray = (a) => (Array.isArray(a)&&a.length>0)?a:[];
+        const getWSum = (w) => { if(w&&typeof w==='object'&&!Array.isArray(w)){return Object.values(w).reduce((a,b)=>Number(a)+Number(b),0)||0;} return 0; };
+        const calcDailyLoad = (log) => { if(!log) return 0; return ((Number(log.rpe_am)||0)+(Number(log.rpe_pm)||0))*(Number(log.duration)||60); };
         
-        const getDatesInRange = (startDate, daysBack) => { 
-            const dates = []; const end = new Date(startDate); end.setMinutes(end.getMinutes() - end.getTimezoneOffset());
-            for (let i = 0; i < daysBack; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } 
-            return dates; 
-        };
+        const isPlayerInTransition = (pId, dmRecords) => { const t=new Date(getTodayStr()); const rec=safeArray(dmRecords).filter(r=>r&&r.playerId==pId&&r.status==='Recovered'&&r.dateOut); for(let r of rec){const out=new Date(r.dateOut); if(!isNaN(out.getTime())&&Math.ceil(Math.abs(t-out)/(1000*60*60*24))<=7) return true;} return false; };
 
-        const formatDateBR = (dateString) => { if(!dateString) return '-'; const [y, m, d] = dateString.split('-'); return `${d}/${m}/${y}`; };
-        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
-        const safeArray = (arr, fallback=[]) => (Array.isArray(arr) && arr.length > 0) ? arr : fallback;
-        const getWSum = (w) => { if (w && typeof w === 'object' && !Array.isArray(w)) { return Object.values(w).reduce((a, b) => Number(a) + Number(b), 0) || 0; } return 0; };
-        const calcDailyLoad = (log) => { if(!log) return 0; const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0); const dur = Number(log.duration) || 0; return rpe * (dur > 0 ? dur : 60); };
-
-        const isPlayerInTransition = (pId, dmRecords) => {
-            const todayDate = new Date(getTodayStr());
-            const records = safeArray(dmRecords).filter(r => r && r.playerId == pId && r.status === 'Recovered' && r.dateOut);
-            for(let r of records) {
-                const outDate = new Date(r.dateOut);
-                if(isNaN(outDate.getTime())) continue;
-                const diffTime = Math.abs(todayDate - outDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if(diffDays <= 7) return true; 
-            }
-            return false;
-        };
-
-        const sanitizeCloudData = (data) => {
-            if (!data || typeof data !== 'object') return {};
-            return {
-                themeColor: typeof data.themeColor === 'string' ? data.themeColor : '#1e3a8a',
-                players: safeArray(data.players).map(p => safeObj(p)),
-                trainingLog: safeObj(data.trainingLog),
-                assessments: safeObj(data.assessments),
-                dmRecords: safeArray(data.dmRecords),
-                matchMinutes: safeObj(data.matchMinutes),
-                header: safeObj(data.header),
-                logo: typeof data.logo === 'string' ? data.logo : null,
-                darkMode: !!data.darkMode,
-                plan: typeof data.plan === 'string' ? data.plan : 'starter',
-                days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
-                exercises: safeArray(data.exercises),
-                activationExercises: safeArray(data.activationExercises),
-                library: safeArray(data.library),
-                postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)',
-                playerOfTheWeek: data.playerOfTheWeek !== undefined ? data.playerOfTheWeek : null,
-                nextGame: safeObj(data.nextGame)
-            };
-        };
-
-        const BufferedInput = ({ value, onSave, className, placeholder, type="text" }) => { const [localVal, setLocalVal] = useState(value); useEffect(() => setLocalVal(value), [value]); return (<input type={type} className={className} value={localVal} placeholder={placeholder} onChange={(e) => setLocalVal(e.target.value)} onBlur={() => { if(localVal !== value) onSave(localVal); }} />); };
+        const BufferedInput = ({ value, onSave, className, placeholder, type="text" }) => { const [lv, slv] = useState(value); useEffect(()=>slv(value),[value]); return <input type={type} className={className} value={lv} placeholder={placeholder} onChange={e=>slv(e.target.value)} onBlur={()=>{if(lv!==value)onSave(lv);}} />; };
 
         const Icon = ({ name, size=18, className="" }) => {
-            const icons = {
-                calendar: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-                list: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
-                smile: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
-                plus: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-                image: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
-                user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-                trash: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-                alert: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="red" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-                trophy: <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/></svg>,
-                check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
-                save: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-                settings: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-                medkit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>,
-                x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-                edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-                download: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
-                upload: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-                activity: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-                copy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
-                share: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
-                info: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
-                brain: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>,
-                barChart: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-                moon: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
-                sun: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="19.78" y1="19.78" x2="18.36" y2="18.36"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="19.78" y1="4.22" x2="18.36" y2="5.64"/></svg>,
-                clock: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-                arrowUp: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"></polyline></svg>,
-                arrowDown: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>,
-                fire: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            const svgPaths = {
+                calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+                list: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H9h-1"/>',
+                smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+                plus: '<path d="M12 5v14M5 12h14"/>',
+                image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+                trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+                alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>',
+                trophy: '<path d="M8 21h8m-4-9v9M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 2v16M17 2v16"/>',
+                check: '<polyline points="20 6 9 17 4 12"/>',
+                save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+                settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+                medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M12 11v6M9 14h6"/>',
+                x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+                edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+                download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+                upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+                activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+                copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+                share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+                info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+                brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>',
+                barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+                moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+                sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+                clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+                arrowUp: '<polyline points="18 15 12 9 6 15"/>',
+                arrowDown: '<polyline points="6 9 12 15 18 9"/>',
+                fire: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
             };
-            return <span className={`cursor-pointer ${className}`} onClick={onClick}>{icons[name] || null}</span>;
+            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{__html: svgPaths[name] || ''}} />;
         };
 
-        const SpeedometerGauge = ({ value }) => {
-            const min=4, max=28; const valNum = Number(value)||min; const normalized=Math.max(min, Math.min(max, valNum));
-            const angle=((normalized-min)/(max-min))*180-90;
-            return (<div className="flex flex-col items-center"><div className="gauge-container"><svg viewBox="0 0 200 100" className="w-full h-full"><path d="M20 100 A80 80 0 0 1 180 100" fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="20"/><path d="M20 100 A80 80 0 0 1 73 36" fill="none" stroke="#22c55e" strokeWidth="20" strokeDasharray="1000"/><path d="M73 36 A80 80 0 0 1 127 36" fill="none" stroke="#eab308" strokeWidth="20" strokeDasharray="1000"/><path d="M127 36 A80 80 0 0 1 180 100" fill="none" stroke="#ef4444" strokeWidth="20" strokeDasharray="1000"/></svg><div className="gauge-needle" style={{transform:`rotate(${angle||0}deg)`}}></div><div className="gauge-center"></div></div><div className="text-3xl font-black -mt-4 text-slate-700 dark:text-slate-200">{valNum}</div><div className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mt-1">Prontidão Equipe</div></div>);
-        };
-        
-        const MiniGauge = ({ value, min=4, max=28, reverse=false, label="" }) => {
-            const valNum = Number(value)||min; const normalized=Math.max(min, Math.min(max, valNum)); const angle=((normalized-min)/(max-min))*180-90;
-            const c1=reverse?"#ef4444":"#22c55e"; const c2="#eab308"; const c3=reverse?"#22c55e":"#ef4444";
-            return (<div className="flex flex-col items-center"><div className="mini-gauge-container"><svg viewBox="0 0 80 40" className="w-full h-full"><path d="M5 40 A35 35 0 0 1 75 40" fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8"/><path d="M5 40 A35 35 0 0 1 28 12" fill="none" stroke={c1} strokeWidth="8"/><path d="M28 12 A35 35 0 0 1 52 12" fill="none" stroke={c2} strokeWidth="8"/><path d="M52 12 A35 35 0 0 1 75 40" fill="none" stroke={c3} strokeWidth="8"/></svg><div className="mini-gauge-needle" style={{transform:`rotate(${angle||0}deg)`}}></div><div className="absolute bottom-0 w-2 h-2 bg-slate-700 dark:bg-slate-300 rounded-full left-[39px]"></div></div><div className="text-[10px] font-black text-slate-700 dark:text-slate-200 -mt-1">{valNum}</div>{label && <div className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold">{label}</div>}</div>);
-        };
-        
-        const DonutChart = ({ value, max, color, label, size=80 }) => {
-            const valNum = Number(value)||0; const maxNum = Number(max)||20;
-            const r=30, c=2*Math.PI*r, o=c-(valNum/maxNum)*c;
-            return (<div className="relative flex items-center justify-center" style={{width:size,height:size}}><svg width={size} height={size} viewBox="0 0 80 80" className="rotate-[-90deg]"><circle cx="40" cy="40" r={r} className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8" fill="transparent"/><circle cx="40" cy="40" r={r} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={c} strokeDashoffset={o||0} strokeLinecap="round" style={{transition:'stroke-dashoffset 0.5s'}}/></svg><div className="absolute flex flex-col items-center"><span className="text-xl font-bold text-slate-700 dark:text-slate-200">{value}</span>{label&&<span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500">{label}</span>}</div></div>);
-        };
+        const MiniGauge = ({ value }) => { const pct=Math.max(0,Math.min(100,Number(value)||0)); const ang=(pct/100)*180-90; return (<div className="flex flex-col items-center"><div className="w-[80px] h-[40px] overflow-hidden relative"><svg viewBox="0 0 80 40"><path d="M5 40 A35 35 0 0 1 75 40" fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8"/><path d="M5 40 A35 35 0 0 1 28 12" fill="none" stroke="#22c55e" strokeWidth="8"/><path d="M28 12 A35 35 0 0 1 52 12" fill="none" stroke="#eab308" strokeWidth="8"/><path d="M52 12 A35 35 0 0 1 75 40" fill="none" stroke="#ef4444" strokeWidth="8"/></svg><div className="absolute left-[39px] top-[5px] w-[2px] h-[35px] bg-slate-700 dark:bg-slate-300 origin-bottom transition-transform" style={{transform:`rotate(${ang}deg)`}}></div></div><div className="text-[10px] font-black dark:text-white -mt-1">{pct}</div><div className="text-[8px] text-slate-500 uppercase">Carga 7D</div></div>); };
 
-        const LoginScreen = ({ onLogin }) => {
-            const [email, setEmail] = useState('crossoccerperformancetraining@gmail.com');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const handleLogin = (e) => { e.preventDefault(); setError(''); auth.signInWithEmailAndPassword(email, password).then(() => onLogin()).catch(err => { console.error(err); setError('Acesso negado. Verifique a senha.'); }); };
-            return (
-                <div className="flex h-screen w-full items-center justify-center bg-slate-900 px-4 animate-fade-in"><div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-700"><div className="text-center mb-6"><h1 className="text-3xl font-black text-white italic tracking-wider"><span className="text-blue-500">PRO</span>COACH</h1><p className="text-slate-400 text-xs mt-1 uppercase font-bold">Cloud Sync Edition</p></div>{error && <div className="bg-red-500/20 border border-red-500 text-red-300 text-xs p-3 rounded-lg mb-4 text-center">{error}</div>}<form onSubmit={handleLogin} className="space-y-4"><div><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">E-mail</label><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg outline-none focus:border-blue-500 transition-colors" /></div><div><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Senha</label><input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg outline-none focus:border-blue-500 transition-colors" /></div><button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition-colors mt-4">ENTRAR NO SISTEMA</button></form></div></div>
-            );
-        };
-
-        const NotificationCenter = ({ alerts, onClose }) => {
-            if(!alerts) return null;
-            return (
-                <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 px-4 animate-fade-in" onClick={onClose}>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden relative border border-slate-200 dark:border-slate-700" onClick={e=>e.stopPropagation()}>
-                        <div className="p-3 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Icon name="bell"/> Central de Inteligência</h3><button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><Icon name="x"/></button></div>
-                        <div className="p-2 max-h-[60vh] overflow-y-auto space-y-2">{alerts.length === 0 ? (<div className="p-6 text-center text-slate-400 text-sm">Tudo tranquilo! Nenhum alerta crítico detectado.</div>) : alerts.map((a, i) => { const colors = { danger: "bg-red-50 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800", warning: "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800", info: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800" }; return (<div key={i} className={`p-3 rounded-lg border flex gap-3 items-start ${colors[a.type]}`}><div className="mt-0.5"><Icon name={a.icon} size={16}/></div><div className="text-xs font-medium leading-snug">{a.text}</div></div>) })}</div>
-                    </div>
-                </div>
-            )
-        };
-
-        const SettingsModal = ({ show, onClose, themeColor, setThemeColor, header, setHeader, logo, setLogo, onExport, onImport }) => {
-            if (!show) return null;
-            const fileInputRef=useRef(null); const importInputRef=useRef(null);
-            const handleLogoFile = async (e) => { const f=e.target.files[0]; if(f) { try{const c=await compressImage(f,200,0.6); setLogo(c); showToast("Atualizado!");}catch(e){} } };
-            const handleRestore = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=(e)=>{try{const d=JSON.parse(e.target.result); onImport(d); showToast("Dados Restaurados!"); setTimeout(() => window.location.reload(), 1000);}catch(e){showToast("Erro no arquivo")}}; r.readAsText(f); };
-            return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p><div className="col-span-2 mt-2"><button onClick={() => { const link = window.location.origin + window.location.pathname.replace('index.html', '') + 'atleta.html?id=' + firebase.auth().currentUser.uid; navigator.clipboard.writeText(link); showToast("Link do Portal Copiado!"); }} className="w-full flex justify-center gap-2 bg-slate-800 dark:bg-slate-700 text-white py-2 rounded font-bold text-xs hover:bg-slate-600"><Icon name="copy" size={14}/> COPIAR LINK DO PORTAL DO ATLETA</button></div></div></div></div></div>);
-        };
-
-        const AdminDashboard = ({ themeColor }) => {
-            const [clients, setClients] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchClients = async () => {
-                    try {
-                        const snapshot = await db.collection('coachData').get();
-                        const clientList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setClients(clientList);
-                        setLoading(false);
-                    } catch (err) { console.error("Erro ao buscar clientes:", err); showToast("Erro ao carregar clientes."); setLoading(false); }
-                };
-                fetchClients();
-            }, []);
-
-            const updatePlan = async (clientId, newPlan) => {
-                try {
-                    await db.collection('coachData').doc(clientId).update({ plan: newPlan });
-                    setClients(clients.map(c => c.id === clientId ? { ...c, plan: newPlan } : c));
-                    showToast("Plano atualizado!", "#22c55e");
-                } catch (err) { showToast("Erro ao atualizar plano.", "#ef4444"); }
+        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords, playerOfTheWeek, setPlayerOfTheWeek }) => {
+            const [viewProfile, setViewProfile] = useState(null); const [editPlayer, setEditPlayer] = useState(null); 
+            const today = getTodayStr(); const safePlayers = safeArray(players);
+            const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
+            const [localData, setLocalData] = useState({});
+            
+            const getLoad = (pIdx) => { let s=0; getDatesInRange(today,7).forEach(d=>s+=calcDailyLoad(trainingLog[d]?.[pIdx])); return Math.min(100, s/2000*100); };
+            const getDM = (pId) => safeArray(dmRecords).find(r=>r&&r.playerId==pId&&r.status==='Active');
+            
+            const Editor = () => {
+                if(editPlayer===null) return null; const p=safePlayers[editPlayer];
+                return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"><div className="bg-slate-800 p-4 rounded-xl w-full max-w-sm"><h3 className="font-bold text-white mb-4">Editar {p.name}</h3><BufferedInput className="w-full bg-slate-700 text-white p-2 rounded mb-2" value={localData.name} onSave={v=>setLocalData({...localData,name:v})}/><div className="flex gap-2"><button onClick={()=>{setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}} className="bg-red-900 text-red-300 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>);
             };
 
-            if (loading) return <div className="p-6 flex justify-center items-center h-full text-slate-500 font-bold animate-pulse">A carregar base de clientes...</div>;
-
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
-                    <div className="bg-slate-900 p-6 rounded-2xl shadow-xl mb-6 flex justify-between items-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: themeColor }}></div>
-                        <div><h2 className="text-2xl font-black text-white uppercase flex items-center gap-2">👑 Painel Mestre (Admin)</h2><p className="text-slate-400 text-xs font-bold mt-1 uppercase">Gestão de Licenças e Clientes SaaS</p></div>
-                        <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-center"><div className="text-[10px] text-slate-400 font-bold uppercase">Total Clientes</div><div className="text-xl font-black text-white">{clients.length}</div></div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-[10px] font-black">
-                                    <tr><th className="p-4">ID do Sistema</th><th className="p-4">Equipa</th><th className="p-4 text-center">Plano Atual</th><th className="p-4 text-center">Ação / Status</th></tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                                    {clients.map(client => {
-                                        const currentPlan = client.plan || 'starter';
-                                        return (
-                                            <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                                <td className="p-4 text-[10px] font-mono text-slate-400">{client.id}</td>
-                                                <td className="p-4 font-black dark:text-slate-200">{client.header?.teamName || 'Sem nome'}</td>
-                                                <td className="p-4 text-center">
-                                                    <select className="border-2 border-slate-200 dark:border-slate-600 rounded-lg p-2 text-xs font-bold dark:bg-slate-900 dark:text-white outline-none cursor-pointer" value={currentPlan} onChange={(e) => updatePlan(client.id, e.target.value)}>
-                                                        <option value="starter">Starter</option><option value="pro">PRO</option><option value="elite">Elite</option>
-                                                    </select>
-                                                </td>
-                                                <td className="p-4 text-center"><span className="px-3 py-1 rounded-full text-[9px] font-black uppercase border">{currentPlan}</span></td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                <div className="p-6 bg-slate-900 h-full overflow-y-auto custom-scroll">
+                    {editPlayer!==null && <Editor/>}
+                    <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-bold flex items-center gap-2 text-white" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2></div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {safePlayers.map((p, i) => { 
+                            if(!p) return null;
+                            const loadPct = getLoad(i); const dl = trainingLog[today]?.[i]?.wellness||{}; 
+                            const isRisk = (Number(dl.soreness)||0)>=5; const inj = p.injured; const trans = !inj && isPlayerInTransition(i, dmRecords);
+                            return (
+                                <div key={i} className={`bg-slate-800 rounded-xl p-4 flex flex-col items-center gap-3 relative group border-2 ${isRisk||inj?'border-red-500':trans?'border-orange-500':'border-slate-700'}`}>
+                                    <button onClick={()=>{setLocalData(p);setEditPlayer(i);}} className="absolute top-2 right-2 text-slate-500 hover:text-white"><Icon name="edit" size={16}/></button>
+                                    <button onClick={()=>{setPlayerOfTheWeek(playerOfTheWeek===i?null:i); showToast(playerOfTheWeek===i?"Removido":p.name+" é o Craque da Semana!");}} className={`absolute top-2 left-2 ${playerOfTheWeek===i?'text-yellow-500':'text-slate-600 hover:text-yellow-500'}`}><Icon name="trophy" size={16}/></button>
+                                    {isRisk && !inj && <div className="absolute top-2 left-10 bg-red-500 text-white text-[9px] px-1 rounded animate-pulse">RISCO</div>}
+                                    <div className="w-16 h-16 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:playerOfTheWeek===i?'#eab308':inj?'#ef4444':trans?'#f97316':themeColor}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user" className="m-4 text-slate-400"/>}</div>
+                                    <div className="text-center"><div className="font-bold text-white text-sm truncate">{p.name}</div><div className="text-[9px] text-slate-400 uppercase">{p.position}</div></div>
+                                    <div className="w-full flex justify-center border-t border-slate-700 pt-2"><MiniGauge value={loadPct}/></div>
+                                </div>
+                            ) 
+                        })}
+                        <button onClick={addP} className="bg-slate-800 rounded-xl border border-dashed border-slate-600 p-4 flex flex-col items-center justify-center text-slate-500 hover:text-white"><Icon name="plus" size={32}/><span>Add Atleta</span></button>
                     </div>
                 </div>
             );
         };
 
         const LibraryView = ({ themeColor, library, setLibrary }) => {
-            const [form, setForm] = useState({ title: '', gifUrl: '' });
-            const [editingId, setEditingId] = useState(null);
-            
-            const saveLibrary = () => {
-                if(!form.title) return showToast("Digite o nome do exercício!");
-                if (editingId) {
-                    setLibrary(library.map(l => l.id === editingId ? { ...l, ...form } : l));
-                    setEditingId(null);
-                    showToast("Atualizado na Biblioteca!");
-                } else {
-                    setLibrary([{ id: Date.now(), ...form }, ...library]);
-                    showToast("Salvo na Biblioteca!");
-                }
-                setForm({ title: '', gifUrl: '' });
-            };
-            
-            const handleEdit = (ex) => { setForm({ title: ex.title, gifUrl: ex.gifUrl }); setEditingId(ex.id); };
-            const removeLibrary = (id) => setLibrary(library.filter(ex => ex.id !== id));
-
+            const [form, setForm] = useState({ title: '', gifUrl: '' }); const [editId, setEditId] = useState(null);
+            const saveLib = () => { if(editId){setLibrary(library.map(l=>l.id===editId?{...l,...form}:l));setEditId(null);}else{setLibrary([{id:Date.now(),...form},...library]);} setForm({title:'',gifUrl:''}); showToast("Salvo!"); };
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="image"/> Biblioteca de Exercícios</h2>
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">Cadastre aqui seus GIFs uma única vez para usar rapidamente na prescrição diária.</p>
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                            <div className="md:col-span-2">
-                                <button onClick={saveLibrary} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700 gap-2"><Icon name={editingId ? "check" : "save"} size={16}/> {editingId ? "ATUALIZAR" : "SALVAR"}</button>
-                                {editingId && <button onClick={()=>{setEditingId(null); setForm({title:'', gifUrl:''})}} className="w-full mt-2 text-[10px] text-slate-500 underline">Cancelar Edição</button>}
-                            </div>
-                        </div>
+                <div className="p-6 bg-slate-900 h-full overflow-y-auto custom-scroll flex flex-col gap-6">
+                    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <h2 className="text-xl font-black text-white mb-4 flex gap-2"><Icon name="image"/> Biblioteca de Exercícios</h2>
+                        <div className="flex gap-2 items-end"><div className="flex-1"><label className="text-[10px] text-slate-400">NOME</label><input className="w-full p-2 bg-slate-700 text-white rounded text-xs outline-none" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div><div className="flex-1"><label className="text-[10px] text-slate-400">LINK (GIF)</label><input className="w-full p-2 bg-slate-700 text-white rounded text-xs outline-none" value={form.gifUrl} onChange={e=>setForm({...form,gifUrl:e.target.value})}/></div><button onClick={saveLib} className="bg-blue-600 text-white p-2 rounded text-xs font-bold">{editId?'ATUALIZAR':'SALVAR'}</button></div>
                     </div>
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {library.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Biblioteca vazia. Cadastre seu primeiro exercício!</div>}
-                        {library.map(ex => (
-                            <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
-                                <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={()=>handleEdit(ex)} className="bg-blue-500 text-white p-1.5 rounded-full shadow hover:bg-blue-600"><Icon name="edit" size={12}/></button>
-                                    <button onClick={()=>removeLibrary(ex.id)} className="bg-red-500 text-white p-1.5 rounded-full shadow hover:bg-red-600"><Icon name="trash" size={12}/></button>
-                                </div>
-                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}</div>
-                                <div className="p-3"><h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight">{ex.title}</h3></div>
-                            </div>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {library.map(ex=><div key={ex.id} className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 relative group"><div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100"><button onClick={()=>{setForm(ex);setEditId(ex.id);}} className="bg-blue-500 text-white p-1 rounded-full"><Icon name="edit" size={12}/></button><button onClick={()=>setLibrary(library.filter(x=>x.id!==ex.id))} className="bg-red-500 text-white p-1 rounded-full"><Icon name="trash" size={12}/></button></div><div className="w-full h-32 bg-slate-700">{ex.gifUrl?<img src={ex.gifUrl} className="w-full h-full object-cover"/>:null}</div><div className="p-2 text-xs font-bold text-white uppercase">{ex.title}</div></div>)}
                     </div>
                 </div>
             );
         };
 
-        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, activationExercises, setActivationExercises, library, postWorkout, setPostWorkout }) => {
-            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral', type: 'workout' });
-            const [editingId, setEditingId] = useState(null);
-            
-            const saveExercise = () => {
-                if(!form.title) return showToast("Digite o nome do exercício!");
-                if (editingId) {
-                    if (form.type === 'activation') {
-                        setActivationExercises(activationExercises.map(ex => ex.id === editingId ? {...ex, ...form} : ex));
-                        setExercises(exercises.filter(ex => ex.id !== editingId));
-                        if(!activationExercises.find(ex => ex.id === editingId)) setActivationExercises([{id: editingId, ...form}, ...activationExercises]);
-                    } else {
-                        setExercises(exercises.map(ex => ex.id === editingId ? {...ex, ...form} : ex));
-                        setActivationExercises(activationExercises.filter(ex => ex.id !== editingId));
-                        if(!exercises.find(ex => ex.id === editingId)) setExercises([{id: editingId, ...form}, ...exercises]);
-                    }
-                    setEditingId(null);
-                    showToast("Exercício Atualizado!");
-                } else {
-                    if (form.type === 'activation') setActivationExercises([...activationExercises, { id: Date.now(), ...form }]);
-                    else setExercises([...exercises, { id: Date.now(), ...form }]);
-                    showToast("Adicionado à ficha!");
-                }
-                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral', type: 'workout' });
+        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, act, setAct, library, postWorkout, setPostWorkout }) => {
+            const [f, setF] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral', type: 'workout' });
+            const [editId, setEditId] = useState(null);
+            const saveEx = () => { 
+                if(!f.title) return; 
+                const n={id:editId||Date.now(), ...f}; 
+                if(f.type==='activation') { setAct(editId ? act.map(x=>x.id===editId?n:x) : [...act,n]); if(editId) setExercises(exercises.filter(x=>x.id!==editId)); }
+                else { setExercises(editId ? exercises.map(x=>x.id===editId?n:x) : [...exercises,n]); if(editId) setAct(act.filter(x=>x.id!==editId)); }
+                setEditId(null); setF({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral', type: 'workout' }); showToast("Ficha Atualizada"); 
             };
-
-            const removeExercise = (id, type) => {
-                if(type === 'activation') setActivationExercises(activationExercises.filter(ex => ex.id !== id));
-                else setExercises(exercises.filter(ex => ex.id !== id));
-            };
-
-            const handleEdit = (ex, type) => { setForm({...ex, type}); setEditingId(ex.id); };
-
-            const moveExercise = (index, direction, list, setList) => {
-                if (direction === -1 && index === 0) return;
-                if (direction === 1 && index === list.length - 1) return;
-                const newList = [...list];
-                const temp = newList[index];
-                newList[index] = newList[index + direction];
-                newList[index + direction] = temp;
-                setList(newList);
-            };
-
-            const loadFromLibrary = (libId) => {
-                const selected = library.find(l => l.id === parseInt(libId));
-                if(selected) setForm({...form, title: selected.title, gifUrl: selected.gifUrl});
-            };
+            const move = (i, dir, list, setList) => { if(dir===-1&&i===0) return; if(dir===1&&i===list.length-1) return; const nl=[...list]; const t=nl[i]; nl[i]=nl[i+dir]; nl[i+dir]=t; setList(nl); };
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária</h2>
-                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Monte a ficha do dia. Carregue da biblioteca ou digite manualmente.</p>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 md:w-64">
-                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-1 flex items-center gap-1"><Icon name="medkit" size={12}/> Pós-Treino (Para todos)</label>
-                                <select className="w-full border dark:border-blue-700 rounded p-1.5 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
-                                    <option value="IA">🤖 Sugerido pela IA (Dinâmico)</option>
-                                    <option value="Bota Pneumática (15 min)">Bota Pneumática</option>
-                                    <option value="Banheira de Gelo (Crioterapia)">Banheira de Gelo (Crio)</option>
-                                    <option value="Piscina / Soltura Aquática">Piscina / Soltura</option>
-                                    <option value="Livre (Recuperação Passiva)">Livre (Passiva)</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-12 lg:col-span-3">
-                                <label className="text-[10px] font-bold text-purple-500 uppercase">📚 Puxar da Biblioteca</label>
-                                <select className="w-full border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-xs font-bold dark:text-white outline-none" onChange={e => loadFromLibrary(e.target.value)}>
-                                    <option value="">Selecione um GIF salvo...</option>
-                                    {library.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
-                                </select>
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" placeholder="Nome" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-3 lg:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Img</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" min="0" placeholder="3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Reps</label><input type="number" min="0" placeholder="12" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Int(s)</label><input type="number" min="0" placeholder="45" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
-                            <div className="md:col-span-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Tipo / Alvo</label>
-                                <select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.type === 'activation' ? 'activation' : form.target} onChange={e=>{
-                                    if(e.target.value === 'activation') setForm({...form, type: 'activation', target: 'Ativação'});
-                                    else setForm({...form, type: 'workout', target: e.target.value});
-                                }}>
-                                    <option value="activation">🔥 Ativação Pré-Treino</option>
-                                    <option value="Geral">💪 Treino Geral (Equipe)</option>
-                                    <option value="LCA">🛡️ Prevenção LCA</option>
-                                    <option value="Pubalgia">🛡️ Pubalgia</option>
-                                    <option value="Posterior">🛡️ Posterior</option>
-                                    <option value="Manutenção (Histórico Lesão)">🛡️ Manutenção (Histórico)</option>
-                                    <option value="Transição (Retorno DM)">🛡️ Transição (Retorno DM)</option>
-                                </select>
-                            </div>
-                            <div className="md:col-span-1"><button onClick={saveExercise} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700 gap-1"><Icon name={editingId ? "check" : "plus"} size={16}/> {editingId ? "SALVAR" : "ADD"}</button></div>
-                        </div>
-                        {editingId && <button onClick={()=>{setEditingId(null); setForm({title:'', gifUrl:'', sets:'', reps:'', rest:'', target:'Geral', type:'workout'})}} className="w-full mt-2 text-[10px] text-slate-500 underline text-right">Cancelar Edição</button>}
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-black text-orange-500 uppercase mb-3 flex items-center gap-2"><Icon name="fire"/> 1. Ativação Pré-Treino</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {activationExercises.length === 0 && <div className="col-span-full text-slate-400 font-bold text-sm">Nenhuma ativação cadastrada.</div>}
-                            {activationExercises.map((ex, index) => (
-                                <div key={ex.id} className="bg-orange-50 dark:bg-orange-900/10 rounded-xl overflow-hidden border border-orange-200 dark:border-orange-800 shadow-sm flex flex-col relative group">
-                                    <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={()=>moveExercise(index, -1, activationExercises, setActivationExercises)} className="bg-slate-800 text-white p-1 rounded hover:bg-slate-700"><Icon name="arrowUp" size={12}/></button>
-                                        <button onClick={()=>moveExercise(index, 1, activationExercises, setActivationExercises)} className="bg-slate-800 text-white p-1 rounded hover:bg-slate-700"><Icon name="arrowDown" size={12}/></button>
-                                        <button onClick={()=>handleEdit(ex, 'activation')} className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600"><Icon name="edit" size={12}/></button>
-                                        <button onClick={()=>removeExercise(ex.id, 'activation')} className="bg-red-500 text-white p-1 rounded hover:bg-red-600"><Icon name="trash" size={12}/></button>
-                                    </div>
-                                    <div className="absolute top-2 left-2 z-10"><span className="text-[9px] font-black uppercase px-2 py-1 rounded shadow bg-orange-500 text-white">ATIVAÇÃO #{index+1}</span></div>
-                                    <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">
-                                        {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="activity" size={30}/></div>}
-                                    </div>
-                                    <div className="p-3"><h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight mb-1">{ex.title}</h3><p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}s`}</p></div>
-                                </div>
-                            ))}
+                <div className="p-6 bg-slate-900 h-full overflow-y-auto custom-scroll space-y-6">
+                    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                        <div className="flex justify-between mb-4"><h2 className="text-xl font-black text-white flex gap-2"><Icon name="bolt"/> Prescrição Diária</h2><select className="bg-slate-900 text-white text-xs p-2 rounded outline-none border border-blue-800" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}><option value="IA">🤖 Sugerido pela IA</option><option value="Bota Pneumática (15 min)">Bota Pneumática</option><option value="Banheira de Gelo">Banheira de Gelo</option><option value="Piscina / Soltura Aquática">Piscina / Soltura</option></select></div>
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                            <div className="col-span-3"><label className="text-[10px] text-purple-400">Puxar da Biblioteca</label><select className="w-full p-2 bg-slate-900 text-white rounded text-xs outline-none" onChange={e=>{const s=library.find(l=>l.id==e.target.value); if(s)setF({...f,title:s.title,gifUrl:s.gifUrl});}}><option value="">Selecione...</option>{library.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></div>
+                            <div className="col-span-2"><label className="text-[10px] text-slate-400">Exercício</label><input className="w-full p-2 bg-slate-700 text-white rounded text-xs outline-none" value={f.title} onChange={e=>setF({...f,title:e.target.value})}/></div>
+                            <div className="col-span-2"><label className="text-[10px] text-slate-400">Link GIF</label><input className="w-full p-2 bg-slate-700 text-white rounded text-xs outline-none" value={f.gifUrl} onChange={e=>setF({...f,gifUrl:e.target.value})}/></div>
+                            <div className="col-span-1"><label className="text-[10px] text-slate-400">Séries</label><input type="number" className="w-full p-2 bg-slate-700 text-white rounded text-xs text-center outline-none" value={f.sets} onChange={e=>setF({...f,sets:e.target.value})}/></div>
+                            <div className="col-span-1"><label className="text-[10px] text-slate-400">Reps</label><input type="number" className="w-full p-2 bg-slate-700 text-white rounded text-xs text-center outline-none" value={f.reps} onChange={e=>setF({...f,reps:e.target.value})}/></div>
+                            <div className="col-span-2"><label className="text-[10px] text-slate-400">Alvo</label><select className="w-full p-2 bg-slate-700 text-white rounded text-xs outline-none" value={f.type==='activation'?'activation':f.target} onChange={e=>setF({...f,type:e.target.value==='activation'?'activation':'workout',target:e.target.value==='activation'?'Ativação':e.target.value})}><option value="activation">🔥 Ativação</option><option value="Geral">💪 Geral</option><option value="LCA">🛡️ LCA</option><option value="Pubalgia">🛡️ Pubalgia</option><option value="Posterior">🛡️ Posterior</option><option value="Transição (Retorno DM)">🛡️ Transição DM</option></select></div>
+                            <div className="col-span-1"><button onClick={saveEx} className="w-full bg-blue-600 text-white p-2 rounded flex justify-center">{editId?'OK':'ADD'}</button></div>
                         </div>
                     </div>
-
-                    <div className="border-t dark:border-slate-700 pt-6">
-                        <h3 className="text-lg font-black text-slate-700 dark:text-slate-200 uppercase mb-3 flex items-center gap-2"><Icon name="activity"/> 2. Treino Principal & Prevenção</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {exercises.length === 0 && <div className="col-span-full text-slate-400 font-bold text-sm">Nenhum exercício principal cadastrado.</div>}
-                            {exercises.map((ex, index) => (
-                                <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
-                                    <div className="absolute top-2 right-2 flex gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={()=>moveExercise(index, -1, exercises, setExercises)} className="bg-slate-800 text-white p-1 rounded hover:bg-slate-700"><Icon name="arrowUp" size={12}/></button>
-                                        <button onClick={()=>moveExercise(index, 1, exercises, setExercises)} className="bg-slate-800 text-white p-1 rounded hover:bg-slate-700"><Icon name="arrowDown" size={12}/></button>
-                                        <button onClick={()=>handleEdit(ex, 'workout')} className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600"><Icon name="edit" size={12}/></button>
-                                        <button onClick={()=>removeExercise(ex.id, 'workout')} className="bg-red-500 text-white p-1 rounded hover:bg-red-600"><Icon name="trash" size={12}/></button>
-                                    </div>
-                                    <div className="absolute top-2 left-2 z-10"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded shadow ${ex.target==='Geral'?'bg-blue-500 text-white':'bg-yellow-500 text-slate-900'}`}>#{index+1} - {ex.target}</span></div>
-                                    <div className="w-full h-40 bg-slate-200 dark:bg-slate-700 relative">
-                                        {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
-                                    </div>
-                                    <div className="p-4"><h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase leading-tight mb-1">{ex.title}</h3><p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}s`}</p></div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <h3 className="font-bold text-orange-500 uppercase flex gap-2"><Icon name="fire"/> 1. Ativação</h3>
+                    <div className="grid grid-cols-4 gap-4">{act.map((x,i)=><div key={x.id} className="bg-orange-900/20 border border-orange-800 rounded-xl p-3 relative group"><div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100"><button onClick={()=>move(i,-1,act,setAct)} className="text-white bg-slate-800 p-1"><Icon name="arrowUp" size={10}/></button><button onClick={()=>move(i,1,act,setAct)} className="text-white bg-slate-800 p-1"><Icon name="arrowDown" size={10}/></button><button onClick={()=>{setF({...x,type:'activation'});setEditId(x.id);}} className="text-white bg-blue-500 p-1"><Icon name="edit" size={10}/></button><button onClick={()=>setAct(act.filter(z=>z.id!==x.id))} className="text-white bg-red-500 p-1"><Icon name="trash" size={10}/></button></div><div className="text-white text-xs font-bold">{x.title}</div><div className="text-[10px] text-slate-400">{x.sets}x {x.reps}</div></div>)}</div>
+                    <h3 className="font-bold text-white uppercase flex gap-2 mt-4 border-t border-slate-700 pt-4"><Icon name="activity"/> 2. Principal & Prevenção</h3>
+                    <div className="grid grid-cols-4 gap-4">{exercises.map((x,i)=><div key={x.id} className="bg-slate-800 border border-slate-700 rounded-xl p-3 relative group"><div className="absolute top-1 right-1 flex opacity-0 group-hover:opacity-100"><button onClick={()=>move(i,-1,exercises,setExercises)} className="text-white bg-slate-700 p-1"><Icon name="arrowUp" size={10}/></button><button onClick={()=>move(i,1,exercises,setExercises)} className="text-white bg-slate-700 p-1"><Icon name="arrowDown" size={10}/></button><button onClick={()=>{setF({...x,type:'workout'});setEditId(x.id);}} className="text-white bg-blue-500 p-1"><Icon name="edit" size={10}/></button><button onClick={()=>setExercises(exercises.filter(z=>z.id!==x.id))} className="text-white bg-red-500 p-1"><Icon name="trash" size={10}/></button></div><div className="text-[8px] bg-blue-500 text-white px-1 w-max rounded mb-1">{x.target}</div><div className="text-white text-xs font-bold">{x.title}</div><div className="text-[10px] text-slate-400">{x.sets}x {x.reps}</div></div>)}</div>
                 </div>
             );
         };
 
-        const WellnessDashboard = ({ players, themeColor, trainingLog, setTrainingLog }) => {
-            const [mode, setMode] = useState('dashboard');
-            const [wellnessDate, setWellnessDate] = useState(getTodayStr()); 
-            const [selectedPlayer, setSelectedPlayer] = useState(0);
-            const [localScores, setLocalScores] = useState({sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
-            const [localPainZones, setLocalPainZones] = useState([]);
-            const bodyParts = ["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"];
-
-            useEffect(() => { 
-                if(mode === 'manual') {
-                    const logObj = trainingLog[wellnessDate]?.[selectedPlayer] || {}; 
-                    const validW = safeObj(logObj.wellness);
-                    setLocalScores(validW.sleep ? validW : {sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
-                    setLocalPainZones(Array.isArray(logObj.painZones) ? logObj.painZones : []); 
-                }
-            }, [wellnessDate, selectedPlayer, trainingLog, mode]);
-
-            const handleScoreChange = (metric, val) => { setLocalScores(prev => ({...prev, [metric]: parseInt(val)})); };
-            const togglePainZone = (zone) => { let n = [...localPainZones]; if(n.includes(zone)) n = n.filter(z=>z!==zone); else n.push(zone); setLocalPainZones(n); };
-            const confirmData = () => { 
-                const newLog = {...trainingLog}; 
-                if(!newLog[wellnessDate]) newLog[wellnessDate] = {}; 
-                if(!newLog[wellnessDate][selectedPlayer]) newLog[wellnessDate][selectedPlayer] = {}; 
-                newLog[wellnessDate][selectedPlayer].wellness = localScores; 
-                newLog[wellnessDate][selectedPlayer].painZones = localPainZones; 
-                setTrainingLog(newLog); showToast("Dados Salvos!"); setMode('dashboard');
-            };
-
-            if (mode === 'dashboard') {
-                const safePlayers = safeArray(players);
-                const filledCount = safePlayers.filter((p,i) => safeObj(trainingLog[wellnessDate]?.[i]?.wellness).sleep).length;
-                
-                const renderStatusBadge = (log, pain) => {
-                    if (!log || !log.sleep) return <span className="bg-slate-200 dark:bg-slate-700 text-slate-500 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="calendar" size={12}/> Pendente</span>;
-                    if (Number(log.soreness) >= 5 || pain.length > 0) return <span className="bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-md uppercase animate-pulse flex items-center gap-1 whitespace-nowrap"><Icon name="alert" size={12}/> RISCO DE LESÃO</span>;
-                    const total = getWSum(log);
-                    if (total >= 18) return <span className="bg-yellow-400 text-yellow-900 text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="alert" size={12}/> ATENÇÃO</span>;
-                    return <span className="bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm uppercase flex items-center gap-1 whitespace-nowrap"><Icon name="check" size={12}/> APTO</span>;
-                };
-
-                const MetricBadge = ({ label, val }) => {
-                    if(!val) return null; const numVal = Number(val); const isBad = numVal >= 5; const isWarn = numVal === 4;
-                    let colorClass = "bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500"; 
-                    if(isBad) colorClass = "bg-red-100 text-red-600 border border-red-300 dark:bg-red-900/50 dark:text-red-400 dark:border-red-800 font-bold";
-                    else if(isWarn) colorClass = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400";
-                    return (<div className="flex flex-col items-center justify-center min-w-[36px]"><span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">{label}</span><span className={`text-xs w-full text-center rounded px-1 py-0.5 ${colorClass}`}>{numVal}</span></div>);
-                };
-                
-                return (
-                    <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-900 h-full flex flex-col gap-4 animate-fade-in">
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                            <div><h2 className="text-lg font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="list"/> PRANCHETA MÉDICA (WELLNESS)</h2><p className="text-[10px] text-slate-500 uppercase mt-1 font-bold">{filledCount} de {safePlayers.length} atletas responderam hoje</p></div>
-                            <div className="flex gap-2"><input type="date" value={wellnessDate} onChange={e=>setWellnessDate(e.target.value)} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded px-2 py-1 outline-none border border-slate-200 dark:border-slate-600 cursor-pointer"/></div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1">
-                            <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-3 text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase shrink-0 hidden lg:grid">
-                                <div className="col-span-3">Atleta</div><div className="col-span-3 text-center">Status Fisiológico</div><div className="col-span-4 flex justify-center gap-4">Métricas Críticas</div><div className="col-span-2">Dores Focais</div>
-                            </div>
-                            <div className="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1">
-                                {safePlayers.map((p, i) => {
-                                    if(!p) return null;
-                                    const logObj = trainingLog[wellnessDate]?.[i] || {};
-                                    const log = safeObj(logObj.wellness);
-                                    const pain = Array.isArray(logObj.painZones) ? logObj.painZones : [];
-                                    const isFilled = !!log.sleep;
-                                    return (
-                                        <div key={i} className={`flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-0 items-start lg:items-center p-3 md:p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${!isFilled ? 'opacity-60' : ''}`}>
-                                            <div className="col-span-3 flex items-center gap-3 w-full"><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={20} className="m-2 text-slate-400"/>}</div><span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{p.name}</span></div>
-                                            <div className="col-span-3 flex justify-start lg:justify-center w-full">{isFilled ? renderStatusBadge(log, pain) : (<button onClick={()=>{setSelectedPlayer(i); setMode('manual');}} className="bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 text-[10px] font-black px-3 py-1.5 rounded shadow-sm uppercase flex items-center gap-2 transition-colors border border-dashed border-slate-300 dark:border-slate-500"><Icon name="calendar" size={12}/> Pendente - Preencher</button>)}</div>
-                                            <div className="col-span-4 flex justify-start lg:justify-center gap-2 md:gap-4 w-full overflow-x-auto pb-1 lg:pb-0">{isFilled ? (<><MetricBadge label="Sono" val={log.sleep} /><MetricBadge label="Estr." val={log.stress} /><MetricBadge label="Fadig." val={log.fatigue} /><MetricBadge label="Dor" val={log.soreness} /><MetricBadge label="Humor" val={log.mood} /></>) : <span className="text-[10px] text-slate-400 italic hidden lg:block">Aguardando envio do atleta...</span>}</div>
-                                            <div className="col-span-2 w-full flex justify-start lg:justify-end">{pain.length > 0 ? (<div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2 py-1 rounded text-[9px] font-bold text-red-600 dark:text-red-400 uppercase leading-tight w-full truncate"><Icon name="alert" size={10} className="inline mr-1 -mt-0.5"/> {pain.join(', ')}</div>) : isFilled ? <span className="text-[10px] text-slate-400">- Sem queixas -</span> : null}</div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto flex flex-col gap-6 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center gap-4"><h2 className="text-lg font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="edit"/> PREENCHIMENTO MANUAL</h2><button onClick={()=>setMode('dashboard')} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-300"><Icon name="x" size={14}/> VOLTAR AO PAINEL</button></div>
-                    <div className="flex flex-col md:flex-row gap-6 flex-1">
-                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 flex flex-col"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Selecionar Atleta</h3><div className="space-y-2 flex-1 overflow-y-auto pr-2">{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border group transition-colors ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div></div>
-                        <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 flex flex-col gap-4 overflow-y-auto relative">
-                            <div className="flex justify-between items-center border-b dark:border-slate-700 pb-4"><div><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{players[selectedPlayer]?.name}</h2></div></div>
-                            <div className="space-y-4">{[{id:'sleep',label:'Qualidade do Sono (1=Excelente | 7=Péssimo)'},{id:'stress',label:'Estresse (1=Relaxado | 7=Estressado)'},{id:'fatigue',label:'Fadiga (1=Muita Energia | 7=Exausto)'},{id:'soreness',label:'Dor Muscular (1=Sem Dor | 7=Muita Dor)'}, {id:'mood', label:'Humor (1=Animado | 7=Irritado)'}].map(m=>(<div key={m.id}><div className="flex justify-between text-sm font-bold text-slate-700 dark:text-slate-300 mb-2"><span>{m.label}</span><span className="text-white px-2 rounded font-bold" style={{backgroundColor: themeColor}}>{localScores[m.id]}</span></div><input type="range" min="1" max="7" step="1" value={localScores[m.id]} onChange={(e)=>handleScoreChange(m.id, e.target.value)} className="hooper-slider" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}}/></div>))}</div>
-                            <div className="border-t dark:border-slate-700 pt-4"><h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Local da Dor</h4><select className="w-full p-2 border dark:border-slate-600 rounded text-xs mb-2 bg-white dark:bg-slate-700 dark:text-white" onChange={(e)=>{if(e.target.value) togglePainZone(e.target.value); e.target.value='';}}><option value="">+ Adicionar Local</option>{bodyParts.map(p=><option key={p} value={p}>{p}</option>)}</select><div className="flex flex-wrap gap-1">{localPainZones.map(z=><span key={z} onClick={()=>togglePainZone(z)} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-red-200 dark:hover:bg-red-800">{z} ×</span>)}</div></div>
-                            <div className="flex gap-2 mt-4"><button onClick={confirmData} className="w-full py-4 bg-slate-800 text-white font-bold rounded-xl shadow-lg hover:opacity-90 flex items-center justify-center gap-2"><Icon name="save"/> SALVAR DADOS</button></div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-        
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
-            const [plan, setPlan] = useState(initialData?.plan || 'starter');
-            
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
             const [players, setPlayers] = useState(initialData?.players || []);
             const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
-            const [assessments, setAssessments] = useState(initialData?.assessments || {});
             const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
-            const [matchMinutes, setMatchMinutes] = useState(initialData?.matchMinutes || {});
-            const [header, setHeader] = useState(initialData?.header || {});
-            const [logo, setLogo] = useState(initialData?.logo || null);
-            const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
-            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
-            
             const [exercises, setExercises] = useState(initialData?.exercises || []); 
-            const [activationExercises, setActivationExercises] = useState(initialData?.activationExercises || []);
+            const [act, setAct] = useState(initialData?.activationExercises || []);
             const [library, setLibrary] = useState(initialData?.library || []);
-            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
+            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'IA');
             const [playerOfTheWeek, setPlayerOfTheWeek] = useState(initialData?.playerOfTheWeek !== undefined ? initialData.playerOfTheWeek : null);
-            const [nextGame, setNextGame] = useState(initialData?.nextGame || {opponent: '', date: ''});
-
-            const [showSettings, setShowSettings] = useState(false);
-            const [showNotifications, setShowNotifications] = useState(false);
-            const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
 
-            const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
-
             useEffect(() => {
-                if (darkMode) document.body.classList.add('dark');
-                else document.body.classList.remove('dark');
-            }, [darkMode]);
-
-            useEffect(() => {
-                const handleOnline = () => setIsOnline(true);
-                const handleOffline = () => setIsOnline(false);
-                window.addEventListener('online', handleOnline);
-                window.addEventListener('offline', handleOffline);
-                return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-            }, []);
-
-            useEffect(() => {
-                if(!user) return;
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, activationExercises, library, postWorkout, playerOfTheWeek, nextGame };
-                    db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
-                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
-                        .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
-                }, 2000); 
-                return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, activationExercises, library, postWorkout, playerOfTheWeek, nextGame, user]);
-
-            const activeAlerts = useMemo(() => {
-                const today = getTodayStr(); let alerts = [];
-                safeArray(players).forEach((p, i) => {
-                    if(!p) return;
-                    const logObj = trainingLog[today]?.[i] || {};
-                    const wellness = safeObj(logObj.wellness);
-                    if(Number(wellness.soreness) >= 5) alerts.push({ type: 'danger', icon: 'bolt', text: `${p.name} relatou dor aguda (Nível ${wellness.soreness}).`});
-                    if(Number(wellness.sleep) >= 5) alerts.push({ type: 'warning', icon: 'moon', text: `${p.name} relatou sono ruim.`});
-                    
-                    const todayLoad = calcDailyLoad(logObj);
-                    if(todayLoad > 0) {
-                        const historyDates = getDatesInRange(today, 7).slice(1); let chronicLoad = 0; 
-                        historyDates.forEach(d => chronicLoad += calcDailyLoad(trainingLog[d]?.[i])); 
-                        const avgLoad = (chronicLoad + todayLoad) / 7;
-                        if(avgLoad > 0 && todayLoad > avgLoad * 1.5) alerts.push({ type: 'danger', icon: 'activity', text: `${p.name} com sobrecarga aguda hoje.`});
-                    }
-                    
-                    const recentDates = getDatesInRange(today, 7); let minsLast7 = 0;
-                    recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
-                    if (minsLast7 >= 150 && !p.injured) alerts.push({ type: 'danger', icon: 'alert', text: `${p.name} acumulou ${minsLast7}min de jogo. Risco alto.`});
-                });
-                
-                const activeDm = safeArray(dmRecords).filter(r => r && r.status === 'Active');
-                activeDm.forEach(r => {
-                    const p = players[r.playerId];
-                    if(p) {
-                        const phaseLabel = RTP_PHASES.find(ph => ph.id === (parseInt(r.rtpPhase) || 1))?.label || `Fase ${r.rtpPhase}`;
-                        alerts.push({ type: 'warning', icon: 'medkit', text: `DM: ${p.name} está na ${phaseLabel}.` });
-                    }
-                });
-                
-                const dischargedToday = safeArray(dmRecords).filter(r => r && r.status === 'Recovered' && r.dateOut === getTodayStr());
-                dischargedToday.forEach(r => {
-                    const p = players[r.playerId];
-                    if(p) { alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` }); }
-                });
-                return alerts;
-            }, [players, trainingLog, dmRecords, matchMinutes]);
-
-            const downloadCurrentView = async () => {
-                const el = document.getElementById('print-area');
-                if(!el) return;
-                showToast("A gerar imagem do ecrã...");
-                const originalBg = el.style.backgroundColor;
-                el.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
-                try {
-                    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' });
-                    canvas.toBlob(blob => { smartShare(blob, `procoach_view.png`, 'ProCoach Export'); });
-                } catch(e) { showToast("Erro ao exportar ecrã"); }
-                el.style.backgroundColor = originalBg;
-            };
-
-            const handleRefresh = () => { showToast("A atualizar dados..."); setTimeout(() => window.location.reload(), 500); };
+                    db.collection('coachData').doc(user.uid).set({ themeColor, players, trainingLog, dmRecords, exercises, activationExercises: act, library, postWorkout, playerOfTheWeek }, { merge: true }).then(() => { setSyncStatus('☁️ Salvo'); setTimeout(() => setSyncStatus(''), 2000); });
+                }, 2000); return () => clearTimeout(timeoutId);
+            }, [themeColor, players, trainingLog, dmRecords, exercises, act, library, postWorkout, playerOfTheWeek, user]);
 
             return (
-                <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
-                    <SettingsModal show={showSettings} onClose={()=>setShowSettings(false)} themeColor={themeColor} setThemeColor={setThemeColor} header={header} setHeader={setHeader} logo={logo} setLogo={setLogo} onExport={()=>{}} onImport={()=>{}} />
-                    {showNotifications && <NotificationCenter alerts={activeAlerts} onClose={()=>setShowNotifications(false)} />}
-                    <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print transition-colors duration-300">
-                        <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isOnline ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}><div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>{isOnline ? 'ONLINE' : 'OFFLINE'}</div>
-                            {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
-                        </div>
-                        <div className="flex gap-1 items-center">
-                            <button onClick={handleRefresh} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Atualizar Dados"><Icon name="refresh" size={20}/></button>
-                            <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
-                            <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
-                            <button onClick={downloadCurrentView} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Baixar Ecrã"><Icon name="download"/></button>
-                            <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700" style={{color: themeColor}} title="Definições"><Icon name="settings" size={24}/></button>
-                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500" title="Sair"><Icon name="logout" size={20}/></button>
-                        </div>
+                <div className="flex flex-col h-full bg-slate-900">
+                    <div className="bg-slate-800 p-2 flex justify-between items-center shadow-md z-30 shrink-0 border-b border-slate-700">
+                        <div className="font-black text-xl italic text-white flex items-center gap-2"><div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>{syncStatus && <span className="text-[9px] text-slate-400">{syncStatus}</span>}</div>
+                        <div className="flex gap-2 text-slate-400"><button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500">VISÃO ATLETA (PORTAL)</button></div>
                     </div>
-                    
-                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                        <button onClick={()=>setTab('squad')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='squad'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>ELENCO</button>
-                        <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
-                        <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
-                        <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
-                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
-                        <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
-                        <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
-                        <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
-
-                        <button onClick={()=>setTab('library')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='library'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📚 BIBLIOTECA</button>
-
-                        {isAdmin && (
-                            <button onClick={() => setTab('admin')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-auto border ${tab==='admin'?'bg-slate-800 text-yellow-400 border-yellow-500 shadow-lg':'text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-white'}`}>👑 ADMIN</button>
-                        )}
+                    <div className="flex bg-slate-900 p-1 gap-1 overflow-x-auto shadow-inner w-full custom-scroll shrink-0 border-b border-slate-800">
+                        {['squad','workout','library'].map(t=><button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 rounded text-xs font-bold ${tab===t?'bg-slate-700 text-white':'text-slate-500'}`}>{t.toUpperCase()}</button>)}
                     </div>
-                    
-                    <div className="flex-1 overflow-hidden relative" id="print-area">
+                    <div className="flex-1 overflow-hidden relative">
                         {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} playerOfTheWeek={playerOfTheWeek} setPlayerOfTheWeek={setPlayerOfTheWeek} />}
-                        {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
-                        {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} nextGame={nextGame} setNextGame={setNextGame} />}
-                        {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
-                        {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
-
                         {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} />}
-                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} activationExercises={activationExercises} setActivationExercises={setActivationExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
-
-                        {tab === 'admin' && isAdmin && (
-                            <AdminDashboard themeColor={themeColor} />
-                        )}
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} act={act} setAct={setAct} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
                     </div>
                 </div>
             );
         };
 
-        const CloudWrapper = ({ user }) => {
-            const [initialData, setInitialData] = useState(null);
-            const [loadingCloud, setLoadingCloud] = useState(true);
-
-            useEffect(() => {
-                const unsubscribe = db.collection('coachData').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) { setInitialData(sanitizeCloudData(doc.data())); } 
-                    else { setInitialData(sanitizeCloudData({})); }
-                    setLoadingCloud(false);
-                }, err => {
-                    console.error("Cloud fetch error:", err);
-                    setInitialData(sanitizeCloudData({}));
-                    setLoadingCloud(false);
-                });
-                return () => unsubscribe();
-            }, [user]);
-
-            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold"><Icon name="cloud" size={40} className="animate-bounce text-blue-500 mb-4"/>A sincronizar Módulo Blindado...</div>;
-            return <ErrorBoundary><MainApp user={user} initialData={initialData} /></ErrorBoundary>;
-        };
-
         const RootApp = () => {
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const unsubscribe = auth.onAuthStateChanged(u => {
-                    setUser(u);
-                    setLoading(false);
-                    const loader = document.getElementById('loading-state');
-                    if(loader) loader.style.display = 'none';
-                });
-                return () => unsubscribe();
-            }, []);
-
-            if (loading) return null;
-            if (!user) return <LoginScreen onLogin={() => {}} />;
-            return <CloudWrapper user={user} />;
+            const [user, setUser] = useState(null); const [loading, setLoading] = useState(true); const [data, setData] = useState({});
+            useEffect(() => { const unsub = auth.onAuthStateChanged(u => { setUser(u); if(!u){setLoading(false); document.getElementById('loading-state').style.display='none';} else { db.collection('coachData').doc(u.uid).get().then(doc=>{if(doc.exists) setData(doc.data()); setLoading(false); document.getElementById('loading-state').style.display='none';}) } }); return ()=>unsub(); }, []);
+            if (loading) return null; if (!user) return <LoginScreen onLogin={()=>{}} />; return <ErrorBoundary><MainApp user={user} initialData={data}/></ErrorBoundary>;
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<RootApp />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<RootApp />);
     </script>
 </body>
 </html>
