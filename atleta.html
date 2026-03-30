@@ -90,28 +90,47 @@
             const [submitting, setSubmitting] = useState(false);
             const [expandedGif, setExpandedGif] = useState(null);
 
-            useEffect(() => {
-                db.collection('coachData').limit(1).get().then(snap => {
-                    if(!snap.empty) {
-                        const doc = snap.docs[0];
-                        const data = doc.data();
-                        setCoachDocId(doc.id);
-                        setPlayers(data.players || []);
-                        setTrainingLog(data.trainingLog || {});
-                        setExercises(data.exercises || []);
-                        setDmRecords(data.dmRecords || []);
-                        if(data.themeColor) setThemeColor(data.themeColor);
-                    } else {
-                        alert("Erro: Banco de dados da equipe não encontrado.");
-                    }
-                    setLoading(false);
-                }).catch(e => {
-                    console.error(e);
-                    alert("Erro ao conectar com a nuvem.");
-                    setLoading(false);
-                });
-            }, []);
+            // NOVO BLOCO: LÊ O ID PELA URL
+useEffect(() => {
+    // 1. Pega o ID do treinador na URL do navegador
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlId = urlParams.get('id');
 
+    if (urlId) {
+        // 2. Se tem o ID, busca exatamente os SEUS dados
+        db.collection('coachData').doc(urlId).get().then(doc => {
+            if(doc.exists) {
+                const data = doc.data();
+                setCoachDocId(doc.id);
+                setPlayers(data.players || []);
+                setTrainingLog(data.trainingLog || {});
+                setExercises(data.exercises || []);
+                setDmRecords(data.dmRecords || []);
+                if(data.themeColor) setThemeColor(data.themeColor);
+            } else {
+                alert("Treinador não encontrado com este ID.");
+            }
+            setLoading(false);
+        }).catch(e => {
+            console.error(e); alert("Erro de conexão."); setLoading(false);
+        });
+    } else {
+        // 3. Se acessar sem ID, tenta puxar o primeiro (fallback)
+        db.collection('coachData').limit(1).get().then(snap => {
+            if(!snap.empty) {
+                const doc = snap.docs[0];
+                const data = doc.data();
+                setCoachDocId(doc.id);
+                setPlayers(data.players || []);
+                setTrainingLog(data.trainingLog || {});
+                setExercises(data.exercises || []);
+                setDmRecords(data.dmRecords || []);
+                if(data.themeColor) setThemeColor(data.themeColor);
+            }
+            setLoading(false);
+        }).catch(e => { console.error(e); setLoading(false); });
+    }
+}, []);
             const selectPlayer = (idx) => {
                 setSelectedIdx(idx);
                 const today = getTodayStr();
