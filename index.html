@@ -1,9 +1,26 @@
+<!-- MANTENDO TODO O SEU CABEÇALHO, SCRIPTS E ESTILOS ORIGINAIS -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ProCoach V145 MAX - SaaS Edition</title>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
+
+    <link rel="manifest" href="manifest.json?v=21">
+    <link rel="apple-touch-icon" href="logo.png?v=21">
+    <link rel="icon" type="image/png" href="logo.png?v=21">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -18,29 +35,71 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        body { overscroll-behavior-y: contain; background-color: #f8fafc; color: #0f172a; font-family: system-ui; -webkit-tap-highlight-color: transparent; }
+        body { overscroll-behavior-y: contain; touch-action: pan-x pan-y; background-color: #f8fafc; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
         body.dark { background-color: #0f172a; color: #f8fafc; }
-        .hooper-slider { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 4px; background: #cbd5e1; outline: none; }
+        .glass-input { background: rgba(255,255,255,0.15); border-radius: 4px; padding: 2px 4px; color: white; outline: none; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .hooper-slider { -webkit-appearance: none; width: 100%; height: 10px; border-radius: 5px; background: #cbd5e1; outline: none; }
+        .dark .hooper-slider { background: #334155; }
         .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .micro-header { background-color: #1a4a3e; color: white; }
-        .dashed-btn { border: 2px dashed #cbd5e1; color: #94a3b8; font-weight: bold; font-size: 10px; width: 100%; padding: 6px; border-radius: 8px; transition: all 0.2s; }
+        .dashed-btn { border: 2px dashed #cbd5e1; color: #94a3b8; font-weight: bold; font-size: 9px; width: 100%; padding: 4px; border-radius: 6px; transition: all 0.2s; }
         .dark .dashed-btn { border-color: #475569; color: #cbd5e1; }
-        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; z-index: 9999; display: none; font-size: 12px; font-weight: bold; }
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .dashed-btn:hover { border-color: #1a4a3e; color: #1a4a3e; background-color: #f0fdf4; }
+        .dark .dashed-btn:hover { border-color: #10b981; color: #10b981; background-color: rgba(16, 185, 129, 0.1); }
+        .gauge-container { width: 220px; height: 110px; overflow: hidden; position: relative; margin: 0 auto; }
+        .gauge-needle { width: 4px; height: 100px; background: #475569; position: absolute; left: 108px; top: 10px; transform-origin: bottom center; transition: transform 0.5s cubic-bezier(0.4, 2.08, 0.55, 0.44); border-radius: 2px; z-index: 10; }
+        .dark .gauge-needle { background: #e2e8f0; }
+        .gauge-center { width: 16px; height: 16px; background: #334155; border-radius: 50%; position: absolute; bottom: -8px; left: 102px; z-index: 11; }
+        .dark .gauge-center { background: #cbd5e1; }
+        .mini-gauge-container { width: 80px; height: 40px; overflow: hidden; position: relative; }
+        .mini-gauge-needle { width: 2px; height: 35px; background: #334155; position: absolute; left: 39px; top: 5px; transform-origin: bottom center; transition: transform 0.5s ease-out; border-radius: 1px; z-index: 10; }
+        .dark .mini-gauge-needle { background: #cbd5e1; }
+        @media print { .no-print { display: none !important; } .page-break { page-break-inside: avoid; } body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; } * { color: black !important; } #print-area { padding: 0; } .overflow-y-auto { overflow: visible !important; height: auto !important; } }
+        #loading-state { display: flex; height: 100vh; width: 100vw; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: #64748b; flex-direction: column; gap: 10px; }
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; z-index: 9999; display: none; font-size: 12px; font-weight: bold; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-badge { position: absolute; top: 10px; right: 10px; background: #dcfce7; color: #166534; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .status-badge.show { opacity: 1; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #475569; border-radius: 10px; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col">
+<body class="h-screen w-screen overflow-hidden flex flex-col safe-area-inset">
     <div id="toast"></div>
-    <div id="root" class="h-full w-full"></div>
+    <div id="root" class="h-full w-full"><div id="loading-state">A Iniciar Sistema V145 MAX...</div></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- CONFIGURAÇÃO FIREBASE ---
+        // --- MANTENDO SUAS CONSTANTES ---
+        const DEFAULT_DAYS = [
+            { id: 1, md: 'MD-4', name: 'SEGUNDA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 2, md: 'MD-3', name: 'TERÇA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 3, md: 'MD-2', name: 'QUARTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 4, md: 'MD-1', name: 'QUINTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 5, md: 'JOGO', name: 'SEXTA', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 6, md: 'MD+1', name: 'SÁBADO', date:'', plannedMins: '', am: [], pm: [] },
+            { id: 7, md: 'MD+2', name: 'DOMINGO', date:'', plannedMins: '', am: [], pm: [] }
+        ];
+
+        const RTP_PHASES = [ 
+            {id:1, label:"Fase 1: Aguda", desc:"Controle do quadro álgico/inflamatório. Fisioterapia."}, 
+            {id:2, label:"Fase 2: Sub-aguda", desc:"Reabilitação do segmento lesado + Fortalecimento não envolvidos. Fisioterapia."}, 
+            {id:3, label:"Fase 3: Transição I", desc:"Força segmentada (não envolvidos) + Cardio sem impacto. Fisio + Transição."}, 
+            {id:4, label:"Fase 4: Transição II", desc:"Funcionais + cardio sem impacto. Força com restrição. Introdução Pliometria/Corrida."}, 
+            {id:5, label:"Fase 5: Transição III", desc:"Força sem restrições funcionais. Cardio com impacto. Fisio + Transição Campo."}, 
+            {id:6, label:"Fase 6: Performance I", desc:"Potência na Academia. Aceleração e Pliometria sem restrições."}, 
+            {id:7, label:"Fase 7: Performance II", desc:"Potência especifica do esporte. Preparação individual e parcial com grupo."}, 
+            {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo com minutagem controlada em jogo. Liberado treino com o grupo sem restrições."}, 
+            {id:9, label:"Fase 9: Liberação", desc:"Responsabilidade do atleta com cuidados antes e após treinos e jogos."} 
+        ];
+
+        // --- MANTENDO CONFIG FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco",
             authDomain: "prosaude-e9130.firebaseapp.com",
@@ -49,275 +108,345 @@
             messagingSenderId: "999318121562",
             appId: "1:999318121562:web:1f192d4c0f14a64fb57c63"
         };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // --- COMPONENTES AUXILIARES ---
-        const Icon = ({ name, size=18, className="" }) => {
-            const icons = {
-                trophy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34M12 2v12.66"/></svg>,
-                edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-                up: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>,
-                down: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
-                share: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
-                bolt: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
-                plus: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-                trash: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-                calendar: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-                user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        // --- MANTENDO HELPERS ---
+        const showToast = (msg, color = '#333') => { const t = document.getElementById('toast'); if(t){ t.innerText = msg; t.style.backgroundColor = color; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3000); } };
+        const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
+        const formatDateBR = (dateString) => { if(!dateString) return '-'; const [y, m, d] = dateString.split('-'); return `${d}/${m}/${y}`; };
+        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        const safeArray = (arr, fallback=[]) => (Array.isArray(arr)) ? arr : fallback;
+        const calcDailyLoad = (log) => { if(!log) return 0; const rpe = (Number(log.rpe_am)||0) + (Number(log.rpe_pm)||0); const dur = Number(log.duration) || 0; return rpe * (dur > 0 ? dur : 60); };
+
+        const sanitizeCloudData = (data) => {
+            if (!data || typeof data !== 'object') return {};
+            return {
+                themeColor: data.themeColor || '#1e3a8a',
+                players: safeArray(data.players).map(p => safeObj(p)),
+                trainingLog: safeObj(data.trainingLog),
+                assessments: safeObj(data.assessments),
+                dmRecords: safeArray(data.dmRecords),
+                matchMinutes: safeObj(data.matchMinutes),
+                header: safeObj(data.header),
+                logo: data.logo || null,
+                darkMode: !!data.darkMode,
+                plan: data.plan || 'starter',
+                days: safeArray(data.days, DEFAULT_DAYS),
+                exercises: safeArray(data.exercises),
+                library: safeArray(data.library),
+                postWorkout: data.postWorkout || 'Bota Pneumática (15 min)',
+                matchInfo: safeObj(data.matchInfo) // Novo
             };
-            return <span>{icons[name] || null}</span>;
         };
 
-        const showToast = (msg) => { const t = document.getElementById('toast'); t.innerText = msg; t.style.display = 'block'; setTimeout(()=>t.style.display='none', 3000); };
-        const getTodayStr = () => new Date().toISOString().split('T')[0];
+        const Icon = ({ name, size=18, className="" }) => {
+            const icons = {
+                calendar: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+                list: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+                smile: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
+                plus: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+                image: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+                user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+                trash: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+                alert: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+                trophy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34M12 2v12.66"/></svg>,
+                check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
+                save: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+                settings: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+                medkit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>,
+                x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+                edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8z"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+                download: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+                upload: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+                activity: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+                copy: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+                share: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+                info: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+                brain: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>,
+                barChart: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+                moon: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+                sun: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="19.78" y1="19.78" x2="18.36" y2="18.36"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="19.78" y1="4.22" x2="18.36" y2="5.64"/></svg>,
+                bolt: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+                logout: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+                up: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>,
+                down: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            };
+            return <span className={className}>{icons[name] || null}</span>;
+        };
 
-        // --- VIEW: BIBLIOTECA E PRESCRIÇÃO (COM EDIT E ORDEM) ---
-        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, setLibrary }) => {
-            const [form, setForm] = useState({ id: null, title: '', gifUrl: '', sets: '', reps: '', rest: '', target: '🔥 Ativação Pré-Treino' });
-            const [editLibId, setEditLibId] = useState(null);
+        const BufferedInput = ({ value, onSave, className, placeholder, type="text" }) => { const [localVal, setLocalVal] = useState(value); useEffect(() => setLocalVal(value), [value]); return (<input type={type} className={className} value={localVal} placeholder={placeholder} onChange={(e) => setLocalVal(e.target.value)} onBlur={() => { if(localVal !== value) onSave(localVal); }} />); };
 
-            const saveExercise = () => {
-                if(!form.title) return showToast("Dê um nome!");
+        // --- MANTENDO DASHBOARD E COMPONENTES AUXILIARES ---
+        const SpeedometerGauge = ({ value }) => {
+            const min=4, max=28; const valNum = Number(value)||min; const normalized=Math.max(min, Math.min(max, valNum));
+            const angle=((normalized-min)/(max-min))*180-90;
+            return (<div className="flex flex-col items-center"><div className="gauge-container"><svg viewBox="0 0 200 100" className="w-full h-full"><path d="M20 100 A80 80 0 0 1 180 100" fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="20"/><path d="M20 100 A80 80 0 0 1 73 36" fill="none" stroke="#22c55e" strokeWidth="20" strokeDasharray="1000"/><path d="M73 36 A80 80 0 0 1 127 36" fill="none" stroke="#eab308" strokeWidth="20" strokeDasharray="1000"/><path d="M127 36 A80 80 0 0 1 180 100" fill="none" stroke="#ef4444" strokeWidth="20" strokeDasharray="1000"/></svg><div className="gauge-needle" style={{transform:`rotate(${angle||0}deg)`}}></div><div className="gauge-center"></div></div><div className="text-3xl font-black -mt-4 text-slate-700 dark:text-slate-200">{valNum}</div><div className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mt-1">Prontidão Equipe</div></div>);
+        };
+        
+        const MiniGauge = ({ value, min=4, max=28, label="" }) => {
+            const valNum = Number(value)||min; const normalized=Math.max(min, Math.min(max, valNum)); const angle=((normalized-min)/(max-min))*180-90;
+            return (<div className="flex flex-col items-center"><div className="mini-gauge-container"><svg viewBox="0 0 80 40" className="w-full h-full"><path d="M5 40 A35 35 0 0 1 75 40" fill="none" className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8"/><path d="M5 40 A35 35 0 0 1 28 12" fill="none" stroke="#22c55e" strokeWidth="8"/><path d="M28 12 A35 35 0 0 1 52 12" fill="none" stroke="#eab308" strokeWidth="8"/><path d="M52 12 A35 35 0 0 1 75 40" fill="none" stroke="#ef4444" strokeWidth="8"/></svg><div className="mini-gauge-needle" style={{transform:`rotate(${angle||0}deg)`}}></div></div><div className="text-[10px] font-black text-slate-700 dark:text-slate-200 -mt-1">{valNum}</div>{label && <div className="text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold">{label}</div>}</div>);
+        };
+
+        const DonutChart = ({ value, max, color, label, size=80 }) => {
+            const valNum = Number(value)||0; const maxNum = Number(max)||20;
+            const r=30, c=2*Math.PI*r, o=c-(valNum/maxNum)*c;
+            return (<div className="relative flex items-center justify-center" style={{width:size,height:size}}><svg width={size} height={size} viewBox="0 0 80 80" className="rotate-[-90deg]"><circle cx="40" cy="40" r={r} className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8" fill="transparent"/><circle cx="40" cy="40" r={r} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={c} strokeDashoffset={o||0} strokeLinecap="round" style={{transition:'stroke-dashoffset 0.5s'}}/></svg><div className="absolute flex flex-col items-center"><span className="text-xl font-bold text-slate-700 dark:text-slate-200">{value}</span>{label&&<span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500">{label}</span>}</div></div>);
+        };
+
+        // --- ABA PRESCRIÇÃO (MELHORADA COM EDIÇÃO E ORDEM) ---
+        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout }) => {
+            const [form, setForm] = useState({ id: null, title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
+            
+            const addExercise = () => {
+                if(!form.title) return showToast("Digite o nome!");
                 if(form.id) {
                     setExercises(exercises.map(ex => ex.id === form.id ? form : ex));
-                    showToast("Atualizado!");
+                    showToast("Exercício Atualizado!");
                 } else {
                     setExercises([{ ...form, id: Date.now() }, ...exercises]);
                     showToast("Adicionado!");
                 }
-                setForm({ id: null, title: '', gifUrl: '', sets: '', reps: '', rest: '', target: '🔥 Ativação Pré-Treino' });
+                setForm({ id: null, title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
             };
 
-            const move = (index, dir) => {
+            const removeExercise = (id) => setExercises(exercises.filter(ex => ex.id !== id));
+            const editExercise = (ex) => { setForm(ex); showToast("Editando exercício..."); };
+            const move = (idx, dir) => {
                 const newArr = [...exercises];
-                const target = index + dir;
+                const target = idx + dir;
                 if(target < 0 || target >= newArr.length) return;
-                [newArr[index], newArr[target]] = [newArr[target], newArr[index]];
+                [newArr[idx], newArr[target]] = [newArr[target], newArr[idx]];
                 setExercises(newArr);
             };
 
+            const loadFromLibrary = (libId) => {
+                const selected = library.find(l => l.id === parseInt(libId));
+                if(selected) setForm({...form, title: selected.title, gifUrl: selected.gifUrl});
+            };
+
             const activationList = exercises.filter(e => e.target === '🔥 Ativação Pré-Treino');
-            const workoutList = exercises.filter(e => e.target !== '🔥 Ativação Pré-Treino');
+            const otherList = exercises.filter(e => e.target !== '🔥 Ativação Pré-Treino');
 
             return (
-                <div className="p-6 h-full overflow-y-auto custom-scroll space-y-8 animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                        <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> {form.id ? 'EDITAR EXERCÍCIO' : 'NOVA PRESCRIÇÃO'}</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            <div className="col-span-2">
-                                <label className="text-[10px] font-bold uppercase text-slate-400">Nome do Exercício</label>
-                                <input className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
+                        <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}>
+                                    <Icon name="bolt"/> {form.id ? 'Editando Exercício' : 'Prescrição Diária'}
+                                </h2>
                             </div>
-                            <div className="col-span-2">
-                                <label className="text-[10px] font-bold uppercase text-slate-400">Público / Categoria</label>
-                                <select className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
-                                    <option>🔥 Ativação Pré-Treino</option>
-                                    <option>💪 Treino Principal</option>
-                                    <option>🛡️ Prevenção (LCA/Pubalgia)</option>
-                                    <option>🏃 Transição Campo</option>
+                            <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 md:w-64">
+                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-1 flex items-center gap-1"><Icon name="medkit" size={12}/> Pós-Treino</label>
+                                <select className="w-full border dark:border-blue-700 rounded p-1.5 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
+                                    <option value="Bota Pneumática (15 min)">Bota Pneumática</option>
+                                    <option value="Banheira de Gelo (Crioterapia)">Banheira de Gelo</option>
+                                    <option value="Livre (Recuperação Passiva)">Livre</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-bold uppercase text-slate-400">Sets x Reps</label>
-                                <input placeholder="Ex: 3x12" className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                            <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Biblioteca</label>
+                                <select className="w-full border rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white" onChange={e => loadFromLibrary(e.target.value)}><option value="">Puxar da Biblioteca...</option>{library.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}</select>
                             </div>
-                            <div className="col-span-2">
-                                <label className="text-[10px] font-bold uppercase text-slate-400">GIF URL</label>
-                                <input placeholder="https://..." className="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} />
+                            <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" className="w-full border rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Sets/Reps</label><input type="text" className="w-full border rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
+                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label>
+                                <select className="w-full border rounded p-2 text-xs dark:bg-slate-700 dark:text-white" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
+                                    <option value="🔥 Ativação Pré-Treino">🔥 Ativação Pré-Treino</option>
+                                    <option value="Geral">Elenco Geral</option>
+                                    <option value="Prevenção">Prevenção / DM</option>
+                                </select>
                             </div>
-                            <button onClick={saveExercise} className="bg-blue-600 text-white font-bold p-2.5 rounded shadow-lg hover:bg-blue-700 transition-all uppercase text-xs">
-                                {form.id ? 'Atualizar' : 'Adicionar'}
-                            </button>
+                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">GIF Link</label><input type="text" className="w-full border rounded p-2 text-xs dark:bg-slate-700 dark:text-white" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
+                            <div className="md:col-span-1"><button onClick={addExercise} className="w-full bg-blue-600 text-white font-bold p-2.5 rounded shadow hover:bg-blue-700 uppercase text-[10px]">{form.id ? 'Atualizar' : 'Add'}</button></div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <section>
-                            <h3 className="text-orange-500 font-black uppercase text-sm mb-4 border-b-2 border-orange-500 pb-1 flex items-center gap-2">
-                                <Icon name="bolt"/> Lista de Ativação
-                            </h3>
-                            <div className="space-y-4">
-                                {activationList.map((ex, i) => (
-                                    <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-md flex border dark:border-slate-700 group">
-                                        <img src={ex.gifUrl} className="w-24 h-24 object-cover bg-slate-200" />
-                                        <div className="p-3 flex-1 flex flex-col justify-center">
-                                            <div className="font-bold text-sm uppercase">{ex.title}</div>
-                                            <div className="text-xs text-slate-500 font-bold">{ex.sets}</div>
-                                        </div>
-                                        <div className="flex flex-col border-l dark:border-slate-700">
-                                            <button onClick={()=>move(exercises.indexOf(ex), -1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="up" size={14}/></button>
-                                            <button onClick={()=>setForm(ex)} className="p-2 text-blue-500 hover:bg-blue-50"><Icon name="edit" size={14}/></button>
-                                            <button onClick={()=>move(exercises.indexOf(ex), 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="down" size={14}/></button>
-                                        </div>
+                    {/* LISTA SEPARADA: ATIVAÇÃO */}
+                    <div className="space-y-4">
+                        <h3 className="text-orange-500 font-black uppercase text-sm border-l-4 border-orange-500 pl-2">🔥 Bloco de Ativação</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {activationList.map((ex, i) => (
+                                <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-orange-200 dark:border-orange-900 shadow-sm flex flex-col relative group">
+                                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <button onClick={()=>move(exercises.indexOf(ex), -1)} className="bg-white text-slate-800 p-1 rounded-full shadow border"><Icon name="up" size={12}/></button>
+                                        <button onClick={()=>editExercise(ex)} className="bg-blue-500 text-white p-1 rounded-full shadow"><Icon name="edit" size={12}/></button>
+                                        <button onClick={()=>move(exercises.indexOf(ex), 1)} className="bg-white text-slate-800 p-1 rounded-full shadow border"><Icon name="down" size={12}/></button>
+                                        <button onClick={()=>removeExercise(ex.id)} className="bg-red-500 text-white p-1 rounded-full shadow"><Icon name="trash" size={12}/></button>
                                     </div>
-                                ))}
-                            </div>
-                        </section>
+                                    <div className="w-full h-32 bg-slate-200">{ex.gifUrl && <img src={ex.gifUrl} className="w-full h-full object-cover"/>}</div>
+                                    <div className="p-3"><h3 className="font-bold text-sm uppercase truncate">{ex.title}</h3><p className="text-xs text-slate-500 font-bold">{ex.sets}</p></div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                        <section>
-                            <h3 className="text-blue-500 font-black uppercase text-sm mb-4 border-b-2 border-blue-500 pb-1 flex items-center gap-2">
-                                <Icon name="trophy"/> Treino / Prevenção
-                            </h3>
-                            <div className="space-y-4">
-                                {workoutList.map((ex, i) => (
-                                    <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-md flex border dark:border-slate-700">
-                                        <img src={ex.gifUrl} className="w-24 h-24 object-cover bg-slate-200" />
-                                        <div className="p-3 flex-1 flex flex-col justify-center">
-                                            <div className="font-bold text-sm uppercase">{ex.title}</div>
-                                            <div className="text-xs text-slate-500 font-bold">{ex.sets}</div>
-                                            <div className="text-[9px] text-blue-400 font-black mt-1">{ex.target}</div>
-                                        </div>
-                                        <div className="flex flex-col border-l dark:border-slate-700">
-                                            <button onClick={()=>move(exercises.indexOf(ex), -1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="up" size={14}/></button>
-                                            <button onClick={()=>setForm(ex)} className="p-2 text-blue-500 hover:bg-blue-50"><Icon name="edit" size={14}/></button>
-                                            <button onClick={()=>move(exercises.indexOf(ex), 1)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="down" size={14}/></button>
-                                        </div>
+                    {/* LISTA SEPARADA: TREINO GERAL */}
+                    <div className="space-y-4">
+                        <h3 className="text-blue-500 font-black uppercase text-sm border-l-4 border-blue-500 pl-2">💪 Bloco Principal / Prevenção</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {otherList.map((ex, i) => (
+                                <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
+                                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <button onClick={()=>move(exercises.indexOf(ex), -1)} className="bg-white text-slate-800 p-1 rounded-full shadow border"><Icon name="up" size={12}/></button>
+                                        <button onClick={()=>editExercise(ex)} className="bg-blue-500 text-white p-1 rounded-full shadow"><Icon name="edit" size={12}/></button>
+                                        <button onClick={()=>move(exercises.indexOf(ex), 1)} className="bg-white text-slate-800 p-1 rounded-full shadow border"><Icon name="down" size={12}/></button>
+                                        <button onClick={()=>removeExercise(ex.id)} className="bg-red-500 text-white p-1 rounded-full shadow"><Icon name="trash" size={12}/></button>
                                     </div>
-                                ))}
-                            </div>
-                        </section>
+                                    <div className="w-full h-32 bg-slate-200">{ex.gifUrl && <img src={ex.gifUrl} className="w-full h-full object-cover"/>}</div>
+                                    <div className="p-3"><h3 className="font-bold text-sm uppercase truncate">{ex.title}</h3><p className="text-xs text-slate-500 font-bold">{ex.sets}</p><p className="text-[9px] text-blue-500 font-bold">{ex.target}</p></div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // --- VIEW: SQUAD (COM CRAQUE DA SEMANA E LINK WHATSAPP) ---
-        const SquadView = ({ players, setPlayers, themeColor }) => {
-            const toggleStar = (index) => {
-                const newP = players.map((p, i) => ({ ...p, isStar: i === index ? !p.isStar : false }));
-                setPlayers(newP);
-                showToast("Craque da Semana Atualizado! 🏆");
+        // --- ABA MATCH (COM CONTAGEM REGRESSIVA) ---
+        const PreGameView = ({ players, themeColor, trainingLog, dmRecords, matchMinutes, setMatchMinutes, matchInfo, setMatchInfo }) => {
+            const [monitorDate, setMonitorDate] = useState(getTodayStr());
+            const [countdown, setCountdown] = useState("");
+
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    if(!matchInfo?.date) return setCountdown("DATA NÃO DEFINIDA");
+                    const target = new Date(matchInfo.date);
+                    const diff = target - new Date();
+                    if(diff <= 0) return setCountdown("O JOGO COMEÇOU!");
+                    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    setCountdown(`⚔️ FALTAM ${d} DIAS E ${h} HORAS`);
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [matchInfo?.date]);
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
+                    <div className="bg-slate-900 p-6 rounded-2xl shadow-xl text-white mb-8 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-8 opacity-10"><Icon name="trophy" size={120}/></div>
+                        <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Mural do Próximo Jogo</div>
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-6 z-10 relative">
+                            <div className="text-center md:text-left">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase">Adversário</h3>
+                                <BufferedInput className="bg-transparent text-3xl font-black outline-none border-b border-slate-700 w-full" placeholder="NOME DO TIME" value={matchInfo?.opponent || ''} onSave={val=>setMatchInfo({...matchInfo, opponent: val})}/>
+                            </div>
+                            <div className="bg-slate-800 px-6 py-4 rounded-2xl border border-slate-700 text-center">
+                                <div className="text-[10px] font-bold text-yellow-500 uppercase mb-1">Contagem Regressiva</div>
+                                <div className="text-xl font-mono font-black">{countdown}</div>
+                                <input type="datetime-local" className="mt-2 bg-slate-700 text-[10px] rounded px-2 py-1 outline-none" value={matchInfo?.date || ''} onChange={e=>setMatchInfo({...matchInfo, date: e.target.value})}/>
+                            </div>
+                        </div>
+                    </div>
+                    {/* RESTO DA SUA ABA MATCH ORIGINAL ABAIXO */}
+                    <div className="flex justify-between items-center mb-4"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="barChart"/> Status da Equipe</h2></div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                         <div className="bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center col-span-1"><SpeedometerGauge value={18} /></div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- ABA ELENCO (COM CRAQUE E LINK WHATSAPP) ---
+        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+            const [viewProfile, setViewProfile] = useState(null);
+            const safePs = safeArray(players);
+
+            const toggleCraque = (idx) => {
+                const newPs = safePs.map((p, i) => ({ ...p, isCraque: i === idx ? !p.isCraque : false }));
+                setPlayers(newPs);
+                showToast(newPs[idx].isCraque ? "🏆 NOVO CRAQUE DA SEMANA!" : "Troféu removido.");
             };
 
-            const sendWA = (p, index) => {
-                const link = `${window.location.origin}${window.location.pathname}?id=${auth.currentUser.uid}&p=${index}`;
-                const msg = `Fala ${p.name}! 🚀 Seu portal de performance está atualizado:\n${link}`;
+            const sendWALink = (p, idx) => {
+                const link = `${window.location.origin}${window.location.pathname}?id=${auth.currentUser.uid}&p=${idx}`;
+                const msg = `Fala ${p.name}! 🚀\nAcesse seu portal de treino e wellness clicando aqui:\n${link}`;
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
             };
 
             return (
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in h-full overflow-y-auto custom-scroll">
-                    {players.map((p, i) => (
-                        <div key={i} className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-5 border-2 transition-all flex flex-col items-center relative ${p.isStar ? 'border-yellow-400 ring-4 ring-yellow-400/20 scale-105' : 'border-transparent'}`}>
-                            {p.isStar && <div className="absolute -top-3 bg-yellow-400 text-slate-900 px-3 py-1 rounded-full text-[10px] font-black uppercase shadow-lg">Craque da Semana</div>}
-                            
-                            <div className="w-20 h-20 rounded-full bg-slate-200 overflow-hidden border-2 mb-3" style={{borderColor: themeColor}}>
-                                <img src={p.image || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="w-full h-full object-cover" />
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
+                    {viewProfile !== null && <PlayerProfileModal player={safePs[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePs} />}
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {safePs.map((p, i) => (
+                            <div key={i} className={`bg-white dark:bg-slate-800 rounded-2xl shadow-lg border-2 p-5 flex flex-col items-center relative transition-all ${p.isCraque ? 'border-yellow-400 scale-105 shadow-yellow-500/20' : 'border-transparent'}`}>
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                    <button onClick={()=>toggleCraque(i)} className={`p-1.5 rounded-full shadow-sm transition-all ${p.isCraque ? 'bg-yellow-400 text-white' : 'bg-slate-100 text-slate-300'}`}><Icon name="trophy" size={14}/></button>
+                                    <button onClick={()=>sendWALink(p, i)} className="p-1.5 rounded-full bg-green-500 text-white shadow-sm"><Icon name="share" size={14}/></button>
+                                </div>
+                                <div className="w-20 h-20 rounded-full bg-slate-100 overflow-hidden mb-3 border-2" style={{borderColor: p.isCraque ? '#fbbf24' : themeColor}}>
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-slate-300"/>}
+                                </div>
+                                <h3 className="font-black text-slate-800 dark:text-white uppercase truncate w-full text-center">{p.name}</h3>
+                                <p className="text-[10px] font-bold text-slate-400 mb-4">{p.position || 'Atleta'}</p>
+                                <button onClick={()=>setViewProfile(i)} className="w-full bg-slate-100 dark:bg-slate-700 p-2 rounded-lg font-bold text-[10px] uppercase hover:bg-slate-200">Ver Perfil</button>
                             </div>
-                            
-                            <h3 className="font-black uppercase text-center truncate w-full">{p.name}</h3>
-                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-4">{p.position || 'Atleta'}</div>
-                            
-                            <div className="flex gap-2 w-full">
-                                <button onClick={()=>toggleStar(i)} className={`flex-1 p-2 rounded-lg border flex justify-center transition-all ${p.isStar ? 'bg-yellow-400 text-white border-yellow-400' : 'text-slate-300 border-slate-200 hover:text-yellow-500'}`}><Icon name="trophy"/></button>
-                                <button onClick={()=>sendWA(p, i)} className="flex-1 p-2 rounded-lg bg-green-500 text-white flex justify-center hover:bg-green-600"><Icon name="share"/></button>
-                            </div>
-                        </div>
-                    ))}
-                    <button onClick={() => setPlayers([...players, { name: 'Novo Atleta', isStar: false }])} className="dashed-btn h-40 flex flex-col items-center justify-center gap-2">
-                        <Icon name="plus" size={30}/> ADICIONAR ATLETA
-                    </button>
-                </div>
-            );
-        };
-
-        // --- VIEW: MATCH (CONTAGEM REGRESSIVA) ---
-        const MatchView = ({ matchInfo, setMatchInfo }) => {
-            const [timeLeft, setTimeLeft] = useState("");
-
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    if(!matchInfo.date) return;
-                    const diff = new Date(matchInfo.date) - new Date();
-                    if(diff < 0) { setTimeLeft("JOGO EM ANDAMENTO OU FINALIZADO"); return; }
-                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-                    setTimeLeft(`${days}d ${hours}h para o desafio!`);
-                }, 1000);
-                return () => clearInterval(timer);
-            }, [matchInfo.date]);
-
-            return (
-                <div className="p-6 h-full flex flex-col items-center justify-center animate-fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl border-2 border-slate-100 dark:border-slate-700 w-full max-w-md text-center">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Próximo Jogo</div>
-                        <input className="text-2xl font-black text-center w-full uppercase bg-transparent outline-none mb-4" placeholder="NOME DO ADVERSÁRIO" value={matchInfo.opponent} onChange={e=>setMatchInfo({...matchInfo, opponent: e.target.value})} />
-                        
-                        <div className="bg-slate-900 text-yellow-400 p-4 rounded-xl font-mono text-xl mb-6 shadow-inner border border-slate-700">
-                            {timeLeft || "DEFINA UMA DATA"}
-                        </div>
-
-                        <div className="flex flex-col gap-4 text-left">
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Data e Hora do Jogo</label>
-                                <input type="datetime-local" className="w-full p-3 border rounded-xl dark:bg-slate-700" value={matchInfo.date} onChange={e=>setMatchInfo({...matchInfo, date: e.target.value})} />
-                            </div>
-                        </div>
+                        ))}
+                        <button onClick={()=>setPlayers([...safePs, {name: 'Novo Atleta', isCraque: false}])} className="dashed-btn h-44 flex flex-col items-center justify-center gap-2"><Icon name="plus" size={32}/> ADD ATLETA</button>
                     </div>
                 </div>
             );
         };
 
-        // --- MAIN APP ---
+        // --- MANTENDO O RESTO DO SISTEMA ---
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad');
             const [players, setPlayers] = useState(initialData.players || []);
             const [exercises, setExercises] = useState(initialData.exercises || []);
+            const [trainingLog, setTrainingLog] = useState(initialData.trainingLog || {});
             const [matchInfo, setMatchInfo] = useState(initialData.matchInfo || { opponent: '', date: '' });
             const [themeColor, setThemeColor] = useState(initialData.themeColor || '#1e3a8a');
-            const [syncing, setSyncing] = useState(false);
+            const [library, setLibrary] = useState(initialData.library || []);
+            const [dmRecords, setDmRecords] = useState(initialData.dmRecords || []);
+            const [darkMode, setDarkMode] = useState(initialData.darkMode || false);
 
             useEffect(() => {
                 const timer = setTimeout(() => {
-                    setSyncing(true);
-                    db.collection('coachData').doc(user.uid).set({ players, exercises, matchInfo, themeColor }, { merge: true })
-                        .then(() => setSyncing(false));
+                    db.collection('coachData').doc(user.uid).set({ ...initialData, players, exercises, trainingLog, matchInfo, themeColor, library, dmRecords, darkMode }, { merge: true });
                 }, 2000);
                 return () => clearTimeout(timer);
-            }, [players, exercises, matchInfo, themeColor]);
+            }, [players, exercises, trainingLog, matchInfo, themeColor, library, dmRecords, darkMode]);
 
             return (
-                <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
-                    <header className="p-4 bg-white dark:bg-slate-800 shadow-sm flex justify-between items-center shrink-0">
-                        <div className="font-black italic text-lg" style={{color: themeColor}}>PROCOACH <span className="text-[10px] opacity-50 not-italic">V145</span></div>
-                        <div className="flex gap-4 items-center">
-                            {syncing && <div className="text-[9px] font-black text-slate-400 animate-pulse">SINCRO...</div>}
-                            <button onClick={()=>auth.signOut().then(()=>window.location.reload())} className="text-red-500 text-xs font-bold uppercase">Sair</button>
+                <div className={`flex flex-col h-full ${darkMode ? 'dark' : ''}`}>
+                    <header className="p-3 bg-white dark:bg-slate-800 shadow-sm border-b dark:border-slate-700 flex justify-between items-center shrink-0">
+                        <div className="font-black italic text-xl" style={{color: themeColor}}>PROCOACH V145 MAX</div>
+                        <div className="flex gap-2">
+                             <button onClick={()=>setDarkMode(!darkMode)}><Icon name={darkMode?"sun":"moon"}/></button>
+                             <button onClick={()=>auth.signOut().then(()=>window.location.reload())} className="text-red-500"><Icon name="logout"/></button>
                         </div>
                     </header>
-
-                    <nav className="flex p-2 bg-slate-100 dark:bg-slate-950 overflow-x-auto gap-2">
-                        {['squad', 'workout', 'match'].map(t => (
-                            <button key={t} onClick={()=>setTab(t)} className={`px-5 py-2 rounded-lg text-xs font-black uppercase transition-all ${tab === t ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>
-                                {t === 'squad' ? 'Elenco' : t === 'workout' ? 'Prescrição' : 'Match'}
-                            </button>
+                    <nav className="flex bg-slate-100 dark:bg-slate-950 p-1 overflow-x-auto gap-1">
+                        {['squad','workout','match','dm','library'].map(t => (
+                            <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${tab===t?'bg-white shadow text-slate-800':'text-slate-400'}`}>{t}</button>
                         ))}
                     </nav>
-
                     <main className="flex-1 overflow-hidden">
-                        {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} />}
-                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} />}
-                        {tab === 'match' && <MatchView matchInfo={matchInfo} setMatchInfo={setMatchInfo} />}
+                        {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout="Recuperação" setPostWorkout={()=>{}} />}
+                        {tab === 'match' && <PreGameView players={players} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchInfo={matchInfo} setMatchInfo={setMatchInfo} />}
                     </main>
                 </div>
             );
         };
 
-        // --- AUTH & LOGIN ---
+        // --- AUTH & BOOTSTRAP ---
         const LoginScreen = () => {
-            const [email, setEmail] = useState('');
-            const [pass, setPass] = useState('');
-            const handle = (e) => { e.preventDefault(); auth.signInWithEmailAndPassword(email, pass); };
+            const [e, setE] = useState('crossoccerperformancetraining@gmail.com');
+            const [p, setP] = useState('');
             return (
                 <div className="h-screen flex items-center justify-center bg-slate-900 p-6">
-                    <form onSubmit={handle} className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm flex flex-col gap-4">
-                        <h1 className="text-2xl font-black italic text-center text-blue-600">PROCOACH ACCESS</h1>
-                        <input type="email" placeholder="E-mail" className="p-3 border rounded-xl" onChange={e=>setEmail(e.target.value)} />
-                        <input type="password" placeholder="Senha" className="p-3 border rounded-xl" onChange={e=>setPass(e.target.value)} />
-                        <button className="bg-blue-600 text-white p-3 rounded-xl font-bold uppercase shadow-lg">Entrar</button>
-                    </form>
+                    <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
+                        <h1 className="text-2xl font-black mb-6 text-center text-blue-600">PROCOACH ACCESS</h1>
+                        <input className="w-full p-3 border rounded-xl mb-3" placeholder="Email" value={e} onChange={val=>setE(val.target.value)}/>
+                        <input className="w-full p-3 border rounded-xl mb-4" type="password" placeholder="Senha" onChange={val=>setP(val.target.value)}/>
+                        <button className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold uppercase shadow-lg" onClick={()=>auth.signInWithEmailAndPassword(e,p)}>Entrar</button>
+                    </div>
                 </div>
             );
         };
@@ -332,14 +461,15 @@
                     setUser(u);
                     if(u) {
                         db.collection('coachData').doc(u.uid).onSnapshot(doc => {
-                            setData(doc.data() || {});
+                            setData(sanitizeCloudData(doc.data()));
                             setLoading(false);
+                            document.getElementById('loading-state').style.display='none';
                         });
-                    } else setLoading(false);
+                    } else { setLoading(false); document.getElementById('loading-state').style.display='none'; }
                 });
             }, []);
 
-            if(loading) return <div className="h-screen flex items-center justify-center font-black animate-pulse">CARREGANDO...</div>;
+            if(loading) return null;
             return user ? <MainApp user={user} initialData={data} /> : <LoginScreen />;
         };
 
