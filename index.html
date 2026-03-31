@@ -1,9 +1,8 @@
-<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProCoach V144 MAX - SaaS Edition</title>
+    <title>ProCoach V144 MAX</title>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -15,9 +14,9 @@
         }
     </script>
 
-    <link rel="manifest" href="manifest.json?v=21">
-    <link rel="apple-touch-icon" href="logo.png?v=21">
-    <link rel="icon" type="image/png" href="logo.png?v=21">
+    <link rel="manifest" href="manifest.json?v=19">
+    <link rel="apple-touch-icon" href="logo.png?v=19">
+    <link rel="icon" type="image/png" href="logo.png?v=19">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -114,7 +113,7 @@
                 if (user) {
                     firebase.firestore().collection('coachData').doc(user.uid).set({
                         players: [], trainingLog: {}, dmRecords: [], matchMinutes: {}, assessments: {},
-                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: [], library: [], postWorkout: 'Bota Pneumática (15 min)'
+                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true
                     });
                 }
                 setTimeout(() => { window.location.href = window.location.pathname + '?clear=' + Date.now(); }, 1000);
@@ -128,6 +127,7 @@
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             </div>
                             <h1 className="text-2xl font-bold mb-2">Conflito de Dados Antigos!</h1>
+                            <p className="text-slate-400 mb-8 max-w-md text-sm leading-relaxed">As versões antigas do seu banco de dados entraram em conflito com a Nova Estrutura. O botão abaixo vai forçar a limpeza imediata.</p>
                             <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6 transition-all hover:scale-105 active:scale-95">
                                 {this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}
                             </button>
@@ -233,11 +233,7 @@
                 header: safeObj(data.header),
                 logo: typeof data.logo === 'string' ? data.logo : null,
                 darkMode: !!data.darkMode,
-                plan: typeof data.plan === 'string' ? data.plan : 'starter',
-                days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
-                exercises: safeArray(data.exercises),
-                library: safeArray(data.library), // NOVO
-                postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)' // NOVO
+                days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})) 
             };
         };
 
@@ -275,8 +271,7 @@
                 bell: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>,
                 logout: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
                 cloud: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>,
-                refresh: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 0 20.49 15"></path></svg>,
-                lock: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                refresh: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 0 20.49 15"></path></svg>
             };
             return <span className={className}>{icons[name] || null}</span>;
         };
@@ -326,129 +321,9 @@
             const fileInputRef=useRef(null); const importInputRef=useRef(null);
             const handleLogoFile = async (e) => { const f=e.target.files[0]; if(f) { try{const c=await compressImage(f,200,0.6); setLogo(c); showToast("Atualizado!");}catch(e){} } };
             const handleRestore = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=(e)=>{try{const d=JSON.parse(e.target.result); onImport(d); showToast("Dados Restaurados!"); setTimeout(() => window.location.reload(), 1000);}catch(e){showToast("Erro no arquivo")}}; r.readAsText(f); };
-            return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p><div className="col-span-2 mt-2"><button onClick={() => { const link = window.location.origin + window.location.pathname.replace('index.html', '') + 'atleta.html?id=' + firebase.auth().currentUser.uid; navigator.clipboard.writeText(link); showToast("Link do Portal Copiado!"); }} className="w-full flex justify-center gap-2 bg-slate-800 dark:bg-slate-700 text-white py-2 rounded font-bold text-xs hover:bg-slate-600"><Icon name="copy" size={14}/> COPIAR LINK DO PORTAL DO ATLETA</button></div></div></div></div></div>);
+            return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p></div></div></div></div>);
         };
 
-        const AdminDashboard = ({ themeColor }) => {
-            const [clients, setClients] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchClients = async () => {
-                    try {
-                        const snapshot = await db.collection('coachData').get();
-                        const clientList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setClients(clientList);
-                        setLoading(false);
-                    } catch (err) {
-                        console.error("Erro ao buscar clientes:", err);
-                        showToast("Erro ao carregar clientes.");
-                        setLoading(false);
-                    }
-                };
-                fetchClients();
-            }, []);
-
-            const updatePlan = async (clientId, newPlan) => {
-                try {
-                    await db.collection('coachData').doc(clientId).update({ plan: newPlan });
-                    setClients(clients.map(c => c.id === clientId ? { ...c, plan: newPlan } : c));
-                    showToast("Plano atualizado!", "#22c55e");
-                } catch (err) {
-                    showToast("Erro ao atualizar plano.", "#ef4444");
-                }
-            };
-
-            if (loading) return <div className="p-6 flex justify-center items-center h-full text-slate-500 font-bold animate-pulse">A carregar base de clientes...</div>;
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
-                    <div className="bg-slate-900 p-6 rounded-2xl shadow-xl mb-6 flex justify-between items-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: themeColor }}></div>
-                        <div>
-                            <h2 className="text-2xl font-black text-white uppercase flex items-center gap-2">👑 Painel Mestre (Admin)</h2>
-                            <p className="text-slate-400 text-xs font-bold mt-1 uppercase">Gestão de Licenças e Clientes SaaS</p>
-                        </div>
-                        <div className="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-center">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Total Clientes</div>
-                            <div className="text-xl font-black text-white">{clients.length}</div>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 uppercase text-[10px] font-black">
-                                    <tr><th className="p-4">ID do Sistema</th><th className="p-4">Equipa</th><th className="p-4 text-center">Plano Atual</th><th className="p-4 text-center">Ação / Status</th></tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                                    {clients.map(client => {
-                                        const currentPlan = client.plan || 'starter';
-                                        return (
-                                            <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                                <td className="p-4 text-[10px] font-mono text-slate-400">{client.id}</td>
-                                                <td className="p-4 font-black dark:text-slate-200">{client.header?.teamName || 'Sem nome'}</td>
-                                                <td className="p-4 text-center">
-                                                    <select className="border-2 border-slate-200 dark:border-slate-600 rounded-lg p-2 text-xs font-bold dark:bg-slate-900 dark:text-white outline-none cursor-pointer" value={currentPlan} onChange={(e) => updatePlan(client.id, e.target.value)}>
-                                                        <option value="starter">Starter</option><option value="pro">PRO</option><option value="elite">Elite</option>
-                                                    </select>
-                                                </td>
-                                                <td className="p-4 text-center"><span className="px-3 py-1 rounded-full text-[9px] font-black uppercase border">{currentPlan}</span></td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const LibraryView = ({ themeColor, library, setLibrary }) => {
-            const [form, setForm] = useState({ title: '', gifUrl: '' });
-            
-            const addLibrary = () => {
-                if(!form.title) return showToast("Digite o nome do exercício!");
-                setLibrary([{ id: Date.now(), ...form }, ...library]);
-                setForm({ title: '', gifUrl: '' });
-                showToast("Salvo na Biblioteca!");
-            };
-            const removeLibrary = (id) => setLibrary(library.filter(ex => ex.id !== id));
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="image"/> Biblioteca de Exercícios</h2>
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">Cadastre aqui seus GIFs uma única vez para usar rapidamente na prescrição diária.</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                            <div className="md:col-span-2"><button onClick={addLibrary} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700"><Icon name="save"/> SALVAR</button></div>
-                        </div>
-                    </div>
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {library.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Biblioteca vazia. Cadastre seu primeiro exercício!</div>}
-                        {library.map(ex => (
-                            <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
-                                <button onClick={()=>removeLibrary(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
-                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">
-                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
-                                </div>
-                                <div className="p-3"><h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight">{ex.title}</h3></div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        {tab === 'squad' && (
-    <div className="px-6 pt-4 bg-slate-900 shrink-0">
-        <label className="text-[10px] font-bold text-blue-400 uppercase flex gap-1 items-center mb-1"><Icon name="alert" size={12}/> Mural do Professor (Aviso no App dos Atletas)</label>
-        <BufferedInput className="w-full bg-blue-900/30 border border-blue-800 text-white p-2 rounded text-sm font-bold outline-none" placeholder="Ex: Amanhã treino às 15h, não atrasem!" value={coachMsg} onSave={val=>setCoachMsg(val)} />
-    </div>
-)}
         const WellnessDashboard = ({ players, themeColor, trainingLog, setTrainingLog }) => {
             const [mode, setMode] = useState('dashboard');
             const [wellnessDate, setWellnessDate] = useState(getTodayStr()); 
@@ -665,12 +540,6 @@
                 }
             };
 
-            const sharePrivateLink = () => {
-                const link = window.location.origin + window.location.pathname.replace('index.html', '') + `atleta.html?id=${firebase.auth().currentUser.uid}&p=${playerIndex}`;
-                const msg = `Fala ${player.name}! 🚀\nAcesse seu portal de treino e wellness de hoje clicando aqui:\n${link}`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-            };
-
             const totalW = getWSum(wellness);
             const wColor = totalW >= 25 ? 'text-red-500' : totalW >= 18 ? 'text-yellow-500' : 'text-green-500';
 
@@ -708,11 +577,7 @@
                                 <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga (sRPE)</h3>
                                 <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
                             </div>
-                            
-                            <div className="flex gap-2">
-                                <button onClick={generateShareCard} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg text-[10px] uppercase"><Icon name="image"/> Baixar Card</button>
-                                <button onClick={sharePrivateLink} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg text-[10px] uppercase"><Icon name="share"/> Enviar Link Pessoal</button>
-                            </div>
+                            <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
                         </div>
                     </div>
 
@@ -766,7 +631,7 @@
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
-            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-50 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
+            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
             
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
@@ -1050,6 +915,7 @@
                             let minsLast7 = 0;
                             recentDates.forEach(d => minsLast7 += (Number(matchMinutes[d]?.[i]) || 0));
 
+                            // --- NOVA LÓGICA: Minutagem Total Temporada ---
                             let totalMins = 0;
                             if (matchMinutes) {
                                 Object.keys(matchMinutes).forEach(d => {
@@ -1057,6 +923,7 @@
                                 });
                             }
 
+                            // --- NOVA LÓGICA: ACWR (Aguda vs Crônica) ---
                             const chronicDates = getDatesInRange(monitorDate, 28);
                             let acuteLoad = 0;
                             let chronicLoadTotal = 0;
@@ -1086,6 +953,7 @@
                                             <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase truncate">{p.name}</h3>
                                             <div className="flex gap-2 text-[10px] font-bold mt-1 text-slate-500"><span>SONO: {safeObj(pLog.wellness).sleep || '-'}</span> | <span>FADIGA: {safeObj(pLog.wellness).fatigue || '-'}</span></div>
                                             
+                                            {/* Exibição da Minutagem Total e ACWR adicionados aqui */}
                                             <div className="flex flex-wrap gap-2 text-[10px] font-bold mt-2">
                                                 <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">Min. Ano: {totalMins}</span>
                                                 <span className={`px-2 py-0.5 rounded border ${acwrAlert ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'}`}>ACWR: {acwr}</span>
@@ -1096,7 +964,9 @@
                                     {painZones.length > 0 && (<div className="bg-red-50 dark:bg-red-900/30 p-1 rounded border border-red-100 dark:border-red-800"><span className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase flex flex-wrap gap-1 items-center"><Icon name="medkit" size={10}/> DORES: {painZones.join(', ')}</span></div>)}
                                     <div className="flex justify-between mt-1 px-2 border-t dark:border-slate-700 pt-2 items-center">
                                         <div className="text-[10px] text-slate-400 font-bold">CARGA sRPE: <span className="text-slate-700 dark:text-slate-200 text-lg">{totalDaily > 0 ? totalDaily : '-'}</span></div>
+                                        
                                         {renderMatchReadinessAI(pLog, minsLast7, p.injured, inTransition)}
+
                                         <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400">MIN. JOGO:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white" value={matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} title="Tempo de partida oficial" outline-none/></div>
                                     </div>
                                 </div>
@@ -1142,12 +1012,20 @@
                 const originalBg = element.style.backgroundColor;
                 element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
                 try { 
-                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: element.scrollWidth, backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' }); 
+                    const canvas = await html2canvas(element, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        scrollX: 0, 
+                        scrollY: 0, 
+                        windowWidth: element.scrollWidth,
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
+                    }); 
                     canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planeamento Semanal'); }); 
                 } catch(e) { showToast("Erro ao exportar"); } 
                 element.style.backgroundColor = originalBg;
             };
 
+            // Função de Exportar PDF Adicionada
             const exportAsPDF = async () => { 
                 const element = document.getElementById('microcycle-container'); 
                 if(!element) return; 
@@ -1156,15 +1034,31 @@
                 element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
                 
                 try { 
-                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: element.scrollWidth, backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' }); 
+                    const canvas = await html2canvas(element, { 
+                        scale: 2, 
+                        useCORS: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: element.scrollWidth,
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
+                    }); 
+                    
                     const imgData = canvas.toDataURL('image/png');
-                    const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                    const pdf = new window.jspdf.jsPDF({
+                        orientation: 'landscape',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
                     const pdfWidth = pdf.internal.pageSize.getWidth();
                     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    
                     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
                     pdf.save('microciclo_semana.pdf');
                     showToast("PDF Gerado com Sucesso!");
-                } catch(e) { showToast("Erro ao exportar PDF"); } 
+                } catch(e) { 
+                    showToast("Erro ao exportar PDF"); 
+                } 
                 element.style.backgroundColor = originalBg;
             };
 
@@ -1174,7 +1068,10 @@
                 safeArray(players).forEach((p, i) => {
                     if(p && !p.injured) {
                         const w = safeObj(trainingLog[today]?.[i]?.wellness);
-                        if(w.sleep) { totalFatigue += (Number(w.fatigue) || 1) + (Number(w.soreness) || 1); count++; }
+                        if(w.sleep) {
+                            totalFatigue += (Number(w.fatigue) || 1) + (Number(w.soreness) || 1);
+                            count++;
+                        }
                     }
                 });
                 const avgFatigue = count > 0 ? (totalFatigue / count) : 2; 
@@ -1183,11 +1080,16 @@
             const isTeamFatigued = getTeamFatigue();
 
             const getYesterdayLoad = () => {
-                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); yesterday.setMinutes(yesterday.getMinutes() - yesterday.getTimezoneOffset());
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                yesterday.setMinutes(yesterday.getMinutes() - yesterday.getTimezoneOffset());
                 const yStr = yesterday.toISOString().split('T')[0];
                 let totalLoad = 0; let count = 0;
                 safeArray(players).forEach((p, i) => {
-                    if(p && !p.injured) { const l = trainingLog[yStr]?.[i]; if(l) { totalLoad += calcDailyLoad(l); count++; } }
+                    if(p && !p.injured) {
+                        const l = trainingLog[yStr]?.[i];
+                        if(l) { totalLoad += calcDailyLoad(l); count++; }
+                    }
                 });
                 return count > 0 ? totalLoad / count : 0;
             };
@@ -1201,26 +1103,73 @@
                 let sugTime = "", sugRPE = "";
                 let maxMins = 0;
 
-                if(md.includes('MD-4')) { focus = "Aquisição (Força/Resistência)"; advice = "Dia longe do jogo. Ideal para cargas altas, treinos de força na academia ou resistência específica em campo."; sugTime = "70 a 90 min"; sugRPE = "7 a 8 (Intenso)"; maxMins = 90; }
-                else if(md.includes('MD-3')) { focus = "Específico (Tática/Intensidade)"; advice = "Dia de 'choque'. Intensidade deve ser alta (simil jogo), mas o volume total começa a ser controlado."; sugTime = "60 a 75 min"; sugRPE = "8 a 9 (Muito Intenso)"; maxMins = 75; }
-                else if(md.includes('MD-2')) { focus = "Velocidade / Polimento"; advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; sugTime = "45 a 60 min"; sugRPE = "5 a 6 (Moderado)"; maxMins = 60; }
-                else if(md.includes('MD-1')) { focus = "Ativação / Bola Parada"; advice = "Véspera de jogo. Carga mínima. Apenas ativação neural e ensaio de bolas paradas."; sugTime = "30 a 45 min"; sugRPE = "3 a 4 (Fácil)"; maxMins = 45; }
-                else if(md === 'JOGO') { focus = "COMPETIÇÃO"; advice = "Dia do jogo. Foco total em hidratação, nutrição e estratégia pré-jogo."; sugTime = "90+ min"; sugRPE = "10 (Esforço Máximo)"; maxMins = 120; }
-                else if(md.includes('MD+1')) { focus = "Recuperação Passiva/Ativa"; advice = "Dia seguinte. Foco em remover metabólitos. Bicicleta, massagem, crioterapia ou folga total."; sugTime = "30 a 45 min"; sugRPE = "2 a 3 (Muito Fácil)"; maxMins = 45; }
-                else if(md.includes('MD+2')) { focus = "Retorno / Compensatório"; advice = "Transição para quem jogou. Carga alta (compensatório) para quem não jogou."; sugTime = "45 a 70 min"; sugRPE = "6 a 8 (Intenso)"; maxMins = 70; }
-                else { focus = "Dia Normal"; advice = "Sem designação MD específica. Mantenha o equilíbrio da carga."; sugTime = "60 min"; sugRPE = "5 a 6 (Moderado)"; maxMins = 90; }
+                if(md.includes('MD-4')) { 
+                    focus = "Aquisição (Força/Resistência)"; 
+                    advice = "Dia longe do jogo. Ideal para cargas altas, treinos de força na academia ou resistência específica em campo."; 
+                    sugTime = "70 a 90 min"; sugRPE = "7 a 8 (Intenso)";
+                    maxMins = 90;
+                }
+                else if(md.includes('MD-3')) { 
+                    focus = "Específico (Tática/Intensidade)"; 
+                    advice = "Dia de 'choque'. Intensidade deve ser alta (simil jogo), mas o volume total começa a ser controlado."; 
+                    sugTime = "60 a 75 min"; sugRPE = "8 a 9 (Muito Intenso)";
+                    maxMins = 75;
+                }
+                else if(md.includes('MD-2')) { 
+                    focus = "Velocidade / Polimento"; 
+                    advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; 
+                    sugTime = "45 a 60 min"; sugRPE = "5 a 6 (Moderado)";
+                    maxMins = 60;
+                }
+                else if(md.includes('MD-1')) { 
+                    focus = "Ativação / Bola Parada"; 
+                    advice = "Véspera de jogo. Carga mínima. Apenas ativação neural e ensaio de bolas paradas."; 
+                    sugTime = "30 a 45 min"; sugRPE = "3 a 4 (Fácil)";
+                    maxMins = 45;
+                }
+                else if(md === 'JOGO') { 
+                    focus = "COMPETIÇÃO"; 
+                    advice = "Dia do jogo. Foco total em hidratação, nutrição e estratégia pré-jogo."; 
+                    sugTime = "90+ min"; sugRPE = "10 (Esforço Máximo)";
+                    maxMins = 120;
+                }
+                else if(md.includes('MD+1')) { 
+                    focus = "Recuperação Passiva/Ativa"; 
+                    advice = "Dia seguinte. Foco em remover metabólitos. Bicicleta, massagem, crioterapia ou folga total."; 
+                    sugTime = "30 a 45 min"; sugRPE = "2 a 3 (Muito Fácil)";
+                    maxMins = 45;
+                }
+                else if(md.includes('MD+2')) { 
+                    focus = "Retorno / Compensatório"; 
+                    advice = "Transição para quem jogou. Carga alta (compensatório) para quem não jogou."; 
+                    sugTime = "45 a 70 min"; sugRPE = "6 a 8 (Intenso)";
+                    maxMins = 70;
+                }
+                else { 
+                    focus = "Dia Normal"; 
+                    advice = "Sem designação MD específica. Mantenha o equilíbrio da carga."; 
+                    sugTime = "60 min"; sugRPE = "5 a 6 (Moderado)";
+                    maxMins = 90;
+                }
                 
                 let isTimeExceeded = false;
                 if (mins > 0) {
-                    if (mins > maxMins) { volAdvice = `ALERTA DE TEMPO EXCEDIDO: A sessão planeada de ${mins} min ultrapassa o teto máximo de ${maxMins} min para este dia! Corte ${mins - maxMins} minutos.`; isTimeExceeded = true; } 
-                    else if (md === 'MD-4' && mins < 70) volAdvice = "Alerta: Volume muito baixo para dia de Aquisição.";
+                    if (mins > maxMins) {
+                        volAdvice = `ALERTA DE TEMPO EXCEDIDO: A sessão planeada de ${mins} min ultrapassa o teto máximo de ${maxMins} min para este dia! Corte ${mins - maxMins} minutos.`;
+                        isTimeExceeded = true;
+                    } else if (md === 'MD-4' && mins < 70) volAdvice = "Alerta: Volume muito baixo para dia de Aquisição.";
                     else if (md === 'MD-3' && mins < 50) volAdvice = "Alerta: Volume baixo para dia Específico.";
                     else volAdvice = "Volume dentro dos parâmetros sugeridos.";
-                } else { volAdvice = "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS."; }
+                } else {
+                    volAdvice = "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
+                }
 
                 let fatigueWarning = null;
-                if (yLoad > 450) { fatigueWarning = `⚠️ Carga de ontem foi ALTA (${Math.round(yLoad)} sRPE). A IA sugere reduzir o tempo de hoje em 15-20 min para evitar lesões.`; } 
-                else if(isTeamFatigued && (md.includes('MD-3') || md.includes('MD-4') || md.includes('MD+2'))) { fatigueWarning = "⚠️ Equipa com fadiga acumulada hoje. Considere reduzir o tempo em 15-20 min."; }
+                if (yLoad > 450) {
+                    fatigueWarning = `⚠️ Carga de ontem foi ALTA (${Math.round(yLoad)} sRPE). A IA sugere reduzir o tempo de hoje em 15-20 min para evitar lesões.`;
+                } else if(isTeamFatigued && (md.includes('MD-3') || md.includes('MD-4') || md.includes('MD+2'))) {
+                    fatigueWarning = "⚠️ Equipa com fadiga acumulada hoje. Considere reduzir o tempo em 15-20 min.";
+                }
 
                 return (
                     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
@@ -1283,6 +1232,7 @@
                         </div>
                     </div>
                     
+                    {/* AQUI ESTÁ A CORREÇÃO DE SCROLL GLOBAL */}
                     <div className="flex-1 overflow-auto p-2 flex flex-col custom-scroll" id="microcycle-container" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {renderWeeklyCoach()}
                         <div className="flex gap-3 min-w-max pb-12 items-stretch" style={{ minHeight: 'max-content' }}>
@@ -1323,6 +1273,7 @@
                                                 </div>
                                             ))}
                                         </div>
+
                                     </div>
                                 ); 
                             })}
@@ -1362,7 +1313,9 @@
             
             const renderReturnToPlayMap = () => (
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-4 mt-6">
-                    <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2"><Icon name="activity"/> Mapa Return To Play</h3>
+                    <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase mb-4 flex items-center gap-2">
+                        <Icon name="activity"/> Mapa Return To Play
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {RTP_PHASES.map(ph => {
                             const isPhaseActive = activeInjuries.some(r => (parseInt(r.rtpPhase)||1) === ph.id);
@@ -1444,7 +1397,9 @@
                                     </table>
                                 </div>
                             </div>
+
                             {renderReturnToPlayMap()}
+
                         </div>
                     </div>
                 </div>
@@ -1590,6 +1545,7 @@
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6 custom-scroll">
                     <div className="flex flex-col lg:flex-row gap-6 h-full">
                         
+                        {/* LISTA DE ATLETAS */}
                         <div className="w-full lg:w-60 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 overflow-y-auto h-64 lg:h-auto custom-scroll">
                             <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Atleta</h3>
                             {safeArray(players).map((p, i) => { 
@@ -1603,6 +1559,7 @@
                             })}
                         </div>
                         
+                        {/* FORMULÁRIO CENTRAL */}
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scroll">
                             <div className="flex items-center gap-4 mb-6 border-b dark:border-slate-700 pb-4">
                                 <div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{selectedP.image ? <img src={selectedP.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
@@ -1615,6 +1572,7 @@
                                 </div>
                             </div>
 
+                            {/* PULO DO GATO: HISTÓRICO AUTOMÁTICO DO DM */}
                             {playerPastInjuries.length > 0 && (
                                 <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                                     <h4 className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-2 flex items-center gap-1"><Icon name="alert" size={12}/> Lesões Anteriores Registradas no Clube</h4>
@@ -1628,6 +1586,7 @@
                                 </div>
                             )}
                             
+                            {/* BLOCO 1: CLÍNICA E ORTOPEDIA */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="medkit"/> Avaliação Clínica Inicial</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
@@ -1681,6 +1640,7 @@
                                 </div>
                             </div>
 
+                            {/* BLOCO 2: ANTROPOMETRIA */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="user"/> Composição Corporal</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Peso (kg)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.weight || ''} onChange={e=>setForm({...form, weight: e.target.value})}/></div>
@@ -1694,6 +1654,7 @@
                                 ))}
                             </div>
 
+                            {/* BLOCO 3: FMS E TESTES */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="activity"/> Testes Físicos & FMS</h3>
                             
                             <div className="mb-6 bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-xl border border-blue-200 dark:border-blue-900/50">
@@ -1757,6 +1718,7 @@
                         </div>
                     </div>
                     
+                    {/* BARRA LATERAL DOS RANKINGS */}
                     <div className="w-full lg:w-64 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 h-fit">
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Top 5 da Equipa</h3>
                         <select className="w-full mb-4 text-xs font-bold border dark:border-slate-600 rounded p-2 dark:bg-slate-700 dark:text-white outline-none" value={viewMetric} onChange={e=>setViewMetric(e.target.value)}>
@@ -1774,9 +1736,8 @@
             );
         };
 
-     const MainApp = ({ user, initialData }) => {
+        const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
-            const [plan, setPlan] = useState(initialData?.plan || 'starter');
             
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
             const [players, setPlayers] = useState(initialData?.players || []);
@@ -1787,19 +1748,13 @@
             const [header, setHeader] = useState(initialData?.header || {});
             const [logo, setLogo] = useState(initialData?.logo || null);
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
-            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
             
-            const [exercises, setExercises] = useState(initialData?.exercises || []); 
-            const [library, setLibrary] = useState(initialData?.library || []);
-            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
-            const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || initialData?.coachMessage || '');
+            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
 
             const [showSettings, setShowSettings] = useState(false);
             const [showNotifications, setShowNotifications] = useState(false);
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
-
-            const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
 
             useEffect(() => {
                 if (darkMode) document.body.classList.add('dark');
@@ -1818,18 +1773,19 @@
                 if(!user) return;
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout, coachMsg };
+                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days };
                     db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
                 }, 2000); 
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout, coachMsg, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, user]);
 
             const activeAlerts = useMemo(() => {
                 const today = getTodayStr(); let alerts = [];
                 safeArray(players).forEach((p, i) => {
                     if(!p) return;
+                    
                     const logObj = trainingLog[today]?.[i] || {};
                     const wellness = safeObj(logObj.wellness);
                     if(Number(wellness.soreness) >= 5) alerts.push({ type: 'danger', icon: 'bolt', text: `${p.name} relatou dor aguda (Nível ${wellness.soreness}).`});
@@ -1860,8 +1816,11 @@
                 const dischargedToday = safeArray(dmRecords).filter(r => r && r.status === 'Recovered' && r.dateOut === getTodayStr());
                 dischargedToday.forEach(r => {
                     const p = players[r.playerId];
-                    if(p) { alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` }); }
+                    if(p) {
+                        alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` });
+                    }
                 });
+
                 return alerts;
             }, [players, trainingLog, dmRecords, matchMinutes]);
 
@@ -1869,16 +1828,30 @@
                 const el = document.getElementById('print-area');
                 if(!el) return;
                 showToast("A gerar imagem do ecrã...");
+                
                 const originalBg = el.style.backgroundColor;
                 el.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
+                
                 try {
-                    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' });
-                    canvas.toBlob(blob => { smartShare(blob, `procoach_view.png`, 'ProCoach Export'); });
-                } catch(e) { showToast("Erro ao exportar ecrã"); }
+                    const canvas = await html2canvas(el, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' 
+                    });
+                    canvas.toBlob(blob => { 
+                        smartShare(blob, `procoach_view.png`, 'ProCoach Export'); 
+                    });
+                } catch(e) { 
+                    showToast("Erro ao exportar ecrã"); 
+                }
+                
                 el.style.backgroundColor = originalBg;
             };
 
-            const handleRefresh = () => { showToast("A atualizar dados..."); setTimeout(() => window.location.reload(), 500); };
+            const handleRefresh = () => {
+                showToast("A atualizar dados...");
+                setTimeout(() => window.location.reload(), 500);
+            };
 
             return (
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
@@ -1891,7 +1864,6 @@
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
-                            <button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500 mr-2">PORTAL DO ATLETA</button>
                             <button onClick={handleRefresh} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Atualizar Dados"><Icon name="refresh" size={20}/></button>
                             <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
@@ -1906,54 +1878,19 @@
                         <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
                         <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
                         <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
-                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
                         <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
-                        <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
                         <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
-
-                        <button onClick={()=>setTab('library')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='library'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📚 BIBLIOTECA</button>
-
-                        {isAdmin && (
-                            <button onClick={() => setTab('admin')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-auto border ${tab==='admin'?'bg-slate-800 text-yellow-400 border-yellow-500 shadow-lg':'text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-white'}`}>👑 ADMIN</button>
-                        )}
+                        <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
                     </div>
                     
-                    <div className="flex-1 overflow-hidden relative flex flex-col" id="print-area">
-                        {/* AGENDA SUSPENSA APARECE AQUI! */}
-                        {tab === 'squad' && (
-                            <div className="px-6 pt-4 bg-slate-100 dark:bg-slate-900 shrink-0 transition-colors">
-                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-1 tracking-wider"><Icon name="bell" size={14}/> Agenda do Dia / Avisos</label>
-                                <div className="flex flex-col md:flex-row gap-2">
-                                    <select className="w-full md:w-1/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white p-2.5 rounded-lg text-xs font-bold outline-none shadow-sm cursor-pointer" onChange={e => {if(e.target.value) setCoachMsg(e.target.value)}}>
-                                        <option value="">📋 Selecionar aviso rápido...</option>
-                                        <option value="🎥 ATENÇÃO: Reunião de Vídeo Análise antes do treino.">🎥 Vídeo Análise Tática</option>
-                                        <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica / Fisioterapia.">🩺 Avaliação Médica / Fisio</option>
-                                        <option value="🏋️ Foco de Hoje: Academia (Membros Superiores).">🏋️ Academia (Superiores)</option>
-                                        <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia (Inferiores)</option>
-                                        <option value="⚡ Foco de Hoje: Treino Funcional / Potência no Campo.">⚡ Treino Funcional / Potência</option>
-                                        <option value="🧊 RECUPERAÇÃO: Crioterapia (Banheira de Gelo) obrigatória pós-treino.">🧊 Crioterapia Obrigatória</option>
-                                    </select>
-                                    <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2.5 rounded-lg text-sm font-bold outline-none shadow-sm placeholder-slate-400" placeholder="Ou digite um recado personalizado aqui..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="flex-1 overflow-hidden relative">
-                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
-                            {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
-                            {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                            {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                            {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
-                            {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
-                            {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
-
-                            {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} />}
-                            {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
-
-                            {tab === 'admin' && isAdmin && (
-                                <AdminDashboard themeColor={themeColor} />
-                            )}
-                        </div>
+                    <div className="flex-1 overflow-hidden relative" id="print-area">
+                        {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                        {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
+                        {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                        {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
+                        {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                     </div>
                 </div>
             );
@@ -1965,8 +1902,11 @@
 
             useEffect(() => {
                 const unsubscribe = db.collection('coachData').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) { setInitialData(sanitizeCloudData(doc.data())); } 
-                    else { setInitialData(sanitizeCloudData({})); }
+                    if (doc.exists) { 
+                        setInitialData(sanitizeCloudData(doc.data())); 
+                    } else { 
+                        setInitialData(sanitizeCloudData({})); 
+                    }
                     setLoadingCloud(false);
                 }, err => {
                     console.error("Cloud fetch error:", err);
