@@ -36,7 +36,6 @@
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
         
-        // Ativa vibração no celular se disponível
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
 
         const TIPS = [
@@ -48,8 +47,14 @@
         ];
 
         const Icon = ({ name, size=24, className="", onClick }) => {
-            const p = { user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>', image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>', message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' };
+            const p = { user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>', image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>', message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', arrowDown: '<polyline points="6 9 12 15 18 9"/>', arrowUp: '<polyline points="18 15 12 9 6 15"/>' };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill={name==='play'||name==='trophy'||name==='star'?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick} dangerouslySetInnerHTML={{__html: p[name]}} />;
+        };
+
+        const getHydrationAdvice = (rpeVal, durVal) => {
+            const r = Number(rpeVal)||5; const d = Number(durVal)||60;
+            const liters = ((d / 60) * (0.5 + (r * 0.1))).toFixed(1);
+            return `Sugerimos a ingestão de ${liters} Litros de água nas próximas 2 horas para repor a perda de suor estimada.`;
         };
 
         const AthletePortal = () => {
@@ -65,8 +70,8 @@
             const [dur, setDur] = useState(60);
             const [feedbackMsg, setFeedbackMsg] = useState("");
             const [showStats, setShowStats] = useState(false);
+            const [expandedDay, setExpandedDay] = useState(null); 
             
-            // Controle do Cronômetro
             const [restTimer, setRestTimer] = useState(null);
             const audioCtxRef = useRef(null);
             
@@ -95,48 +100,46 @@
                 return () => unsubscribe();
             }, []);
 
-            // Lógica do Cronômetro Descrescente
             useEffect(() => {
                 let interval = null;
                 if (restTimer !== null && restTimer > 0) {
-                    interval = setInterval(() => {
-                        setRestTimer(prev => prev - 1);
-                    }, 1000);
+                    interval = setInterval(() => { setRestTimer(prev => prev - 1); }, 1000);
                 } else if (restTimer === 0) {
-                    playBeep();
-                    vibrate([300, 150, 300, 150, 500]); // Vibração forte e contínua SOS
-                    setRestTimer(null); // Esconde o cronômetro
+                    playBeep(); vibrate([300, 150, 300, 150, 500]);
+                    setRestTimer(null);
                 }
                 return () => clearInterval(interval);
             }, [restTimer]);
 
-            // Sintetizador de Áudio (Bipe Nativo)
-            const playBeep = () => {
+            const initAudio = () => {
+                if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} }
+                if(audioCtxRef.current && audioCtxRef.current.state === 'suspended') { audioCtxRef.current.resume(); }
                 try {
-                    if(!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-                    const ctx = audioCtxRef.current;
-                    if(ctx.state === 'suspended') ctx.resume();
-                    
-                    const osc = ctx.createOscillator();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, ctx.currentTime); // Tom Agudo (A5)
-                    osc.connect(ctx.destination);
-                    osc.start();
-                    osc.stop(ctx.currentTime + 0.3); // Toca por 0.3 segundos
-                    
-                    // Segundo bipe
-                    setTimeout(() => {
-                        const osc2 = ctx.createOscillator();
-                        osc2.type = 'sine';
-                        osc2.frequency.setValueAtTime(880, ctx.currentTime);
-                        osc2.connect(ctx.destination);
-                        osc2.start();
-                        osc2.stop(ctx.currentTime + 0.3);
-                    }, 400);
-                } catch(e) { console.error("Erro no som:", e); }
+                    const osc = audioCtxRef.current.createOscillator(); const gain = audioCtxRef.current.createGain();
+                    gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtxRef.current.destination);
+                    osc.start(); osc.stop(audioCtxRef.current.currentTime + 0.1);
+                } catch(e) {}
             };
 
-            const selectP = (i) => { setIdx(i); if(data.log[getTodayStr()]?.[i]?.wellness?.sleep) setStep(3); else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
+            const playBeep = () => {
+                try {
+                    const ctx = audioCtxRef.current; if(!ctx) return;
+                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    gain.gain.setValueAtTime(1, ctx.currentTime);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.3);
+                    setTimeout(() => {
+                        const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain();
+                        osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime);
+                        gain2.gain.setValueAtTime(1, ctx.currentTime);
+                        osc2.connect(gain2); gain2.connect(ctx.destination);
+                        osc2.start(); osc2.stop(ctx.currentTime + 0.3);
+                    }, 400);
+                } catch(e) {}
+            };
+
+            const selectP = (i) => { setIdx(i); initAudio(); if(data.log[getTodayStr()]?.[i]?.wellness?.sleep) setStep(3); else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
             const subData = () => {
@@ -146,26 +149,24 @@
             };
 
             const saveRPE = () => {
-                if(submitting) return;
-                setSubmitting(true); const td = getTodayStr();
+                if(submitting) return; setSubmitting(true); const td = getTodayStr();
+                
+                const allExs = [...data.act, ...data.ex];
+                const doneExsNames = completed.map(id => allExs.find(x => x.id === id)?.title).filter(Boolean);
+
                 db.collection('coachData').doc(data.id).update({
                     [`trainingLog.${td}.${idx}.rpe_am`]: rpe, 
                     [`trainingLog.${td}.${idx}.duration`]: dur,
                     [`trainingLog.${td}.${idx}.feedback`]: feedbackMsg,
+                    [`trainingLog.${td}.${idx}.exercisesDone`]: doneExsNames,
                     [`trainingLog.${td}.${idx}.rpeSubmitted`]: true
                 }).then(()=>{
                     setSubmitting(false); setRpeMod(false); showToast("Treino Concluído! 🚀", "🔥"); 
-                    
-                    // 🎉 EFEITO DE CONFETES 🎉
-                    if(typeof confetti !== 'undefined') {
-                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
-                    }
-                    vibrate([100, 50, 100]); // Vibração de vitória
-
+                    if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
+                    vibrate([100, 50, 100]);
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
-                    nl[td][idx].rpe_am = rpe; nl[td][idx].duration = dur; nl[td][idx].rpeSubmitted = true;
-                    setData({...data, log:nl});
-                    window.scrollTo(0,0);
+                    nl[td][idx].rpe_am = rpe; nl[td][idx].duration = dur; nl[td][idx].rpeSubmitted = true; nl[td][idx].exercisesDone = doneExsNames;
+                    setData({...data, log:nl}); window.scrollTo(0,0);
                 }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
             };
 
@@ -187,38 +188,29 @@
 
             const getPlayerStats = () => {
                 let wCompleted = 0; let sleepSum = 0; let sleepCount = 0; let totalMins = 0; let currentStreak = 0;
-                
                 Object.keys(data.log).forEach(dateStr => {
                     const l = data.log[dateStr]?.[idx];
                     if(l?.rpeSubmitted) wCompleted++;
                     if(l?.wellness?.sleep) { sleepSum += l.wellness.sleep; sleepCount++; }
                 });
                 if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]) || 0); }); }
-                
                 let sleepAvgRaw = sleepCount > 0 ? (sleepSum / sleepCount) : 0;
                 let sleepQuality = "Sem dados";
-                if(sleepAvgRaw > 0) {
-                    if(sleepAvgRaw <= 2.5) sleepQuality = "Excelente 🟢";
-                    else if(sleepAvgRaw <= 4.5) sleepQuality = "Boa 🟡";
-                    else sleepQuality = "Ruim 🔴";
-                }
-
+                if(sleepAvgRaw > 0) { if(sleepAvgRaw <= 2.5) sleepQuality = "Excelente 🟢"; else if(sleepAvgRaw <= 4.5) sleepQuality = "Boa 🟡"; else sleepQuality = "Ruim 🔴"; }
                 let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset());
                 for(let i=0; i<30; i++) {
                     const dStr = checkDate.toISOString().split('T')[0];
                     if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++;
-                    else if(i !== 0) break; 
-                    checkDate.setDate(checkDate.getDate() - 1);
+                    else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1);
                 }
-
                 return { workouts: wCompleted, mins: totalMins, sleepQ: sleepQuality, streak: currentStreak };
             };
 
             const getPlayerRank = (workouts) => {
-                if(workouts <= 10) return { label: "🌱 Categoria de Base", color: "text-green-400" };
-                if(workouts <= 30) return { label: "⚡ Profissional", color: "text-blue-400" };
-                if(workouts <= 50) return { label: "⭐ Titular Absoluto", color: "text-yellow-400" };
-                return { label: "👑 Lenda do Clube", color: "text-amber-500" };
+                if(workouts <= 10) return { label: "🌱 Categoria de Base", color: "text-green-400 border-green-500/50" };
+                if(workouts <= 30) return { label: "⚡ Profissional", color: "text-blue-400 border-blue-500/50" };
+                if(workouts <= 50) return { label: "⭐ Titular Absoluto", color: "text-yellow-400 border-yellow-500/50" };
+                return { label: "👑 Lenda do Clube", color: "text-amber-500 border-amber-500/50" };
             };
 
             const getHistory = () => {
@@ -226,21 +218,15 @@
                 return pastDays.map(d => {
                     const l = data.log[d]?.[idx] || {};
                     const w = safeObj(l.wellness);
-                    return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted };
+                    return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [] };
                 });
             };
 
-            const getRpeEmoji = (val) => {
-                if(val <= 3) return '😌';
-                if(val <= 6) return '😅';
-                if(val <= 8) return '🥵';
-                return '💀';
-            };
-
+            const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
             const getNutritionAdvice = (rpeVal) => {
-                if(rpeVal >= 8) return { t: "Desgaste Extremo Detectado!", d: "Reponha carboidratos rápidos (ex: fruta, suco) e beba muita água nas próximas 2h para restaurar o glicogênio.", ic: "🍎💧" };
-                if(rpeVal >= 5) return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos nas próximas horas para reconstruir a fibra muscular.", ic: "🍗💪" };
-                return { t: "Treino Moderado/Regenerativo", d: "Esforço bem controlado. Mantenha sua hidratação e alimentação equilibrada de costume.", ic: "🥗💧" };
+                if(rpeVal >= 8) return { t: "Desgaste Extremo Detectado!", d: "Reponha carboidratos rápidos (ex: fruta, suco) e beba muita água nas próximas 2h para restaurar o glicogênio.", ic: "🍎" };
+                if(rpeVal >= 5) return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos nas próximas horas para reconstruir a fibra muscular.", ic: "🍗" };
+                return { t: "Treino Moderado/Regenerativo", d: "Esforço bem controlado. Mantenha sua hidratação e alimentação equilibrada de costume.", ic: "🥗" };
             };
 
             if(loading) return <div className="h-full flex items-center justify-center text-blue-500 animate-pulse"><div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -291,28 +277,18 @@
                 
                 const tEx = prev.length+gen.length+safeArray(data.act).length; const pct = tEx>0?Math.round((completed.length/tEx)*100):0;
                 
-                // MUDANÇA: Vibração ao concluir exercício e início do cronômetro
                 const tog = (ex) => {
-                    const id = ex.id;
-                    const isCompleting = !completed.includes(id);
+                    const id = ex.id; const isCompleting = !completed.includes(id);
+                    initAudio(); 
                     if(isCompleting) {
-                        setCompleted([...completed, id]);
-                        vibrate(50); // Vibração curta de sucesso
-                        
-                        if(!audioCtxRef.current) {
-                            try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
-                        }
+                        setCompleted([...completed, id]); vibrate(50);
                         if(ex.rest && parseInt(ex.rest) > 0) setRestTimer(parseInt(ex.rest));
-                    } else {
-                        setCompleted(completed.filter(x=>x!==id));
-                        vibrate(20); // Vibração levinha ao desfazer
-                    }
+                    } else { setCompleted(completed.filter(x=>x!==id)); vibrate(20); }
                 };
                 
                 const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
                 const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
-                const stats = getPlayerStats();
-                const rank = getPlayerRank(stats.workouts); // Traz a patente do jogador
+                const stats = getPlayerStats(); const rank = getPlayerRank(stats.workouts);
 
                 let pw = data.postW; let ai = "";
                 if(pw==='IA') { if(wl.fatigue>=5||wl.soreness>=5){pw='Crioterapia + Massagem'; ai="Fadiga alta. Foco na Crio imediata.";} else if(wl.fatigue>=3||wl.soreness>=3){pw='Bota Pneumática'; ai="Cansaço moderado detectado.";} else pw='Piscina/Passiva'; }
@@ -324,23 +300,9 @@
                 return (
                     <div className={`h-full w-full flex flex-col relative overflow-hidden pb-24 transition-colors duration-1000 ${isMatchDay ? 'bg-red-950' : 'bg-slate-950'}`}>
                         
-                        {/* CRONÔMETRO FLUTUANTE */}
-                        {restTimer !== null && (
-                            <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-slate-900 px-6 py-2 rounded-full font-black shadow-xl z-[150] flex items-center gap-2 animate-fade-in border-2 border-white">
-                                <Icon name="clock" size={18}/> DESCANSO: {restTimer}s
-                            </div>
-                        )}
+                        {restTimer !== null && <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-slate-900 px-6 py-2 rounded-full font-black shadow-xl z-[150] flex items-center gap-2 animate-fade-in border-2 border-white"><Icon name="clock" size={18}/> DESCANSO: {restTimer}s</div>}
 
-                        {isMatchDay ? (
-                            <div className="bg-red-600 border-b border-red-800 py-1.5 px-4 text-center font-black text-white uppercase tracking-widest animate-pulse shadow-lg shrink-0">
-                                ⚔️ HOJE É DIA DE GUERRA! ⚔️
-                            </div>
-                        ) : (
-                            data.nextG.opponent && d2g > 0 && (
-                                <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 flex justify-between items-center text-[10px] font-bold text-slate-300 uppercase shrink-0"><span className="flex gap-1 items-center text-yellow-500"><Icon name="trophy" size={12}/> Próximo: {data.nextG.opponent}</span><span className="text-blue-400">Faltam {d2g} dias</span></div>
-                            )
-                        )}
-
+                        {isMatchDay ? <div className="bg-red-600 border-b border-red-800 py-1.5 px-4 text-center font-black text-white uppercase tracking-widest animate-pulse shadow-lg shrink-0">⚔️ HOJE É DIA DE GUERRA! ⚔️</div> : ( data.nextG.opponent && d2g > 0 && <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 flex justify-between items-center text-[10px] font-bold text-slate-300 uppercase shrink-0"><span className="flex gap-1 items-center text-yellow-500"><Icon name="trophy" size={12}/> Próximo: {data.nextG.opponent}</span><span className="text-blue-400">Faltam {d2g} dias</span></div> )}
                         {data.potw===idx && !isMatchDay && <div className="gold-shine py-1.5 px-4 text-center font-black uppercase text-[10px] flex items-center justify-center gap-2 shrink-0"><Icon name="trophy" size={14}/> CRAQUE DA SEMANA! <Icon name="trophy" size={14}/></div>}
                         
                         <div className="absolute top-4 right-4 flex gap-2 z-50"><button onClick={()=>setShowStats(true)} className="bg-black/40 hover:bg-white/20 p-2 rounded-full text-white backdrop-blur-md transition-colors"><Icon name="barChart" size={20}/></button><button onClick={()=>window.location.reload()} className="bg-black/40 hover:bg-white/20 p-2 rounded-full text-white backdrop-blur-md transition-colors"><Icon name="refresh" size={20}/></button>{!isPriv && <button onClick={()=>setStep(1)} className="bg-black/40 p-2 rounded-full text-white/50 hover:text-white backdrop-blur-md"><Icon name="x" size={20}/></button>}</div>
@@ -349,31 +311,20 @@
                             <div className="flex items-center gap-4 mb-4 mt-2">
                                 <div onClick={()=>setShowStats(true)} className="w-16 h-16 rounded-full border-2 border-white/50 overflow-hidden bg-slate-800 shadow-lg cursor-pointer transform hover:scale-105 transition-transform" title="Ver Estatísticas">{p?.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={30} className="m-4 text-white/50"/>}</div>
                                 <div className="flex-1">
-                                    <h1 className="text-xl font-black uppercase text-white flex items-center gap-2">{p?.name} {stats.streak > 0 && <span className="text-orange-500 text-sm drop-shadow-md">🔥{stats.streak}</span>}</h1>
-                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded inline-block mt-1 mr-1 bg-slate-900 border border-slate-700 ${rank.color}`}>{rank.label}</span>
-                                    <span className="text-[9px] font-bold bg-white/20 text-white px-2 py-0.5 rounded inline-block mt-1">{isMatchDay?'PREPARAÇÃO PARA O JOGO':inj?'DEPARTAMENTO MÉDICO':trans?'TRANSIÇÃO':'TREINO REGULAR'}</span>
+                                    <h1 className="text-xl font-black uppercase text-white flex items-center gap-2 leading-none">{p?.name} {stats.streak > 0 && <span className="text-orange-500 text-sm drop-shadow-md">🔥{stats.streak}</span>}</h1>
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${rank.color}`}>{rank.label}</span>
+                                        <span className="text-[9px] font-bold bg-white/20 text-white px-2 py-0.5 rounded inline-block">{isMatchDay?'PREPARAÇÃO PARA O JOGO':inj?'DM':trans?'TRANSIÇÃO':'TREINO REGULAR'}</span>
+                                    </div>
                                 </div>
                             </div>
-                            {!inj && tEx > 0 && !isFinished && !isMatchDay && (
-                                <div className="mt-6"><div className="flex justify-between text-[10px] font-bold uppercase mb-1 text-white/70"><span>Progresso da Sessão</span><span>{pct}%</span></div><div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-green-400 transition-all duration-500" style={{width: `${pct}%`}}></div></div></div>
-                            )}
+                            {!inj && tEx > 0 && !isFinished && !isMatchDay && <div className="mt-6"><div className="flex justify-between text-[10px] font-bold uppercase mb-1 text-white/70"><span>Progresso da Sessão</span><span>{pct}%</span></div><div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-green-400 transition-all duration-500" style={{width: `${pct}%`}}></div></div></div>}
                         </div>
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 w-full custom-scroll" style={{ paddingBottom: '120px' }}>
-                            
                             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between"><div className="flex gap-3"><div className="bg-slate-900 p-2 rounded-full"><Icon name="check" size={20} className="text-green-500"/></div><div><h3 className="font-bold text-sm text-white">Wellness Feito</h3><p className="text-[10px] text-slate-400">Prontidão Diária</p></div></div><div className="flex flex-col items-center justify-center"><div className="flex items-center gap-1 border-2 border-slate-600 rounded p-1 w-12 h-6 relative"><div className={`h-full ${bat.f} transition-all`} style={{width: `${bat.p}%`}}></div><div className="absolute -right-1.5 top-1.5 w-1 h-2 bg-slate-600 rounded-r"></div></div><span className={`text-[9px] font-bold mt-1 ${bat.c}`}>{bat.p}% Bateria</span></div></div>
 
-                            {data.videoUrl && (
-                                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
-                                    <h3 className="text-xs font-black text-white uppercase flex items-center gap-2 mb-3"><Icon name="play" size={16} className="text-red-500"/> Vídeo da Semana</h3>
-                                    <div className="w-full h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center border border-slate-600">
-                                        <a href={data.videoUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-slate-400 hover:text-white transition-colors">
-                                            <Icon name="play" size={40} className="text-red-500 opacity-80"/>
-                                            <span className="text-[10px] uppercase font-bold tracking-widest">Toque para Assistir</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
+                            {data.videoUrl && <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg"><h3 className="text-xs font-black text-white uppercase flex items-center gap-2 mb-3"><Icon name="play" size={16} className="text-red-500"/> Vídeo da Semana</h3><div className="w-full h-40 bg-black rounded-lg overflow-hidden flex items-center justify-center border border-slate-600"><a href={data.videoUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2 text-slate-400 hover:text-white transition-colors"><Icon name="play" size={40} className="text-red-500 opacity-80"/><span className="text-[10px] uppercase font-bold tracking-widest">Toque para Assistir</span></a></div></div>}
 
                             {isFinished ? (
                                 <div className="bg-green-900/20 border border-green-800 p-6 rounded-xl flex flex-col items-center animate-fade-in mt-2 shadow-lg">
@@ -391,30 +342,25 @@
                                         <span className="text-xl">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).ic}</span>
                                         <div><div className="text-xs font-bold text-white mb-1">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).t}</div><div className="text-[10px] text-slate-300">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).d}</div></div>
                                     </div>
+                                    
+                                    {/* ALVO DE HIDRATAÇÃO IA */}
+                                    <div className="w-full text-left bg-blue-900/30 border border-blue-800/50 p-3 rounded-lg flex gap-3 items-start mt-2">
+                                        <span className="text-xl">💧</span>
+                                        <div><div className="text-xs font-bold text-blue-400 mb-1">Alvo de Hidratação IA</div><div className="text-[10px] text-slate-300">{getHydrationAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am, data.log[getTodayStr()]?.[idx]?.duration)}</div></div>
+                                    </div>
                                 </div>
                             ) : (
                                 <>
-                                    {data.coachMsg && (
-                                        <div className="bg-blue-900/40 border border-blue-500/50 p-4 rounded-xl flex items-start gap-3 shadow-lg">
-                                            <Icon name="alert" className="text-blue-400 shrink-0"/>
-                                            <div><h3 className="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">Mural do Professor</h3><p className="text-sm font-bold text-white leading-snug">{data.coachMsg}</p></div>
-                                        </div>
-                                    )}
-                                    {!inj && safeArray(data.act).length>0 && <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div><h3 className="text-xs font-black text-orange-500 uppercase flex items-center gap-2 mb-3"><Icon name="fire" size={14}/> Ativação Pré-Treino</h3>{safeArray(data.act).map((ex, idxKey) => (<div key={`act-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="activity" className="m-5 text-orange-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-orange-500 border-orange-500 text-white scale-110 shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
-                                    
-                                    {!inj && prev.length>0 && <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> {trans ? 'Manutenção Preventiva' : 'Prevenção Específica'}</h3>{prev.map((ex, idxKey) => (<div key={`prev-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1"><span className="text-yellow-500 uppercase font-black">{ex.target}</span> • {ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-yellow-500 border-yellow-500 text-white scale-110 shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
-                                    
-                                    {!inj && <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">{trans ? 'Treino de Transição' : 'Treino Principal (Academia)'}</h3></div><div className="p-4 flex flex-col gap-3">{gen.length === 0 ? (<div className="text-center text-slate-500 text-xs py-4">A ficha principal de hoje não possui exercícios para o seu perfil.</div>) : gen.map((ex, idxKey) => (<div key={`gen-${idxKey}`} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3"><div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div></div><div className="flex-1 flex flex-col justify-between"><div><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div></div><div className="flex items-center justify-center"><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white scale-110 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div></div>))}</div></div>}
+                                    {data.coachMsg && <div className="bg-blue-900/40 border border-blue-500/50 p-4 rounded-xl flex items-start gap-3 shadow-lg"><Icon name="alert" className="text-blue-400 shrink-0"/><div><h3 className="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">Mural do Professor</h3><p className="text-sm font-bold text-white leading-snug">{data.coachMsg}</p></div></div>}
+                                    {!inj && safeArray(data.act).length>0 && <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div><h3 className="text-xs font-black text-orange-500 uppercase flex items-center gap-2 mb-3"><Icon name="fire" size={14}/> Ativação Pré-Treino</h3>{safeArray(data.act).map((ex, idxKey) => (<div key={`act-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="activity" className="m-5 text-orange-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-orange-500 border-orange-500 text-white scale-110 shadow-lg' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
+                                    {!inj && prev.length>0 && <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> {trans ? 'Manutenção Preventiva' : 'Prevenção Específica'}</h3>{prev.map((ex, idxKey) => (<div key={`prev-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1"><span className="text-yellow-500 uppercase font-black">{ex.target}</span> • {ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-yellow-500 border-yellow-500 text-white scale-110 shadow-lg' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
+                                    {!inj && <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">{trans ? 'Treino de Transição' : 'Treino Principal (Academia)'}</h3></div><div className="p-4 flex flex-col gap-3">{gen.length === 0 ? (<div className="text-center text-slate-500 text-xs py-4">A ficha principal de hoje não possui exercícios para o seu perfil.</div>) : gen.map((ex, idxKey) => (<div key={`gen-${idxKey}`} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3"><div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div></div><div className="flex-1 flex flex-col justify-between"><div><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div></div><div className="flex items-center justify-center"><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white scale-110 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div></div>))}</div></div>}
                                 </>
                             )}
                             
                             {inj && !isFinished && <div className="bg-red-900/20 p-6 rounded-xl border border-red-800 text-center"><Icon name="medkit" size={30} className="mx-auto text-red-500 mb-2"/><h3 className="text-red-500 font-bold uppercase">Fisioterapia</h3><p className="text-slate-400 text-xs mt-2">Tratamento e reavaliação clínica obrigatória.</p></div>}
                             
-                            <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-xl flex flex-col gap-2">
-                                <div className="flex items-center gap-4"><div className="bg-blue-600 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div><div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Sugerido: <strong>{pw}</strong>.</p></div></div>
-                                {ai && <div className="mt-2 bg-blue-950/50 border border-blue-500/30 rounded p-2 text-[10px] text-blue-300 flex items-start gap-2"><Icon name="brain" size={14} className="shrink-0 text-blue-400"/><span className="font-bold">{ai}</span></div>}
-                            </div>
-
+                            <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-xl flex flex-col gap-2"><div className="flex items-center gap-4"><div className="bg-blue-600 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div><div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Sugerido: <strong>{pw}</strong>.</p></div></div>{ai && <div className="mt-2 bg-blue-950/50 border border-blue-500/30 rounded p-2 text-[10px] text-blue-300 flex items-start gap-2"><Icon name="brain" size={14} className="shrink-0 text-blue-400"/><span className="font-bold">{ai}</span></div>}</div>
                             <div className="mt-4 pb-4 flex justify-center"><p className="text-[10px] font-medium text-slate-500 italic max-w-xs text-center px-4">"{randomTip}"</p></div>
                         </div>
 
@@ -427,7 +373,7 @@
                         )}
 
                         {showStats && (() => {
-                            const historyData = getHistory();
+                            const stats = getPlayerStats(); const historyData = getHistory();
                             return (
                                 <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg z-[110] flex flex-col items-center justify-start pt-12 p-6 animate-fade-in font-sans overflow-y-auto custom-scroll">
                                     <div className="w-full max-w-sm flex flex-col items-center relative pb-10">
@@ -444,28 +390,29 @@
 
                                         <h3 className="w-full text-left text-xs font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-800 pb-2">Sala de Troféus</h3>
                                         <div className="flex justify-between w-full gap-2 mb-8">
-                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 5 ? 'border-amber-600/50 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'border-slate-800 badge-locked'}`}>
-                                                <div className="text-amber-600 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Motor<br/>(5 Tr)</div>
-                                            </div>
-                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 15 ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.2)]' : 'border-slate-800 badge-locked'}`}>
-                                                <div className="text-slate-400 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Incansável<br/>(15 Tr)</div>
-                                            </div>
-                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 30 ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-slate-800 badge-locked'}`}>
-                                                <div className="text-yellow-500 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Máquina<br/>(30 Tr)</div>
-                                            </div>
+                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 5 ? 'border-amber-600/50 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'border-slate-800 badge-locked'}`}><div className="text-amber-600 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Motor<br/>(5 Tr)</div></div>
+                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 15 ? 'border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.2)]' : 'border-slate-800 badge-locked'}`}><div className="text-slate-400 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Incansável<br/>(15 Tr)</div></div>
+                                            <div className={`flex flex-col items-center flex-1 bg-slate-900 p-3 rounded-xl border ${stats.workouts >= 30 ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-slate-800 badge-locked'}`}><div className="text-yellow-500 mb-1"><Icon name="trophy" size={24}/></div><div className="text-[9px] font-bold text-center text-slate-300 uppercase leading-tight">Máquina<br/>(30 Tr)</div></div>
                                         </div>
 
-                                        <h3 className="w-full text-left text-xs font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-800 pb-2">Diário de Bordo (Últimos Dias)</h3>
+                                        <h3 className="w-full text-left text-xs font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-800 pb-2">Diário de Bordo (Toque para Expandir)</h3>
                                         <div className="w-full space-y-2 mb-8">
                                             {historyData.map((h, i) => (
-                                                <div key={i} className="flex justify-between items-center bg-slate-900 border border-slate-700 p-3 rounded-lg">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{formatDateBR(h.date)}</span>
-                                                    {h.hasW ? (
-                                                        <div className="flex gap-4 items-center">
-                                                            <div className="flex flex-col items-center"><span className="text-[8px] text-slate-500 uppercase font-bold">Bat.</span><span className={`text-xs font-black ${h.bat<40?'text-red-500':h.bat<75?'text-yellow-500':'text-green-500'}`}>{h.bat}%</span></div>
-                                                            <div className="flex flex-col items-center"><span className="text-[8px] text-slate-500 uppercase font-bold">Carga</span><span className="text-xs font-black text-blue-400">{h.rpeSub ? `${h.rpe}/10` : '-'}</span></div>
+                                                <div key={i} onClick={()=> h.hasW && h.rpeSub ? setExpandedDay(expandedDay === h.date ? null : h.date) : null} className={`bg-slate-900 border border-slate-700 rounded-lg overflow-hidden transition-all ${h.hasW && h.rpeSub ? 'cursor-pointer hover:border-slate-500' : ''}`}>
+                                                    <div className="flex justify-between items-center p-3">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 w-16">{formatDateBR(h.date)} {expandedDay === h.date ? <Icon name="arrowUp" size={10}/> : <Icon name="arrowDown" size={10}/>}</span>
+                                                        <div className="flex-1 ml-2 flex flex-col gap-1.5">
+                                                            {h.hasW ? (
+                                                                <>
+                                                                    <div className="flex items-center gap-2"><span className="text-[8px] text-slate-500 font-bold w-6 text-right">BAT.</span><div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={`h-full ${h.bat<40?'bg-red-500':h.bat<75?'bg-yellow-500':'bg-green-500'}`} style={{width: `${h.bat}%`}}></div></div><span className={`text-[8px] font-black w-6 text-right ${h.bat<40?'text-red-500':h.bat<75?'text-yellow-500':'text-green-500'}`}>{h.bat}%</span></div>
+                                                                    <div className="flex items-center gap-2"><span className="text-[8px] text-slate-500 font-bold w-6 text-right">CARGA</span><div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-500" style={{width: `${h.rpeSub ? Math.min(100, (h.rpe * h.dur)/800*100) : 0}%`}}></div></div><span className="text-[8px] font-black w-6 text-right text-blue-400">{h.rpeSub ? (h.rpe * h.dur) : '-'}</span></div>
+                                                                </>
+                                                            ) : <span className="text-[10px] text-slate-600 italic">Sem Registro</span>}
                                                         </div>
-                                                    ) : <span className="text-[10px] text-slate-600 italic">Sem Registro</span>}
+                                                    </div>
+                                                    {expandedDay === h.date && h.exs.length > 0 && (
+                                                        <div className="bg-slate-950 p-3 border-t border-slate-800 animate-fade-in"><div className="text-[9px] font-bold text-slate-500 uppercase mb-2">Exercícios Concluídos:</div><ul className="space-y-1">{h.exs.map((exName, idxE) => <li key={idxE} className="text-xs text-slate-300 flex items-center gap-2"><Icon name="check" size={10} className="text-green-500"/> {exName}</li>)}</ul></div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
