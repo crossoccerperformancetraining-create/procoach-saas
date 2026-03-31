@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -114,7 +113,7 @@
                 if (user) {
                     firebase.firestore().collection('coachData').doc(user.uid).set({
                         players: [], trainingLog: {}, dmRecords: [], matchMinutes: {}, assessments: {},
-                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: [], library: [], postWorkout: 'Bota Pneumática (15 min)'
+                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true, plan: 'starter', exercises: []
                     });
                 }
                 setTimeout(() => { window.location.href = window.location.pathname + '?clear=' + Date.now(); }, 1000);
@@ -235,9 +234,7 @@
                 darkMode: !!data.darkMode,
                 plan: typeof data.plan === 'string' ? data.plan : 'starter',
                 days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
-                exercises: safeArray(data.exercises),
-                library: safeArray(data.library), // NOVO
-                postWorkout: typeof data.postWorkout === 'string' ? data.postWorkout : 'Bota Pneumática (15 min)' // NOVO
+                exercises: safeArray(data.exercises)
             };
         };
 
@@ -326,7 +323,7 @@
             const fileInputRef=useRef(null); const importInputRef=useRef(null);
             const handleLogoFile = async (e) => { const f=e.target.files[0]; if(f) { try{const c=await compressImage(f,200,0.6); setLogo(c); showToast("Atualizado!");}catch(e){} } };
             const handleRestore = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=(e)=>{try{const d=JSON.parse(e.target.result); onImport(d); showToast("Dados Restaurados!"); setTimeout(() => window.location.reload(), 1000);}catch(e){showToast("Erro no arquivo")}}; r.readAsText(f); };
-            return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p><div className="col-span-2 mt-2"><button onClick={() => { const link = window.location.origin + window.location.pathname.replace('index.html', '') + 'atleta.html?id=' + firebase.auth().currentUser.uid; navigator.clipboard.writeText(link); showToast("Link do Portal Copiado!"); }} className="w-full flex justify-center gap-2 bg-slate-800 dark:bg-slate-700 text-white py-2 rounded font-bold text-xs hover:bg-slate-600"><Icon name="copy" size={14}/> COPIAR LINK DO PORTAL DO ATLETA</button></div></div></div></div></div>);
+            return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"><div className="p-4 border-b dark:border-slate-700 flex justify-between items-center" style={{backgroundColor:themeColor}}><h2 className="text-white font-bold flex items-center gap-2"><Icon name="settings"/> CONFIG & BACKUP</h2><button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button></div><div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>{logo?<img src={logo} className="w-full h-full object-contain"/>:<Icon name="image" className="text-slate-300 dark:text-slate-500" size={30}/>}<input type="file" ref={fileInputRef} className="hidden" onChange={handleLogoFile}/><div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100" onClick={()=>fileInputRef.current.click()}><Icon name="folder" className="text-white"/></div></div><div className="flex-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME</label><BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/><BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/></div></div></div><div><h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Tema</h3><input type="color" value={themeColor} onChange={e=>setThemeColor(e.target.value)} className="w-12 h-12 rounded-lg border-2 cursor-pointer dark:border-slate-600"/></div><div className="border-t dark:border-slate-700 pt-4"><div className="grid grid-cols-2 gap-2 mb-2"><button onClick={onExport} className="flex justify-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-2 rounded font-bold text-xs"><Icon name="share" size={14}/> EXPORTAR TUDO</button><button onClick={()=>importInputRef.current.click()} className="flex justify-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 py-2 rounded font-bold text-xs"><Icon name="upload" size={14}/> IMPORTAR DADOS</button><input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleRestore}/></div><p className="text-[10px] text-slate-400 text-center mb-2">Use exportar para salvar uma cópia local por segurança.</p></div></div></div></div>);
         };
 
         const AdminDashboard = ({ themeColor }) => {
@@ -404,46 +401,7 @@
             );
         };
 
-        const LibraryView = ({ themeColor, library, setLibrary }) => {
-            const [form, setForm] = useState({ title: '', gifUrl: '' });
-            
-            const addLibrary = () => {
-                if(!form.title) return showToast("Digite o nome do exercício!");
-                setLibrary([{ id: Date.now(), ...form }, ...library]);
-                setForm({ title: '', gifUrl: '' });
-                showToast("Salvo na Biblioteca!");
-            };
-            const removeLibrary = (id) => setLibrary(library.filter(ex => ex.id !== id));
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="image"/> Biblioteca de Exercícios</h2>
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">Cadastre aqui seus GIFs uma única vez para usar rapidamente na prescrição diária.</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-5"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                            <div className="md:col-span-2"><button onClick={addLibrary} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700"><Icon name="save"/> SALVAR</button></div>
-                        </div>
-                    </div>
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {library.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Biblioteca vazia. Cadastre seu primeiro exercício!</div>}
-                        {library.map(ex => (
-                            <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
-                                <button onClick={()=>removeLibrary(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
-                                <div className="w-full h-32 bg-slate-200 dark:bg-slate-700 relative">
-                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="image" size={30}/></div>}
-                                </div>
-                                <div className="p-3"><h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase leading-tight">{ex.title}</h3></div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout }) => {
+        const WorkoutBuilderView = ({ themeColor, exercises, setExercises }) => {
             const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Geral' });
             
             const addExercise = () => {
@@ -454,50 +412,24 @@
             };
             const removeExercise = (id) => setExercises(exercises.filter(ex => ex.id !== id));
 
-            const loadFromLibrary = (libId) => {
-                const selected = library.find(l => l.id === parseInt(libId));
-                if(selected) setForm({...form, title: selected.title, gifUrl: selected.gifUrl});
-            };
-
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
-                        <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária</h2>
-                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Monte a ficha do dia. Carregue da biblioteca ou digite manualmente.</p>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800 md:w-64">
-                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase mb-1 flex items-center gap-1"><Icon name="medkit" size={12}/> Pós-Treino (Para todos)</label>
-                                <select className="w-full border dark:border-blue-700 rounded p-1.5 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
-                                    <option value="IA">🤖 Sugerido pela IA (Dinâmico)</option>
-                                    <option value="Bota Pneumática (15 min)">Bota Pneumática</option>
-                                    <option value="Banheira de Gelo (Crioterapia)">Banheira de Gelo (Crio)</option>
-                                    <option value="Piscina / Soltura Aquática">Piscina / Soltura</option>
-                                    <option value="Livre (Recuperação Passiva)">Livre (Passiva)</option>
-                                </select>
-                            </div>
-                        </div>
+                        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase mb-2 flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária</h2>
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">Cadastre exercícios, adicione o link do GIF e defina as séries, reps e repouso.</p>
                         
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div className="md:col-span-12 lg:col-span-3">
-                                <label className="text-[10px] font-bold text-purple-500 uppercase">📚 Puxar da Biblioteca</label>
-                                <select className="w-full border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-xs font-bold dark:text-white outline-none" onChange={e => loadFromLibrary(e.target.value)}>
-                                    <option value="">Selecione um GIF salvo...</option>
-                                    {library.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
-                                </select>
-                            </div>
-                            <div className="md:col-span-3 lg:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" placeholder="Nome" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-3 lg:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Img</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" min="0" placeholder="Ex: 3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Reps</label><input type="number" min="0" placeholder="Ex: 12" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso</label><input type="number" min="0" placeholder="Segs" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
-                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label><select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}><option value="Geral">Elenco Geral</option><option value="LCA">Prevenção LCA</option><option value="Pubalgia">Pubalgia</option><option value="Posterior">Posterior</option><option value="Manutenção (Histórico Lesão)">Manutenção (Histórico)</option><option value="Transição (Retorno DM)">Transição (Retorno DM)</option></select></div>
+                            <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Exercício</label><input type="text" placeholder="Ex: Cadeira Extensora" className="w-full border dark:border-slate-600 rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Link GIF/Imagem</label><input type="text" placeholder="https://..." className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} /></div>
+                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" placeholder="Ex: 3" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
+                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Reps / Tempo</label><input type="text" placeholder="Ex: 10 a 12" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
+                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Repouso</label><input type="text" placeholder="Ex: 45s" className="w-full border dark:border-slate-600 rounded p-2 text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                            <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Público Alvo</label><select className="w-full border dark:border-slate-600 rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}><option value="Geral">Elenco Geral</option><option value="LCA">Prevenção LCA</option><option value="Pubalgia">Pubalgia</option><option value="Posterior">Posterior</option></select></div>
                             <div className="md:col-span-1"><button onClick={addExercise} className="w-full bg-blue-600 text-white font-bold p-2 rounded flex justify-center hover:bg-blue-700"><Icon name="plus"/></button></div>
                         </div>
                     </div>
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {exercises.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Nenhum exercício cadastrado para hoje.</div>}
+                        {exercises.length === 0 && <div className="col-span-full text-center text-slate-400 mt-10 font-bold text-sm">Nenhum exercício cadastrado.</div>}
                         {exercises.map(ex => (
                             <div key={ex.id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col relative group">
                                 <button onClick={()=>removeExercise(ex.id)} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Icon name="trash" size={12}/></button>
@@ -507,10 +439,95 @@
                                 </div>
                                 <div className="p-4">
                                     <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase leading-tight mb-1">{ex.title}</h3>
-                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}s`}</p>
+                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}`}</p>
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const AthleteMobilePortal = ({ player, dmStatus, themeColor, exercises }) => {
+            const hasACL = true; 
+            const isInjured = dmStatus === 'DM'; 
+            const inTransition = dmStatus === 'TRANSIÇÃO';
+            const headerBg = isInjured ? '#dc2626' : inTransition ? '#f97316' : themeColor;
+
+            const prevExercises = exercises.filter(ex => ex.target !== 'Geral');
+            const genExercises = exercises.filter(ex => ex.target === 'Geral');
+
+            return (
+                <div className="flex justify-center h-full bg-slate-900 overflow-hidden py-4">
+                    <div className="w-[375px] h-full bg-slate-950 rounded-[40px] border-[8px] border-slate-800 shadow-2xl overflow-hidden relative flex flex-col custom-scroll font-sans">
+                        <div className="p-6 rounded-b-3xl shadow-2xl shrink-0" style={{ background: `linear-gradient(to bottom, ${headerBg}, #020617)` }}>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-16 h-16 rounded-full border-2 border-white/50 overflow-hidden bg-slate-800 shadow-lg">{player?.image ? <img src={player.image} className="w-full h-full object-cover"/> : <Icon name="user" size={30} className="m-4 text-white/50"/>}</div>
+                                <div><h1 className="text-xl font-black uppercase text-white tracking-wider">{player?.name || 'Atleta Teste'}</h1><span className="text-[10px] font-bold bg-white/20 text-white px-2 py-1 rounded backdrop-blur-sm">{isInjured?'DEPARTAMENTO MÉDICO':inTransition?'TRANSIÇÃO':'TREINO REGULAR'}</span></div>
+                            </div>
+                            <div className="mt-4"><div className="flex justify-between text-[10px] font-bold uppercase mb-1 text-white/70"><span>Progresso</span><span>30%</span></div><div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-green-400 w-[30%]"></div></div></div>
+                        </div>
+                        
+                        <div className="p-4 flex flex-col gap-4 flex-1 pb-20 overflow-y-auto custom-scroll">
+                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between opacity-50 grayscale pointer-events-none"><div className="flex items-center gap-3"><div className="bg-green-500/20 p-2 rounded-full text-green-500"><Icon name="check" size={20}/></div><div><h3 className="font-bold text-sm text-white">Wellness</h3><p className="text-[10px] text-slate-400">Respondido às 07:14</p></div></div></div>
+                            
+                            {hasACL && !isInjured && prevExercises.length > 0 && (
+                                <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded-xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-2"><Icon name="alert" size={14}/> Prevenção Específica</h3>
+                                    {prevExercises.map(ex => (
+                                        <div key={ex.id} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2">
+                                            <div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0">
+                                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                <div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}`}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button className="w-full mt-2 border border-yellow-600 text-yellow-500 hover:bg-yellow-600 hover:text-white font-bold text-[10px] py-2 rounded uppercase">Marcar como Feito ✅</button>
+                                </div>
+                            )}
+
+                            {!isInjured && !inTransition && (
+                                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                                    <div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">Academia</h3></div>
+                                    <div className="p-4 flex flex-col gap-3">
+                                        {genExercises.length === 0 ? (
+                                            <div className="text-center text-slate-500 text-xs py-4">O treinador ainda não enviou a ficha de hoje.</div>
+                                        ) : genExercises.map(ex => (
+                                            <div key={ex.id} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3">
+                                                <div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0">
+                                                    {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}
+                                                </div>
+                                                <div className="flex-1 flex flex-col justify-between">
+                                                    <div>
+                                                        <div className="font-bold text-xs text-white">{ex.title}</div>
+                                                        <div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Int: ${ex.rest}`}</div>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
+                                                        <input type="checkbox" className="w-4 h-4 rounded bg-slate-800 accent-green-500"/>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Feito</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {isInjured && (
+                                <div className="bg-red-900/20 border border-red-800 rounded-xl p-4">
+                                    <div className="flex items-center justify-center mb-4"><div className="bg-red-500/20 p-3 rounded-full"><Icon name="medkit" size={24} className="text-red-500"/></div></div>
+                                    <h3 className="text-center font-black text-red-500 uppercase text-sm mb-4">Fisioterapia</h3>
+                                    <div className="space-y-2"><div className="bg-slate-900 p-3 rounded border border-red-900/50 flex justify-between items-center"><div><div className="text-xs font-bold text-white">Crioterapia</div><div className="text-[10px] text-slate-400">20 Minutos</div></div><input type="checkbox" className="w-5 h-5 accent-green-500"/></div></div>
+                                </div>
+                            )}
+                            <div className="bg-blue-900/30 border border-blue-800 rounded-xl p-4 flex items-center gap-4">
+                                <div className="bg-blue-500 p-2 rounded-full shadow-lg shadow-blue-500/50 animate-pulse"><Icon name="bolt" size={20} className="text-white"/></div>
+                                <div className="flex-1"><h3 className="font-bold text-xs text-blue-400 uppercase">Ação Pós-Treino</h3><p className="text-[10px] text-slate-300 mt-1">Recuperação ativa recomendada: <strong>Bota Pneumática (15 min)</strong> no DM.</p></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
@@ -732,12 +749,6 @@
                 }
             };
 
-            const sharePrivateLink = () => {
-                const link = window.location.origin + window.location.pathname.replace('index.html', '') + `atleta.html?id=${firebase.auth().currentUser.uid}&p=${playerIndex}`;
-                const msg = `Fala ${player.name}! 🚀\nAcesse seu portal de treino e wellness de hoje clicando aqui:\n${link}`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-            };
-
             const totalW = getWSum(wellness);
             const wColor = totalW >= 25 ? 'text-red-500' : totalW >= 18 ? 'text-yellow-500' : 'text-green-500';
 
@@ -775,11 +786,7 @@
                                 <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga (sRPE)</h3>
                                 <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
                             </div>
-                            
-                            <div className="flex gap-2">
-                                <button onClick={generateShareCard} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg text-[10px] uppercase"><Icon name="image"/> Baixar Card</button>
-                                <button onClick={sharePrivateLink} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg text-[10px] uppercase"><Icon name="share"/> Enviar Link Pessoal</button>
-                            </div>
+                            <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
                         </div>
                     </div>
 
@@ -833,7 +840,7 @@
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
-            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-50 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
+            const Editor = () => { if(editPlayer === null) return null; const p = safePlayers[editPlayer]; if(!p) return null; const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; return (<div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}><div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3" onClick={e=>e.stopPropagation()}><h3 className="font-bold dark:text-white">Editar {p.name}</h3><div className="flex justify-center flex-col items-center gap-2"><div onClick={()=>fileInputRef.current.click()} className="w-32 h-32 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">{localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><input type="file" ref={fileInputRef} className="hidden" onChange={async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(err){} } }}/><div className="w-full"><label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label><BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} /></div></div><BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/><div className="grid grid-cols-2 gap-2"><BufferedInput type="number" className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" placeholder="Camisa" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/><select className="border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}><option value="">-</option>{["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}</select></div><div className="flex gap-2"><button onClick={()=>{if(confirm('Excluir?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded flex-1">Excluir</button><button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-2 rounded flex-1">Salvar</button></div></div></div>); };
             
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
@@ -1657,6 +1664,7 @@
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6 custom-scroll">
                     <div className="flex flex-col lg:flex-row gap-6 h-full">
                         
+                        {/* LISTA DE ATLETAS */}
                         <div className="w-full lg:w-60 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 overflow-y-auto h-64 lg:h-auto custom-scroll">
                             <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Atleta</h3>
                             {safeArray(players).map((p, i) => { 
@@ -1670,6 +1678,7 @@
                             })}
                         </div>
                         
+                        {/* FORMULÁRIO CENTRAL */}
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scroll">
                             <div className="flex items-center gap-4 mb-6 border-b dark:border-slate-700 pb-4">
                                 <div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{selectedP.image ? <img src={selectedP.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
@@ -1682,6 +1691,7 @@
                                 </div>
                             </div>
 
+                            {/* HISTÓRICO AUTOMÁTICO DO DM */}
                             {playerPastInjuries.length > 0 && (
                                 <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                                     <h4 className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-2 flex items-center gap-1"><Icon name="alert" size={12}/> Lesões Anteriores Registradas no Clube</h4>
@@ -1695,6 +1705,7 @@
                                 </div>
                             )}
                             
+                            {/* BLOCO 1: CLÍNICA E ORTOPEDIA */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="medkit"/> Avaliação Clínica Inicial</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
@@ -1748,6 +1759,7 @@
                                 </div>
                             </div>
 
+                            {/* BLOCO 2: ANTROPOMETRIA */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="user"/> Composição Corporal</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Peso (kg)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.weight || ''} onChange={e=>setForm({...form, weight: e.target.value})}/></div>
@@ -1761,6 +1773,7 @@
                                 ))}
                             </div>
 
+                            {/* BLOCO 3: FMS E TESTES */}
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="activity"/> Testes Físicos & FMS</h3>
                             
                             <div className="mb-6 bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-xl border border-blue-200 dark:border-blue-900/50">
@@ -1824,6 +1837,7 @@
                         </div>
                     </div>
                     
+                    {/* BARRA LATERAL DOS RANKINGS */}
                     <div className="w-full lg:w-64 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 h-fit">
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Top 5 da Equipa</h3>
                         <select className="w-full mb-4 text-xs font-bold border dark:border-slate-600 rounded p-2 dark:bg-slate-700 dark:text-white outline-none" value={viewMetric} onChange={e=>setViewMetric(e.target.value)}>
@@ -1856,9 +1870,8 @@
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
             const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
             
+            // EXERCÍCIOS PARA PRESCRICAO
             const [exercises, setExercises] = useState(initialData?.exercises || []); 
-            const [library, setLibrary] = useState(initialData?.library || []);
-            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
 
             const [showSettings, setShowSettings] = useState(false);
             const [showNotifications, setShowNotifications] = useState(false);
@@ -1884,13 +1897,13 @@
                 if(!user) return;
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout };
+                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises };
                     db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
                 }, 2000); 
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, user]);
 
             const activeAlerts = useMemo(() => {
                 const today = getTodayStr(); let alerts = [];
@@ -1976,7 +1989,7 @@
                         <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
                         <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
 
-                        <button onClick={()=>setTab('library')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='library'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📚 BIBLIOTECA</button>
+                        <button onClick={()=>setTab('preview')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='preview'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📱 VISÃO ATLETA</button>
 
                         {isAdmin && (
                             <button onClick={() => setTab('admin')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-auto border ${tab==='admin'?'bg-slate-800 text-yellow-400 border-yellow-500 shadow-lg':'text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-white'}`}>👑 ADMIN</button>
@@ -1988,12 +2001,14 @@
                         {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                         {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                         {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} />}
                         {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
                         {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                         {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
 
-                        {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} />}
-                        {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
+                        {tab === 'preview' && (
+                            <AthleteMobilePortal player={players[0] || {name: 'Atleta Demonstração'}} dmStatus={players[0]?.injured ? 'DM' : 'APTO'} themeColor={themeColor} exercises={exercises} />
+                        )}
 
                         {tab === 'admin' && isAdmin && (
                             <AdminDashboard themeColor={themeColor} />
