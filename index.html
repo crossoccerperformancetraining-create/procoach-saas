@@ -1738,6 +1738,7 @@
 
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
+            const [plan, setPlan] = useState(initialData?.plan || 'starter');
             
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
             const [players, setPlayers] = useState(initialData?.players || []);
@@ -1748,13 +1749,19 @@
             const [header, setHeader] = useState(initialData?.header || {});
             const [logo, setLogo] = useState(initialData?.logo || null);
             const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
-            
             const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
+            
+            const [exercises, setExercises] = useState(initialData?.exercises || []); 
+            const [library, setLibrary] = useState(initialData?.library || []);
+            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Bota Pneumática (15 min)');
+            const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || initialData?.coachMessage || '');
 
             const [showSettings, setShowSettings] = useState(false);
             const [showNotifications, setShowNotifications] = useState(false);
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
+
+            const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
 
             useEffect(() => {
                 if (darkMode) document.body.classList.add('dark');
@@ -1773,19 +1780,18 @@
                 if(!user) return;
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days };
+                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout, coachMsg };
                     db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
                 }, 2000); 
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, plan, exercises, library, postWorkout, coachMsg, user]);
 
             const activeAlerts = useMemo(() => {
                 const today = getTodayStr(); let alerts = [];
                 safeArray(players).forEach((p, i) => {
                     if(!p) return;
-                    
                     const logObj = trainingLog[today]?.[i] || {};
                     const wellness = safeObj(logObj.wellness);
                     if(Number(wellness.soreness) >= 5) alerts.push({ type: 'danger', icon: 'bolt', text: `${p.name} relatou dor aguda (Nível ${wellness.soreness}).`});
@@ -1816,11 +1822,8 @@
                 const dischargedToday = safeArray(dmRecords).filter(r => r && r.status === 'Recovered' && r.dateOut === getTodayStr());
                 dischargedToday.forEach(r => {
                     const p = players[r.playerId];
-                    if(p) {
-                        alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` });
-                    }
+                    if(p) { alerts.push({ type: 'info', icon: 'check', text: `Alta Médica: ${p.name} foi liberado do DM hoje!` }); }
                 });
-
                 return alerts;
             }, [players, trainingLog, dmRecords, matchMinutes]);
 
@@ -1828,30 +1831,16 @@
                 const el = document.getElementById('print-area');
                 if(!el) return;
                 showToast("A gerar imagem do ecrã...");
-                
                 const originalBg = el.style.backgroundColor;
                 el.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
-                
                 try {
-                    const canvas = await html2canvas(el, { 
-                        scale: 2, 
-                        useCORS: true, 
-                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' 
-                    });
-                    canvas.toBlob(blob => { 
-                        smartShare(blob, `procoach_view.png`, 'ProCoach Export'); 
-                    });
-                } catch(e) { 
-                    showToast("Erro ao exportar ecrã"); 
-                }
-                
+                    const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc' });
+                    canvas.toBlob(blob => { smartShare(blob, `procoach_view.png`, 'ProCoach Export'); });
+                } catch(e) { showToast("Erro ao exportar ecrã"); }
                 el.style.backgroundColor = originalBg;
             };
 
-            const handleRefresh = () => {
-                showToast("A atualizar dados...");
-                setTimeout(() => window.location.reload(), 500);
-            };
+            const handleRefresh = () => { showToast("A atualizar dados..."); setTimeout(() => window.location.reload(), 500); };
 
             return (
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
@@ -1864,6 +1853,7 @@
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
+                            <button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500 mr-2">PORTAL DO ATLETA</button>
                             <button onClick={handleRefresh} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center gap-1" title="Atualizar Dados"><Icon name="refresh" size={20}/></button>
                             <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
@@ -1878,24 +1868,58 @@
                         <button onClick={()=>setTab('micro')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='micro'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MICROCICLO</button>
                         <button onClick={()=>setTab('wellness')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='wellness'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>WELLNESS</button>
                         <button onClick={()=>setTab('pse')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='pse'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>CARGA/PSE</button>
+                        <button onClick={()=>setTab('workout')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='workout'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>PRESCRIÇÃO</button>
                         <button onClick={()=>setTab('match')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='match'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>MATCH</button>
-                        <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
                         <button onClick={()=>setTab('dm')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='dm'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>DM</button>
+                        <button onClick={()=>setTab('assessment')} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 ${tab==='assessment'?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>AVALIAÇÃO</button>
+
+                        <button onClick={()=>setTab('library')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-4 border ${tab==='library'?'bg-purple-600 text-white border-purple-700 shadow':'text-purple-400 border-purple-200 dark:border-purple-800/30'}`}>📚 BIBLIOTECA</button>
+
+                        {isAdmin && (
+                            <button onClick={() => setTab('admin')} className={`px-3 py-1.5 rounded text-xs font-black transition-all shrink-0 ml-auto border ${tab==='admin'?'bg-slate-800 text-yellow-400 border-yellow-500 shadow-lg':'text-slate-400 border-transparent hover:text-slate-800 dark:hover:text-white'}`}>👑 ADMIN</button>
+                        )}
                     </div>
                     
-                    <div className="flex-1 overflow-hidden relative" id="print-area">
-                        {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
-                        {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
-                        {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                        {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
-                        {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
-                        {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
+                    <div className="flex-1 overflow-hidden relative flex flex-col" id="print-area">
+                        {/* AGENDA SUSPENSA */}
+                        {tab === 'squad' && (
+                            <div className="px-6 pt-4 bg-slate-100 dark:bg-slate-900 shrink-0 transition-colors">
+                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-1 tracking-wider"><Icon name="bell" size={14}/> Agenda do Dia / Avisos</label>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <select className="w-full md:w-1/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white p-2.5 rounded-lg text-xs font-bold outline-none shadow-sm cursor-pointer" onChange={e => {if(e.target.value) setCoachMsg(e.target.value)}}>
+                                        <option value="">📋 Selecionar aviso rápido...</option>
+                                        <option value="🎥 ATENÇÃO: Reunião de Vídeo Análise antes do treino.">🎥 Vídeo Análise Tática</option>
+                                        <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica / Fisioterapia.">🩺 Avaliação Médica / Fisio</option>
+                                        <option value="🏋️ Foco de Hoje: Academia (Membros Superiores).">🏋️ Academia (Superiores)</option>
+                                        <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia (Inferiores)</option>
+                                        <option value="⚡ Foco de Hoje: Treino Funcional / Potência no Campo.">⚡ Treino Funcional / Potência</option>
+                                        <option value="🧊 RECUPERAÇÃO: Crioterapia (Banheira de Gelo) obrigatória pós-treino.">🧊 Crioterapia Obrigatória</option>
+                                    </select>
+                                    <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2.5 rounded-lg text-sm font-bold outline-none shadow-sm placeholder-slate-400" placeholder="Ou digite um recado personalizado aqui..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="flex-1 overflow-hidden relative">
+                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                            {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
+                            {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                            {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                            {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                            {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
+                            {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
+
+                            {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} />}
+                            {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} />}
+
+                            {tab === 'admin' && isAdmin && (
+                                <AdminDashboard themeColor={themeColor} />
+                            )}
+                        </div>
                     </div>
                 </div>
             );
         };
-
         const CloudWrapper = ({ user }) => {
             const [initialData, setInitialData] = useState(null);
             const [loadingCloud, setLoadingCloud] = useState(true);
