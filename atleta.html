@@ -9,6 +9,7 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
         .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #334155; outline: none; }
@@ -35,6 +36,9 @@
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
         
+        // Ativa vibração no celular se disponível
+        const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
+
         const TIPS = [
             "A dor do pós-treino é a fraqueza saindo do corpo. Recupere-se bem!",
             "O jogo de domingo começa com a sua hidratação de hoje. Beba água!",
@@ -100,6 +104,7 @@
                     }, 1000);
                 } else if (restTimer === 0) {
                     playBeep();
+                    vibrate([300, 150, 300, 150, 500]); // Vibração forte e contínua SOS
                     setRestTimer(null); // Esconde o cronômetro
                 }
                 return () => clearInterval(interval);
@@ -150,6 +155,13 @@
                     [`trainingLog.${td}.${idx}.rpeSubmitted`]: true
                 }).then(()=>{
                     setSubmitting(false); setRpeMod(false); showToast("Treino Concluído! 🚀", "🔥"); 
+                    
+                    // 🎉 EFEITO DE CONFETES 🎉
+                    if(typeof confetti !== 'undefined') {
+                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
+                    }
+                    vibrate([100, 50, 100]); // Vibração de vitória
+
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
                     nl[td][idx].rpe_am = rpe; nl[td][idx].duration = dur; nl[td][idx].rpeSubmitted = true;
                     setData({...data, log:nl});
@@ -200,6 +212,13 @@
                 }
 
                 return { workouts: wCompleted, mins: totalMins, sleepQ: sleepQuality, streak: currentStreak };
+            };
+
+            const getPlayerRank = (workouts) => {
+                if(workouts <= 10) return { label: "🌱 Categoria de Base", color: "text-green-400" };
+                if(workouts <= 30) return { label: "⚡ Profissional", color: "text-blue-400" };
+                if(workouts <= 50) return { label: "⭐ Titular Absoluto", color: "text-yellow-400" };
+                return { label: "👑 Lenda do Clube", color: "text-amber-500" };
             };
 
             const getHistory = () => {
@@ -272,30 +291,28 @@
                 
                 const tEx = prev.length+gen.length+safeArray(data.act).length; const pct = tEx>0?Math.round((completed.length/tEx)*100):0;
                 
-                // MUDANÇA AQUI: Cronômetro automático no check
+                // MUDANÇA: Vibração ao concluir exercício e início do cronômetro
                 const tog = (ex) => {
                     const id = ex.id;
                     const isCompleting = !completed.includes(id);
                     if(isCompleting) {
                         setCompleted([...completed, id]);
+                        vibrate(50); // Vibração curta de sucesso
                         
-                        // Inicializa o Áudio Contexto no primeiro clique do usuário para o iOS não bloquear
                         if(!audioCtxRef.current) {
                             try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
                         }
-
-                        // Se tem tempo de descanso preenchido, inicia o cronômetro
-                        if(ex.rest && parseInt(ex.rest) > 0) {
-                            setRestTimer(parseInt(ex.rest));
-                        }
+                        if(ex.rest && parseInt(ex.rest) > 0) setRestTimer(parseInt(ex.rest));
                     } else {
                         setCompleted(completed.filter(x=>x!==id));
+                        vibrate(20); // Vibração levinha ao desfazer
                     }
                 };
                 
                 const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
                 const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
                 const stats = getPlayerStats();
+                const rank = getPlayerRank(stats.workouts); // Traz a patente do jogador
 
                 let pw = data.postW; let ai = "";
                 if(pw==='IA') { if(wl.fatigue>=5||wl.soreness>=5){pw='Crioterapia + Massagem'; ai="Fadiga alta. Foco na Crio imediata.";} else if(wl.fatigue>=3||wl.soreness>=3){pw='Bota Pneumática'; ai="Cansaço moderado detectado.";} else pw='Piscina/Passiva'; }
@@ -333,7 +350,8 @@
                                 <div onClick={()=>setShowStats(true)} className="w-16 h-16 rounded-full border-2 border-white/50 overflow-hidden bg-slate-800 shadow-lg cursor-pointer transform hover:scale-105 transition-transform" title="Ver Estatísticas">{p?.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={30} className="m-4 text-white/50"/>}</div>
                                 <div className="flex-1">
                                     <h1 className="text-xl font-black uppercase text-white flex items-center gap-2">{p?.name} {stats.streak > 0 && <span className="text-orange-500 text-sm drop-shadow-md">🔥{stats.streak}</span>}</h1>
-                                    <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-1 rounded inline-block mt-1">{isMatchDay?'PREPARAÇÃO PARA O JOGO':inj?'DEPARTAMENTO MÉDICO':trans?'TRANSIÇÃO':'TREINO REGULAR'}</span>
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded inline-block mt-1 mr-1 bg-slate-900 border border-slate-700 ${rank.color}`}>{rank.label}</span>
+                                    <span className="text-[9px] font-bold bg-white/20 text-white px-2 py-0.5 rounded inline-block mt-1">{isMatchDay?'PREPARAÇÃO PARA O JOGO':inj?'DEPARTAMENTO MÉDICO':trans?'TRANSIÇÃO':'TREINO REGULAR'}</span>
                                 </div>
                             </div>
                             {!inj && tEx > 0 && !isFinished && !isMatchDay && (
@@ -382,11 +400,11 @@
                                             <div><h3 className="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">Mural do Professor</h3><p className="text-sm font-bold text-white leading-snug">{data.coachMsg}</p></div>
                                         </div>
                                     )}
-                                    {!inj && safeArray(data.act).length>0 && <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div><h3 className="text-xs font-black text-orange-500 uppercase flex items-center gap-2 mb-3"><Icon name="fire" size={14}/> Ativação Pré-Treino</h3>{safeArray(data.act).map((ex, idxKey) => (<div key={`act-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="activity" className="m-5 text-orange-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-orange-500 border-orange-500 text-white scale-110 shadow-lg' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
+                                    {!inj && safeArray(data.act).length>0 && <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div><h3 className="text-xs font-black text-orange-500 uppercase flex items-center gap-2 mb-3"><Icon name="fire" size={14}/> Ativação Pré-Treino</h3>{safeArray(data.act).map((ex, idxKey) => (<div key={`act-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="activity" className="m-5 text-orange-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1">{ex.sets}x {ex.reps}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-orange-500 border-orange-500 text-white scale-110 shadow-[0_0_10px_rgba(249,115,22,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
                                     
-                                    {!inj && prev.length>0 && <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> {trans ? 'Manutenção Preventiva' : 'Prevenção Específica'}</h3>{prev.map((ex, idxKey) => (<div key={`prev-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1"><span className="text-yellow-500 uppercase font-black">{ex.target}</span> • {ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-yellow-500 border-yellow-500 text-white scale-110 shadow-lg' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
+                                    {!inj && prev.length>0 && <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-xl relative overflow-hidden"><div className="absolute top-0 right-0 w-2 h-full bg-yellow-500"></div><h3 className="text-xs font-black text-yellow-500 uppercase flex items-center gap-2 mb-3"><Icon name="alert" size={14}/> {trans ? 'Manutenção Preventiva' : 'Prevenção Específica'}</h3>{prev.map((ex, idxKey) => (<div key={`prev-${idxKey}`} className="bg-black/40 p-3 rounded-lg flex gap-3 items-center mb-2"><div className="w-16 h-16 bg-slate-700 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-80" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-5 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div></div><div className="flex-1"><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-slate-400 mt-1"><span className="text-yellow-500 uppercase font-black">{ex.target}</span> • {ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-yellow-500 border-yellow-500 text-white scale-110 shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div>))}</div>}
                                     
-                                    {!inj && <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">{trans ? 'Treino de Transição' : 'Treino Principal (Academia)'}</h3></div><div className="p-4 flex flex-col gap-3">{gen.length === 0 ? (<div className="text-center text-slate-500 text-xs py-4">A ficha principal de hoje não possui exercícios para o seu perfil.</div>) : gen.map((ex, idxKey) => (<div key={`gen-${idxKey}`} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3"><div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div></div><div className="flex-1 flex flex-col justify-between"><div><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div></div><div className="flex items-center justify-center"><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white scale-110 shadow-lg' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div></div>))}</div></div>}
+                                    {!inj && <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"><div className="bg-slate-700/50 p-3 border-b border-slate-700 flex items-center gap-2"><Icon name="activity" size={16} className="text-blue-400"/><h3 className="font-bold text-sm uppercase text-white">{trans ? 'Treino de Transição' : 'Treino Principal (Academia)'}</h3></div><div className="p-4 flex flex-col gap-3">{gen.length === 0 ? (<div className="text-center text-slate-500 text-xs py-4">A ficha principal de hoje não possui exercícios para o seu perfil.</div>) : gen.map((ex, idxKey) => (<div key={`gen-${idxKey}`} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 flex gap-3"><div className="w-20 h-20 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>{ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover" onError={(e)=>e.target.style.display='none'}/> : <Icon name="image" className="m-6 text-slate-500"/>}<div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={24} className="text-white"/></div></div><div className="flex-1 flex flex-col justify-between"><div><div className="font-bold text-xs text-white">{ex.title}</div><div className="text-[10px] text-blue-400 font-bold uppercase mt-1">{ex.sets}x {ex.reps} {ex.rest && `| Rep: ${ex.rest}s`}</div></div></div><div className="flex items-center justify-center"><div onClick={()=>tog(ex)} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white scale-110 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-600 text-transparent'}`}><Icon name="check" size={16}/></div></div></div>))}</div></div>}
                                 </>
                             )}
                             
@@ -409,7 +427,6 @@
                         )}
 
                         {showStats && (() => {
-                            const stats = getPlayerStats();
                             const historyData = getHistory();
                             return (
                                 <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg z-[110] flex flex-col items-center justify-start pt-12 p-6 animate-fade-in font-sans overflow-y-auto custom-scroll">
@@ -485,7 +502,7 @@
                         )}
 
                         {gif && (
-                            <div className="absolute inset-0 bg-slate-950 z-[100] flex flex-col"><div className="p-4 flex justify-end bg-slate-900"><button onClick={()=>setGif(null)} className="text-white bg-slate-800 p-2 rounded-full"><Icon name="x"/></button></div><div className="flex-1 flex justify-center items-center bg-black p-4 relative">{gif.gifUrl?<img src={gif.gifUrl} className="w-full max-h-[50vh] object-contain rounded-lg shadow-2xl"/>:<Icon name="image" size={60} className="text-slate-700"/>}</div><div className="bg-slate-900 p-6 rounded-t-3xl border-t border-slate-800 pb-10"><div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div><h2 className="text-2xl font-black text-white uppercase text-center mb-6">{gif.title}</h2><div className="flex justify-center gap-4 mt-6"><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-xl font-black text-blue-400">{gif.sets}</div></div><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-xl font-black text-green-400">{gif.reps}</div></div>{gif.rest && (<div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-xl font-black text-yellow-400">{gif.rest}s</div></div>)}</div><button onClick={() => setGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button></div></div>
+                            <div className="absolute inset-0 bg-slate-950 z-[100] flex flex-col"><div className="p-4 flex justify-end bg-slate-900"><button onClick={()=>setGif(null)} className="text-white bg-slate-800 p-2 rounded-full"><Icon name="x"/></button></div><div className="flex-1 flex justify-center items-center bg-black p-4 relative">{gif.gifUrl?<img src={gif.gifUrl} className="w-full max-h-[50vh] object-contain rounded-lg shadow-2xl"/>:<Icon name="image" size={60} className="text-slate-700"/>}</div><div className="bg-slate-900 p-6 rounded-t-3xl border-t border-slate-800 pb-10"><div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6"></div><h2 className="text-2xl font-black text-white uppercase mb-2 text-center">{gif.title}</h2><div className="flex justify-center gap-4 mt-6"><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-xl font-black text-blue-400">{gif.sets}</div></div><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-xl font-black text-green-400">{gif.reps}</div></div>{gif.rest && (<div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center w-24"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-xl font-black text-yellow-400">{gif.rest}s</div></div>)}</div><button onClick={() => setGif(null)} className="w-full mt-8 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700">FECHAR</button></div></div>
                         )}
                     </div>
                 );
