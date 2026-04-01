@@ -640,7 +640,7 @@
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
-            const Editor = () => { 
+           const Editor = () => { 
                 if(editPlayer === null) return null; 
                 const p = safePlayers[editPlayer]; 
                 if(!p) return null; 
@@ -686,6 +686,7 @@
                                     </div>
                                 </div>
                                 
+                                {/* 🟢 NOVOS CAMPOS: GOLS E ASSISTÊNCIAS */}
                                 <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
@@ -697,6 +698,7 @@
                                     </div>
                                 </div>
                                 
+                                {/* 🟢 NOVOS CAMPOS: SUSPENSÃO E DESTAQUE */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
                                         <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
@@ -718,7 +720,6 @@
                     </div>
                 ); 
             };
-            
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
 
