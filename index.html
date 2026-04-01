@@ -578,6 +578,12 @@ html lang="pt-BR">
                                 <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
                             </div>
                             <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
+                            
+                            <button onClick={() => {
+                                const link = `${window.location.origin}/atleta.html?id=${firebase.auth().currentUser.uid}&p=${playerIndex}`;
+                                navigator.clipboard.writeText(link);
+                                showToast("Link do App copiado! Cole no WhatsApp do atleta.");
+                            }} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg mt-2"><Icon name="copy"/> COPIAR LINK DO APP DO ATLETA</button>
                         </div>
                     </div>
 
@@ -1764,28 +1770,30 @@ html lang="pt-BR">
             );
         };
 
-       const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog }) => {
+      const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog }) => {
             const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: 'Ativação & Core' });
             const [editId, setEditId] = useState(null); 
             
-            // LÓGICA DA IA PARA SUGERIR PÓS-TREINO
+            // LÓGICA DA IA (Automática)
             const getAiSuggestion = () => {
                 const today = getTodayStr();
                 let totalFatigue = 0;
                 let count = 0;
+                
                 safeArray(players).forEach((p, i) => {
-                    const w = safeObj(trainingLog[today]?.[i]?.wellness);
-                    if(w.sleep) {
-                        totalFatigue += (Number(w.fatigue) || 1) + (Number(w.soreness) || 1);
+                    const stats = trainingLog[today]?.[i]?.wellness;
+                    if(stats && stats.sleep) {
+                        totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1);
                         count++;
                     }
                 });
+
                 const avg = count > 0 ? totalFatigue / count : 0;
                 
                 if (avg >= 10) return "🚨 IA: Crioterapia + Bota (Fadiga Crítica)";
                 if (avg >= 7) return "⚠️ IA: Banheira de Gelo (Fadiga Alta)";
-                if (avg >= 4) return "⚖️ IA: Contraste (Gelo/Quente) ou Piscina";
-                return "✅ IA: Recuperação Livre / Passiva";
+                if (avg >= 4) return "⚖️ IA: Contraste ou Piscina (Fadiga Moderada)";
+                return "✅ IA: Recuperação Livre (Time Pronto)";
             };
 
             const saveExercise = () => {
@@ -1802,7 +1810,7 @@ html lang="pt-BR">
             };
 
             const loadFromLibrary = (libId) => {
-                const selected = library.find(l => l.id === parseInt(libId));
+                const selected = safeArray(library).find(l => l.id === parseInt(libId));
                 if(selected) setForm({...form, title: selected.title, gifUrl: selected.gifUrl});
             };
 
@@ -1812,7 +1820,7 @@ html lang="pt-BR">
                         <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
                             <div>
                                 <h2 className="text-xl font-black uppercase flex items-center gap-2" style={{color: themeColor}}><Icon name="bolt"/> Prescrição Diária</h2>
-                                <div className="text-[10px] font-bold text-blue-500 mt-1 uppercase bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded inline-block">
+                                <div className="text-[10px] font-bold text-blue-500 mt-1 uppercase bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded inline-block border border-blue-100 dark:border-blue-800">
                                     {getAiSuggestion()}
                                 </div>
                             </div>
@@ -1820,12 +1828,10 @@ html lang="pt-BR">
                                 <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Definir Pós-Treino Oficial:</label>
                                 <select className="w-full rounded p-2 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none border dark:border-slate-600" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
                                     <option value="Livre">Livre (Recuperação Passiva)</option>
-                                    <option value="Banheira de Gelo (Crioterapia)">Banheira de Gelo (10 min)</option>
+                                    <option value="Banheira de Gelo (10 min)">Banheira de Gelo (10 min)</option>
                                     <option value="Bota Pneumática (15 min)">Bota Pneumática (15 min)</option>
                                     <option value="Piscina / Soltura Aquática">Piscina / Soltura Aquática</option>
-                                    <option value="Banho de Contraste (Gelo/Quente)">Banho de Contraste</option>
-                                    <option value="Massagem / Liberação Miofascial">Massagem / Liberação</option>
-                                    <option value="Suplementação de Proteína + Repouso">Suplementação + Repouso</option>
+                                    <option value="Banho de Contraste">Banho de Contraste</option>
                                 </select>
                             </div>
                         </div>
@@ -1834,8 +1840,8 @@ html lang="pt-BR">
                             <div className="md:col-span-4">
                                 <label className="text-[10px] font-bold text-purple-500 uppercase">📚 Biblioteca de GIFs</label>
                                 <select className="w-full border rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none" onChange={e => loadFromLibrary(e.target.value)}>
-                                    <option value="">Puxar da Biblioteca...</option>
-                                    {library.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                                    <option value="">Puxar da Biblioteca ({safeArray(library).length})...</option>
+                                    {safeArray(library).map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
                                 </select>
                             </div>
                             <div className="md:col-span-5"><input type="text" placeholder="Nome do Exercício" className="w-full border rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
