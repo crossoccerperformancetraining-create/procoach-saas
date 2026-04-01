@@ -32,7 +32,8 @@
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
-        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : []; 
+        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
@@ -54,7 +55,27 @@
 
         const Icon = ({ name, size=24, className="", onClick }) => {
             const p = { 
-                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>', fastForward: '<polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/>', plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', ball: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>', target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', fire: '<path d="M12 2c0 0-6 6.5-6 12a6 6 0 1 0 12 0c0-5.5-6-12-6-12z"/><path d="M12 14c0 0-2 2-2 4a2 2 0 1 0 4 0c0-2-2-4-2-4z"/>', arrowDown: '<polyline points="6 9 12 15 18 9"/>', arrowUp: '<polyline points="18 15 12 9 6 15"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'
+                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', 
+                check: '<polyline points="20 6 9 17 4 12"/>', 
+                x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', 
+                send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', 
+                alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', 
+                activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', 
+                play: '<polygon points="5 3 19 12 5 21 5 3"/>', 
+                clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', 
+                trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', 
+                refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', 
+                barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', 
+                share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>', 
+                fastForward: '<polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/>', 
+                plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', 
+                ball: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>', 
+                target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', 
+                eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', 
+                fire: '<path d="M12 2c0 0-6 6.5-6 12a6 6 0 1 0 12 0c0-5.5-6-12-6-12z"/><path d="M12 14c0 0-2 2-2 4a2 2 0 1 0 4 0c0-2-2-4-2-4z"/>', 
+                arrowDown: '<polyline points="6 9 12 15 18 9"/>', 
+                arrowUp: '<polyline points="18 15 12 9 6 15"/>', 
+                medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>'
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill={name==='play'||name==='trophy'||name==='fire'?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick} dangerouslySetInnerHTML={{__html: p[name]}} />;
         };
@@ -87,7 +108,7 @@
         const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'' });
             const [idx, setIdx] = useState(null);
-            const [tab, setTab] = useState('workout'); // 'workout' ou 'ranking'
+            const [tab, setTab] = useState('workout');
             const [step, setStep] = useState(1);
             const [loading, setLoading] = useState(true);
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1}); const [pain, setPain] = useState([]);
@@ -99,9 +120,9 @@
             const [agendaAck, setAgendaAck] = useState(false);
             const [gif, setGif] = useState(null); 
             const [completed, setCompleted] = useState([]);
-            const [skippedExs, setSkippedExs] = useState({}); // { id: 'Motivo' }
-            const [exLoads, setExLoads] = useState({}); // { id: '40' }
-            const [skipModal, setSkipModal] = useState(null); // id do exercicio
+            const [skippedExs, setSkippedExs] = useState({});
+            const [exLoads, setExLoads] = useState({});
+            const [skipModal, setSkipModal] = useState(null);
             
             // Modais Finais e Controle
             const [rpeMod, setRpeMod] = useState(false); 
@@ -115,7 +136,7 @@
             
             // Cronômetro e Auto-Play
             const [restTimer, setRestTimer] = useState(null);
-            const [focusMode, setFocusMode] = useState('exercise'); // 'exercise' ou 'rest'
+            const [focusMode, setFocusMode] = useState('exercise');
             const activeExRef = useRef(null);
             const audioCtxRef = useRef(null);
 
@@ -144,7 +165,8 @@
             const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500', f: 'bg-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500', f: p<40?'bg-red-500':p<75?'bg-yellow-500':'bg-green-500' }; };
 
             const getOrderedExs = () => {
-                const assStr = data.ass[idx]?.[0]?.anamnese?.toLowerCase() || '';
+                const pAss = (data.ass && data.ass[idx] && data.ass[idx][0]) ? data.ass[idx][0] : {};
+                const assStr = (pAss.anamnese || '').toLowerCase();
                 const hasLca = assStr.includes('lca'); const hasPub = assStr.includes('pubalgia'); const hasPost = assStr.includes('posterior')||assStr.includes('muscular');
                 const hasHist = assStr.trim()!=='' && !assStr.includes('nenhum') && !assStr.includes('sem histórico');
                 let baseExs = safeArray(data.ex);
@@ -259,17 +281,23 @@
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 5); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
             const getRankingData = () => {
-                const players = safeArray(data.players).map((p, i) => {
+                const validPlayers = safeArray(data.players).filter(p => p);
+                const players = validPlayers.map((p, i) => {
                     let streak = 0; let checkDate = new Date();
                     for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); }
-                    return { ...p, streak, goals: Number(p.stats?.g)||0, assists: Number(p.stats?.a)||0 };
+                    const g = p.stats ? Number(p.stats.g) : 0;
+                    const a = p.stats ? Number(p.stats.a) : 0;
+                    return { ...p, streak, goals: g || 0, assists: a || 0 };
                 });
                 return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) };
             };
 
             const getPlayerSkills = (pIdx) => {
-                const lastAss = data.ass[pIdx]?.[0] || {}; const fms = (Number(lastAss.fms_total)||0) * 4.7; const force = (Number(lastAss.squat_rm)||0); const speed = 100 - ((Number(lastAss.speed30)||4.5) * 10);
-                return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(lastAss.sj)||50, prev: Math.min(99, fms), tech: 75, endurance: 70 };
+                const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {};
+                const fms = (Number(pAss.fms_total)||0) * 4.7; 
+                const force = (Number(pAss.squat_rm)||0); 
+                const speed = 100 - ((Number(pAss.speed30)||4.5) * 10);
+                return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: 75, endurance: 70 };
             };
 
             if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-blue-500 font-bold animate-pulse text-xs uppercase tracking-widest">Carregando Sistema de Elite...</div>;
@@ -280,23 +308,27 @@
                     <h1 className="text-3xl font-black italic mb-8 text-white"><span style={{color:data.color}}>PRO</span>COACH</h1>
                     <div className="text-sm text-slate-400 font-bold mb-6 uppercase tracking-wider">Selecione seu perfil</div>
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl pb-10">
-                        {data.players.map((p, i) => (
-                            <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
-                                <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-lg ${p.highlight ? 'border-yellow-400 gold-glow' : 'border-slate-800'}`}>
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={32} className="m-6 text-slate-700"/>}
+                        {data.players.map((p, i) => {
+                            if(!p) return null;
+                            return (
+                                <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
+                                    <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-lg ${p.highlight ? 'border-yellow-400 gold-glow' : 'border-slate-800'}`}>
+                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={32} className="m-6 text-slate-700"/>}
+                                    </div>
+                                    <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-400">{(p.name || 'Atleta').split(' ')[0]}</span>
                                 </div>
-                                <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-300">{p.name.split(' ')[0]}</span>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             );
 
             if(step===2) {
                 const p = data.players[idx];
+                if(!p) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold">Atleta não encontrado.</div>;
                 return (
                     <div className="h-full flex flex-col animate-fade-in relative bg-slate-900 pb-20">
-                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center gap-4 shadow-lg shrink-0">{!isPriv && <button onClick={()=>setStep(1)} className="text-white bg-slate-700 p-2 rounded-full"><Icon name="x" size={20}/></button>}<div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div><div><div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div><h2 className="text-lg font-black text-white">{getGreeting()}, {p.name.split(' ')[0]}!</h2></div></div>
+                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center gap-4 shadow-lg shrink-0">{!isPriv && <button onClick={()=>setStep(1)} className="text-white bg-slate-700 p-2 rounded-full"><Icon name="x" size={20}/></button>}<div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div><div><div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div><h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2></div></div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
                             {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                             <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Joelho","Posterior","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
@@ -306,7 +338,10 @@
                 );
             }
 
-            const p = data.players[idx]; const isSuspended = p.suspended === true; const isHighlight = p.highlight === true;
+            const p = data.players[idx]; 
+            if(!p) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold text-center">Atleta não encontrado no sistema.</div>;
+
+            const isSuspended = p.suspended === true; const isHighlight = p.highlight === true;
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             
             const blocks = exData.gen.reduce((acc, ex) => {
@@ -318,7 +353,7 @@
             const pct = tEx > 0 ? Math.round(((completed.length + Object.keys(skippedExs).length) / tEx) * 100) : 0;
             const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
             const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
-            const d2g = data.nextG?.date ? Math.ceil((new Date(data.nextG.date) - new Date(getTodayStr()))/(1000*60*60*24)) : null;
+            const d2g = data.nextG && data.nextG.date ? Math.ceil((new Date(data.nextG.date) - new Date(getTodayStr()))/(1000*60*60*24)) : null;
             const isMatchDay = d2g === 0;
 
             let pw = data.postW; let ai = "";
@@ -341,7 +376,7 @@
                         {isSkipped && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[8px] font-black px-2 py-0.5 rounded-bl-lg z-10 uppercase">PULOU: {skippedExs[ex.id]}</div>}
                         <div className="flex gap-4 items-center">
                             <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
-                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90"/> : <Icon name={iconName} className="m-5 text-slate-500"/>}
+                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90" onError={(e)=>e.target.style.display='none'}/> : <Icon name={iconName} className="m-5 text-slate-500"/>}
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                             </div>
                             <div className="flex-1">
@@ -390,12 +425,12 @@
                                     <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
                                         <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Gols Temporada</span>
-                                        <span className="text-3xl font-black text-white">{p.stats?.g || 0}</span>
+                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.g) || 0}</span>
                                     </div>
                                     <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
                                         <Icon name="target" className="text-blue-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Assistências</span>
-                                        <span className="text-3xl font-black text-white">{p.stats?.a || 0}</span>
+                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.a) || 0}</span>
                                     </div>
                                 </div>
 
@@ -520,15 +555,6 @@
                         )}
                     </div>
 
-                    {/* BOTÃO FINALIZAR FIXO */}
-                    {tab === 'workout' && (!isFinished || viewMode === 'review') && tEx > 0 && (
-                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
-                            <button onClick={()=>setRpeMod(true)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-900/50 flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
-                                <Icon name="check"/> FINALIZAR TREINO
-                            </button>
-                        </div>
-                    )}
-
                     {/* PERFIL / SKILLS MODAL */}
                     {showProfile && (
                         <div className="fixed inset-0 bg-slate-950 z-[400] p-6 flex flex-col items-center animate-fade-in custom-scroll overflow-y-auto">
@@ -648,6 +674,15 @@
                         </div>
                     )}
 
+                    {/* BOTÃO FINALIZAR FIXO (APARECE APENAS NO WORKOUT QUANDO HÁ TREINO) */}
+                    {tab === 'workout' && (!isFinished || viewMode === 'review') && tEx > 0 && (
+                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
+                            <button onClick={()=>setRpeMod(true)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-900/50 flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
+                                <Icon name="check"/> FINALIZAR TREINO
+                            </button>
+                        </div>
+                    )}
+
                     {/* MODO FOCO AUTOMÁTICO */}
                     {gif && (
                         <div className="absolute inset-0 bg-slate-950 z-[250] flex flex-col animate-fade-in">
@@ -683,7 +718,7 @@
                     )}
 
                     {/* MENU INFERIOR FIXO */}
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
                          <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
                          <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Skills</span></div>
