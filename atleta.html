@@ -53,6 +53,18 @@
             return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
         };
 
+        const getNutritionAdvice = (rpe) => {
+            if(rpe >= 8) return { ic: '🍝', t: 'Reposição Urgente', d: 'Alta Carga! Priorize carboidratos e proteínas.' };
+            if(rpe >= 5) return { ic: '🥪', t: 'Refeição Equilibrada', d: 'Mantenha a dieta padrão. Carboidratos e proteínas.' };
+            return { ic: '🥗', t: 'Recuperação Leve', d: 'Foco em proteínas e vegetais. Evite excessos.' };
+        };
+
+        const getRpeEmoji = (rpe) => {
+            if(rpe <= 3) return '😊'; if(rpe <= 5) return '🙂';
+            if(rpe <= 7) return '😅'; if(rpe <= 9) return '🥵';
+            return '🤮';
+        };
+
         const Icon = ({ name, size=24, className="", onClick }) => {
             const p = { 
                 user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', 
@@ -285,9 +297,9 @@
                 const players = validPlayers.map((p, i) => {
                     let streak = 0; let checkDate = new Date();
                     for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); }
-                    const g = p.stats ? Number(p.stats.g) : 0;
-                    const a = p.stats ? Number(p.stats.a) : 0;
-                    return { ...p, streak, goals: g || 0, assists: a || 0 };
+                    const g = Number(p.goals) || 0;
+                    const a = Number(p.assists) || 0;
+                    return { ...p, streak, goals: g, assists: a };
                 });
                 return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) };
             };
@@ -328,7 +340,7 @@
                 if(!p) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold">Atleta não encontrado.</div>;
                 return (
                     <div className="h-full flex flex-col animate-fade-in relative bg-slate-900 pb-20">
-                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center gap-4 shadow-lg shrink-0">{!isPriv && <button onClick={()=>setStep(1)} className="text-white bg-slate-700 p-2 rounded-full"><Icon name="x" size={20}/></button>}<div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div><div><div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div><h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2></div></div>
+                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center gap-4 shadow-lg shrink-0"><button onClick={()=>setStep(1)} className="text-white bg-slate-700 p-2 rounded-full"><Icon name="x" size={20}/></button><div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div><div><div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div><h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2></div></div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
                             {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                             <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Joelho","Posterior","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
@@ -407,7 +419,7 @@
                             <div className="flex-1">
                                 <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
                                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
+                                    <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.position || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
                                     {isHighlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
                                 </div>
                             </div>
@@ -425,12 +437,12 @@
                                     <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
                                         <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Gols Temporada</span>
-                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.g) || 0}</span>
+                                        <span className="text-3xl font-black text-white">{p.goals || 0}</span>
                                     </div>
                                     <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
                                         <Icon name="target" className="text-blue-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Assistências</span>
-                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.a) || 0}</span>
+                                        <span className="text-3xl font-black text-white">{p.assists || 0}</span>
                                     </div>
                                 </div>
 
@@ -563,7 +575,7 @@
                                 {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={60} className="m-8 text-white/20"/>}
                             </div>
                             <h2 className="text-3xl font-black uppercase text-white mb-1 text-center">{p.name}</h2>
-                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-8">{p.pos || 'Atleta'}</p>
+                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-8">{p.position || 'Atleta'}</p>
                             
                             <div className="w-full bg-slate-900 rounded-[40px] p-6 border border-slate-800 mb-6">
                                 <h3 className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Atributos de Performance</h3>
@@ -721,8 +733,8 @@
                     <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
                          <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
-                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Skills</span></div>
-                         <div onClick={()=>setIdx(null)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="user" size={24}/><span className="text-[8px] font-black uppercase mt-1">Sair</span></div>
+                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Status</span></div>
+                         <div onClick={()=>setIdx(null)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="user" size={24}/><span className="text-[8px] font-black uppercase mt-1">Trocar Perfil</span></div>
                     </div>
                 </div>
             );
