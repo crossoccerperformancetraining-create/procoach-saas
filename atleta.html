@@ -45,8 +45,15 @@
             const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         };
 
+        const getEmbedUrl = (url) => {
+            if(!url) return null;
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+        };
+
         const Icon = ({ name, size=24, className="", onClick }) => {
-            const p = { user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>', image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>', message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', arrowDown: '<polyline points="6 9 12 15 18 9"/>', arrowUp: '<polyline points="18 15 12 9 6 15"/>', bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>', share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>', fastForward: '<polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/>' };
+            const p = { user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>', image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>', message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>', arrowDown: '<polyline points="6 9 12 15 18 9"/>', arrowUp: '<polyline points="18 15 12 9 6 15"/>', bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>', share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>', fastForward: '<polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/>', plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>' };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill={name==='play'||name==='trophy'?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick} dangerouslySetInnerHTML={{__html: p[name]}} />;
         };
 
@@ -66,7 +73,7 @@
             const [exLoads, setExLoads] = useState({}); // { id: '40' }
             const [skipModal, setSkipModal] = useState(null); // id do exercicio
             
-            // Modais Finais
+            // Modais Finais e Controle
             const [rpeMod, setRpeMod] = useState(false); 
             const [rpe, setRpe] = useState(5); 
             const [dur, setDur] = useState(60);
@@ -78,8 +85,10 @@
             // Agenda Ciente
             const [agendaAck, setAgendaAck] = useState(false);
             
-            // Cronômetro
+            // Cronômetro e Auto-Play
             const [restTimer, setRestTimer] = useState(null);
+            const [focusMode, setFocusMode] = useState('exercise'); // 'exercise' ou 'rest'
+            const activeExRef = useRef(null);
             const audioCtxRef = useRef(null);
 
             useEffect(() => {
@@ -99,12 +108,55 @@
                 return () => unsubscribe();
             }, []);
 
+            // FUNÇÃO PARA PEGAR A ORDEM CORRETA DOS EXERCÍCIOS PARA O AUTO-PLAY
+            const getOrderedExs = () => {
+                const ass = data.ass[idx]?.[0]?.anamnese?.toLowerCase() || '';
+                const hasLca = ass.includes('lca'); const hasPub = ass.includes('pubalgia'); const hasPost = ass.includes('posterior')||ass.includes('muscular');
+                const hasHist = ass.trim()!=='' && !ass.includes('nenhum') && !ass.includes('sem histórico');
+                let baseExs = safeArray(data.ex);
+                const dm = getDM(idx); const trans = dm==='TRANSIÇÃO'; const inj = dm==='DM';
+                let prevExs = []; let genExs = [];
+                if(trans) { genExs = baseExs.filter(x=>x.target==='Transição (Retorno DM)'); prevExs = baseExs.filter(x=>x.target==='Manutenção (Histórico Lesão)'); } 
+                else if(!inj) { 
+                    genExs = baseExs.filter(x => !x.target || x.target === 'Geral' || (!x.target.includes('LCA') && !x.target.includes('Pubalgia') && !x.target.includes('Posterior') && !x.target.includes('Manutenção') && !x.target.includes('Transição'))); 
+                    prevExs = baseExs.filter(x => (x.target==='LCA'&&hasLca) || (x.target==='Pubalgia'&&hasPub) || (x.target==='Posterior'&&hasPost) || (x.target==='Manutenção (Histórico Lesão)'&&hasHist)); 
+                }
+                return [...safeArray(data.act), ...prevExs, ...genExs];
+            };
+
+            const goToNextEx = (currentId) => {
+                const all = getOrderedExs();
+                const currentIndex = all.findIndex(e => e.id === currentId);
+                let nextEx = null;
+                for(let i = currentIndex + 1; i < all.length; i++) {
+                    if(!completed.includes(all[i].id) && !skippedExs[all[i].id]) {
+                        nextEx = all[i];
+                        break;
+                    }
+                }
+                if(nextEx) {
+                    setGif(nextEx);
+                    setFocusMode('exercise');
+                } else {
+                    setGif(null);
+                    showToast("Ficha concluída! 🎉");
+                }
+            };
+
+            // CONTROLE DO CRONÔMETRO
             useEffect(() => {
                 let interval = null;
                 if (restTimer !== null && restTimer > 0) { interval = setInterval(() => { setRestTimer(prev => prev - 1); }, 1000); } 
-                else if (restTimer === 0) { playBeep(); vibrate([300, 150, 300, 150, 500]); setRestTimer(null); }
+                else if (restTimer === 0) { 
+                    playBeep(); vibrate([300, 150, 300, 150, 500]); 
+                    setRestTimer(null);
+                    // PULO DO GATO: Se estava no modo Foco Descanso, pula pro próximo exercício!
+                    if(gif && focusMode === 'rest') {
+                        goToNextEx(activeExRef.current);
+                    }
+                }
                 return () => clearInterval(interval);
-            }, [restTimer]);
+            }, [restTimer, gif, focusMode]);
 
             const initAudio = () => {
                 if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} }
@@ -181,6 +233,18 @@
                 } catch(e) { el.style.display = 'none'; showToast("Erro ao compartilhar."); }
             };
 
+            const handleAddWater = () => {
+                const td = getTodayStr();
+                const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0;
+                const newWater = currentWater + 0.25;
+                const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
+                nl[td][idx].waterIntake = newWater;
+                setData({...data, log: nl});
+                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater });
+                showToast("+250ml 💧", "💧");
+                if(typeof confetti !== 'undefined' && newWater >= 2.5 && currentWater < 2.5) confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            };
+
             const getDM = (id) => { const act = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Active'); if(act.length>0) return (parseInt(act[0].rtpPhase)||1)>=3 ? 'TRANSIÇÃO' : 'DM'; const rec = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Recovered'&&r.dateOut); const td = new Date(getTodayStr()); for(let r of rec) if(!isNaN(new Date(r.dateOut).getTime()) && Math.ceil(Math.abs(td - new Date(r.dateOut))/(1000*60*60*24))<=7) return 'TRANSIÇÃO'; return 'APTO'; };
             const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500', f: 'bg-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500', f: p<40?'bg-red-500':p<75?'bg-yellow-500':'bg-green-500' }; };
 
@@ -227,7 +291,7 @@
                 const hasLca = ass.includes('lca'); const hasPub = ass.includes('pubalgia'); const hasPost = ass.includes('posterior')||ass.includes('muscular');
                 const hasHist = ass.trim()!=='' && !ass.includes('nenhum') && !ass.includes('sem histórico');
 
-                // Filtro base:
+                // Filtro base de Exercícios:
                 let baseExs = safeArray(data.ex);
                 let prevExs = [];
                 let genExs = [];
@@ -256,24 +320,32 @@
                     initAudio(); 
                     if(isCompleting) {
                         setCompleted([...completed, id]); vibrate(50);
-                        // Remove do skip se tiver
                         const newSkips = {...skippedExs}; delete newSkips[id]; setSkippedExs(newSkips);
-                        // Se estiver no Modo Foco, fecha e roda cronometro
-                        if(gif && gif.id === id) {
-                            setGif(null);
-                        }
-                        if(ex.rest && parseInt(ex.rest) > 0) setRestTimer(parseInt(ex.rest));
                     } else { setCompleted(completed.filter(x=>x!==id)); vibrate(20); }
                 };
 
                 const startFocusRest = (ex) => {
-                    tog(ex); // Marca como feito
-                    setGif(null); // Fecha o modo foco
+                    const id = ex.id;
+                    if(!completed.includes(id)) { setCompleted([...completed, id]); } // Da o check automático
+                    activeExRef.current = id;
+                    if(ex.rest && parseInt(ex.rest) > 0) {
+                        setRestTimer(parseInt(ex.rest));
+                        setFocusMode('rest'); // Muda pra tela do relógio
+                    } else {
+                        goToNextEx(id); // Se não tem descanso, já pula pro próximo
+                    }
                 };
                 
                 const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
                 const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
                 const stats = getPlayerStats();
+
+                // LÓGICA DA GARRAFINHA (HIDRATAÇÃO)
+                const currentWater = Number(data.log[getTodayStr()]?.[idx]?.waterIntake) || 0;
+                const baseWater = 2.5;
+                const extraWater = isFinished ? Number(getHydrationAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am, data.log[getTodayStr()]?.[idx]?.duration)) : 0;
+                const waterGoal = (baseWater + extraWater).toFixed(1);
+                const waterPct = Math.min(100, (currentWater / waterGoal) * 100);
 
                 let pw = data.postW; let ai = "";
                 if(pw==='IA') { if(wl.fatigue>=5||wl.soreness>=5){pw='Crioterapia + Massagem'; ai="Fadiga alta. Foco na Crio imediata.";} else if(wl.fatigue>=3||wl.soreness>=3){pw='Bota Pneumática'; ai="Cansaço moderado detectado.";} else pw='Piscina/Passiva'; }
@@ -290,7 +362,7 @@
                         <div key={ex.id} className={`bg-slate-900/50 p-3 rounded-lg border ${bColor} flex flex-col gap-2 relative overflow-hidden transition-all duration-300`}>
                             {isSkipped && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[8px] font-black px-2 py-0.5 rounded-bl-lg z-10 uppercase">PULOU: {skippedExs[ex.id]}</div>}
                             <div className="flex gap-3 items-center">
-                                <div className="w-16 h-16 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => setGif(ex)}>
+                                <div className="w-16 h-16 bg-slate-800 rounded overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
                                     {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90" onError={(e)=>e.target.style.display='none'}/> : <Icon name="activity" className="m-5 text-slate-500"/>}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                                 </div>
@@ -325,9 +397,6 @@
                             </div>
                         </div>
 
-                        {/* CRONÔMETRO FLUTUANTE */}
-                        {restTimer !== null && <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-slate-900 px-6 py-2 rounded-full font-black shadow-xl z-[150] flex items-center gap-2 animate-fade-in border-2 border-white"><Icon name="clock" size={18}/> DESCANSO: {restTimer}s</div>}
-
                         {isMatchDay ? <div className="bg-red-600 border-b border-red-800 py-1.5 px-4 text-center font-black text-white uppercase tracking-widest animate-pulse shadow-lg shrink-0">⚔️ HOJE É DIA DE GUERRA! ⚔️</div> : ( data.nextG.opponent && d2g > 0 && <div className="bg-slate-900 border-b border-slate-800 py-1.5 px-4 flex justify-between items-center text-[10px] font-bold text-slate-300 uppercase shrink-0"><span className="flex gap-1 items-center text-yellow-500"><Icon name="trophy" size={12}/> Próximo: {data.nextG.opponent}</span><span className="text-blue-400">Faltam {d2g} dias</span></div> )}
                         
                         <div className="absolute top-4 right-4 flex gap-2 z-50"><button onClick={()=>setShowStats(true)} className="bg-black/40 hover:bg-white/20 p-2 rounded-full text-white backdrop-blur-md transition-colors"><Icon name="barChart" size={20}/></button><button onClick={()=>window.location.reload()} className="bg-black/40 hover:bg-white/20 p-2 rounded-full text-white backdrop-blur-md transition-colors"><Icon name="refresh" size={20}/></button>{!isPriv && <button onClick={()=>setStep(1)} className="bg-black/40 p-2 rounded-full text-white/50 hover:text-white backdrop-blur-md"><Icon name="x" size={20}/></button>}</div>
@@ -345,17 +414,36 @@
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 w-full custom-scroll" style={{ paddingBottom: '120px' }}>
 
-                            {/* AGENDA DO DIA */}
+                            {/* CENTRAL DE AVISOS E VÍDEO */}
+                            {data.videoUrl && viewMode !== 'review' && (
+                                <div className="bg-indigo-900/30 border border-indigo-800/50 p-4 rounded-xl flex flex-col gap-3 shadow-lg animate-fade-in relative overflow-hidden mb-2">
+                                    <div className="flex items-center gap-2 mb-1"><Icon name="play" size={18} className="text-indigo-400"/><h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Vídeo Análise</h3></div>
+                                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-indigo-500/30 shadow-inner">
+                                         <iframe src={getEmbedUrl(data.videoUrl)} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full"></iframe>
+                                    </div>
+                                </div>
+                            )}
+
                             {data.coachMsg && !agendaAck && viewMode !== 'review' && (
-                                <div className="bg-blue-900/40 border border-blue-500/50 p-4 rounded-xl flex flex-col gap-3 shadow-lg animate-fade-in relative overflow-hidden">
+                                <div className="bg-blue-900/40 border border-blue-500/50 p-4 rounded-xl flex flex-col gap-3 shadow-lg animate-fade-in relative overflow-hidden mb-2">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                                     <div className="flex items-start gap-3">
                                         <div className="bg-blue-500/20 p-2 rounded-full"><Icon name="bell" size={20} className="text-blue-400"/></div>
-                                        <div><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-1">Agenda / Aviso Importante</h3><p className="text-sm font-bold text-white leading-snug">{data.coachMsg}</p></div>
+                                        <div><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-1">Agenda / Aviso</h3><p className="text-sm font-bold text-white leading-snug">{data.coachMsg}</p></div>
                                     </div>
                                     <button onClick={ackAgenda} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 rounded-lg shadow mt-1 flex items-center justify-center gap-2"><Icon name="check" size={14}/> ESTOU CIENTE</button>
                                 </div>
                             )}
+
+                            {/* META DE HIDRATAÇÃO */}
+                            <div className="bg-blue-950/40 border border-blue-900 p-4 rounded-xl flex flex-col gap-3 relative overflow-hidden mb-2">
+                                <div className="flex justify-between items-center mb-1">
+                                    <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-wider flex items-center gap-1">💧 Meta de Hidratação</h3>
+                                    <span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{currentWater.toFixed(2)}L / {waterGoal}L</span>
+                                </div>
+                                <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden shadow-inner border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${waterPct}%`}}></div></div>
+                                <button onClick={handleAddWater} className="w-full bg-blue-800/50 hover:bg-blue-700 text-blue-200 border border-blue-600 font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"><Icon name="plus" size={14}/> Bebi 250ml de Água</button>
+                            </div>
                             
                             {/* Tela de Sucesso */}
                             {isFinished && viewMode === 'finished' ? (
@@ -374,12 +462,8 @@
                                         <span className="text-xl">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).ic}</span>
                                         <div><div className="text-xs font-bold text-white mb-1">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).t}</div><div className="text-[10px] text-slate-300">{getNutritionAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am || 5).d}</div></div>
                                     </div>
-                                    <div className="w-full text-left bg-blue-900/30 border border-blue-800/50 p-3 rounded-lg flex gap-3 items-start mt-2 mb-4">
-                                        <span className="text-xl">💧</span>
-                                        <div><div className="text-xs font-bold text-blue-400 mb-1">Alvo de Hidratação IA</div><div className="text-[10px] text-slate-300">{getHydrationAdvice(data.log[getTodayStr()]?.[idx]?.rpe_am, data.log[getTodayStr()]?.[idx]?.duration)}</div></div>
-                                    </div>
 
-                                    <div className="w-full flex gap-2">
+                                    <div className="w-full flex gap-2 mt-4">
                                         <button onClick={()=>setViewMode('review')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg text-[10px] uppercase border border-slate-700"><Icon name="activity" size={14} className="inline mr-1"/> Revisar Ficha</button>
                                         <button onClick={shareToInsta} className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white font-bold py-3 rounded-lg text-[10px] uppercase shadow-lg"><Icon name="share" size={14} className="inline mr-1"/> Compartilhar</button>
                                     </div>
@@ -537,21 +621,31 @@
                         {/* MODO FOCO (GIF TELA CHEIA) */}
                         {gif && (
                             <div className="absolute inset-0 bg-slate-950 z-[120] flex flex-col animate-fade-in">
-                                <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10"><button onClick={()=>setGif(null)} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button></div>
-                                <div className="flex-1 flex justify-center items-center bg-black relative">
-                                    {gif.gifUrl?<img src={gif.gifUrl} className="w-full h-full object-cover opacity-80"/>:<Icon name="image" size={80} className="text-slate-700"/>}
-                                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-6 pt-20">
-                                        <h2 className="text-3xl font-black text-white uppercase mb-4 leading-tight">{gif.title}</h2>
-                                        <div className="flex gap-4 mb-8">
-                                            <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-2xl font-black text-blue-400">{gif.sets}</div></div>
-                                            <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-2xl font-black text-green-400">{gif.reps}</div></div>
-                                            {gif.rest && (<div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-2xl font-black text-yellow-400">{gif.rest}s</div></div>)}
+                                <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10"><button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button></div>
+                                
+                                {focusMode === 'exercise' ? (
+                                    <div className="flex-1 flex justify-center items-center bg-black relative">
+                                        {gif.gifUrl?<img src={gif.gifUrl} className="w-full h-full object-cover opacity-80"/>:<Icon name="image" size={80} className="text-slate-700"/>}
+                                        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-6 pt-20">
+                                            <h2 className="text-3xl font-black text-white uppercase mb-4 leading-tight">{gif.title}</h2>
+                                            <div className="flex gap-4 mb-8">
+                                                <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-2xl font-black text-blue-400">{gif.sets}</div></div>
+                                                <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-2xl font-black text-green-400">{gif.reps}</div></div>
+                                                {gif.rest && (<div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Repouso</span><div className="text-2xl font-black text-yellow-400">{gif.rest}s</div></div>)}
+                                            </div>
+                                            <button onClick={() => startFocusRest(gif)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform">
+                                                <Icon name="check" size={24}/> CONCLUIR {gif.rest ? 'E DESCANSAR' : 'SÉRIE'}
+                                            </button>
                                         </div>
-                                        <button onClick={() => startFocusRest(gif)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform">
-                                            <Icon name="check" size={24}/> CONCLUIR E DESCANSAR
-                                        </button>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="flex-1 flex flex-col justify-center items-center bg-slate-900 p-6 relative">
+                                         <h2 className="text-xl font-bold text-slate-400 uppercase mb-2">Descanso Ativo</h2>
+                                         <div className="text-8xl font-black text-yellow-400 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{restTimer}</div>
+                                         <div className="text-slate-500 mt-4 text-sm font-bold">Próximo exercício em breve...</div>
+                                         <button onClick={()=>{setRestTimer(0);}} className="mt-10 bg-slate-800 text-white border border-slate-700 px-6 py-3 rounded-xl font-bold active:scale-95 transition-transform">Pular Descanso ⏭️</button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
