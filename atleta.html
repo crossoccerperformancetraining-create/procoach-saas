@@ -90,11 +90,11 @@
                     <h1 className="text-3xl font-black italic mb-8"><span style={{color:data.color}}>PRO</span>COACH</h1>
                     <div className="grid grid-cols-3 gap-4 w-full max-w-md">
                         {data.players.map((p, i) => (
-                            <div key={i} onClick={()=>setIdx(i)} className="flex flex-col items-center gap-2 cursor-pointer">
-                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" className="m-5 text-slate-600"/>}
+                            <div key={i} onClick={()=>setIdx(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
+                                <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 ${p.highlight ? 'border-yellow-400' : 'border-slate-800'}`}>
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-5 text-slate-600"/>}
                                 </div>
-                                <span className="text-[10px] font-bold uppercase truncate w-full text-center">{p.name.split(' ')[0]}</span>
+                                <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-300">{p.name.split(' ')[0]}</span>
                             </div>
                         ))}
                     </div>
@@ -102,23 +102,25 @@
             );
 
             const p = data.players[idx];
+            if(!p) return <div className="text-white text-center mt-20">Atleta não encontrado.</div>;
+            
             const isSuspended = p.suspended === true;
-            const stats = safeObj(p.stats);
+            const isHighlight = p.highlight === true;
 
             return (
-                <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+                <div className="flex-1 flex flex-col h-full relative overflow-hidden animate-fade-in">
                     
                     {/* CABEÇALHO DO ATLETA */}
                     <div className="p-6 shrink-0 rounded-b-3xl shadow-2xl relative overflow-hidden" style={{ background: isSuspended ? 'linear-gradient(to bottom, #7f1d1d, #020617)' : `linear-gradient(to bottom, ${data.color}, #020617)` }}>
                         <div className="flex items-center gap-4 mt-2">
-                            <div className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl ${p.isPotw ? 'gold-glow' : ''}`}>
+                            <div className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl ${isHighlight ? 'gold-glow' : ''}`}>
                                 {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/30"/>}
                             </div>
                             <div className="flex-1">
-                                <h1 className="text-2xl font-black uppercase text-white leading-none">{p.name}</h1>
-                                <div className="flex items-center gap-2 mt-2">
-                                    <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'}</span>
-                                    {p.isPotw && <span className="text-[10px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
+                                <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.position || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
+                                    {isHighlight && <span className="text-[10px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
                                 </div>
                             </div>
                         </div>
@@ -140,21 +142,21 @@
                         
                         {/* CARD DE ESTATÍSTICAS PESSOAIS */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center">
+                            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center shadow-sm">
                                 <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase">Gols na Temporada</span>
-                                <span className="text-3xl font-black text-white">{stats.g || 0}</span>
+                                <span className="text-3xl font-black text-white">{p.goals || 0}</span>
                             </div>
-                            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center">
+                            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center shadow-sm">
                                 <Icon name="target" className="text-blue-500 mb-1" size={20}/>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase">Assistências</span>
-                                <span className="text-3xl font-black text-white">{stats.a || 0}</span>
+                                <span className="text-3xl font-black text-white">{p.assists || 0}</span>
                             </div>
                         </div>
 
                         {/* AGENDA E VÍDEO TÁTICO */}
                         {data.coachMsg && (
-                            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-2xl">
+                            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-2xl shadow-sm">
                                 <div className="flex items-center gap-2 mb-2 text-blue-400">
                                     <Icon name="clock" size={18}/>
                                     <span className="text-[10px] font-black uppercase">Recado do Professor</span>
@@ -165,7 +167,7 @@
 
                         {data.videoUrl && (
                             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-                                <div className="p-3 border-b border-slate-800 flex items-center gap-2">
+                                <div className="p-3 border-b border-slate-800 flex items-center gap-2 bg-slate-900/80">
                                     <Icon name="play" size={16} className="text-red-500"/>
                                     <span className="text-[10px] font-black uppercase text-slate-300">Análise de Vídeo Obrigatória</span>
                                 </div>
@@ -176,7 +178,7 @@
                         )}
 
                         {/* HIDRATAÇÃO INTERATIVA */}
-                        <div className="bg-blue-950/30 border border-blue-800/50 p-5 rounded-3xl relative overflow-hidden">
+                        <div className="bg-blue-950/30 border border-blue-800/50 p-5 rounded-3xl relative overflow-hidden shadow-sm">
                             <div className="flex justify-between items-end mb-3">
                                 <div>
                                     <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Controle de Água</h3>
@@ -198,7 +200,7 @@
                             </h3>
                             <div className="space-y-3">
                                 {data.ex.length > 0 ? data.ex.map((ex, i) => (
-                                    <div key={i} className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex items-center gap-4 hover:border-slate-600 transition-colors">
+                                    <div key={i} className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex items-center gap-4 shadow-sm hover:border-slate-600 transition-colors">
                                         <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 border border-slate-700">
                                             {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover"/> : <Icon name="play" className="m-5 text-slate-700"/>}
                                         </div>
@@ -206,7 +208,7 @@
                                             <div className="text-sm font-black text-white uppercase">{ex.title}</div>
                                             <div className="text-[10px] font-bold text-blue-400 mt-1 uppercase">{ex.sets}x{ex.reps} | {ex.rest}s Descanso</div>
                                         </div>
-                                        <Icon name="check" className="text-slate-700 hover:text-green-500 cursor-pointer"/>
+                                        <Icon name="check" className="text-slate-700 hover:text-green-500 cursor-pointer transition-colors"/>
                                     </div>
                                 )) : <div className="text-center py-10 text-slate-600 text-xs font-bold uppercase border-2 border-dashed border-slate-800 rounded-3xl">Nenhuma ficha enviada hoje.</div>}
                             </div>
@@ -215,9 +217,9 @@
 
                     {/* BARRA DE NAVEGAÇÃO INFERIOR */}
                     <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 p-4 flex justify-around items-center z-50">
-                         <div className="flex flex-col items-center text-blue-500"><Icon name="play" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Treino</span></div>
-                         <div className="flex flex-col items-center text-slate-500" onClick={()=>setShowToast("Em breve!", "⏳")}><Icon name="trophy" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Ranking</span></div>
-                         <div className="flex flex-col items-center text-slate-500" onClick={()=>setIdx(null)}><Icon name="user" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Trocar</span></div>
+                         <div className="flex flex-col items-center text-blue-500 cursor-pointer"><Icon name="play" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Treino</span></div>
+                         <div className="flex flex-col items-center text-slate-500 cursor-pointer" onClick={()=>setShowToast("Em breve!", "⏳")}><Icon name="trophy" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Ranking</span></div>
+                         <div className="flex flex-col items-center text-slate-500 cursor-pointer" onClick={()=>setIdx(null)}><Icon name="user" size={24}/><span className="text-[8px] font-bold uppercase mt-1">Trocar Perfil</span></div>
                     </div>
                 </div>
             );
