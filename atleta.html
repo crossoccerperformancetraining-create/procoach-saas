@@ -32,7 +32,7 @@
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
         const safeArray = (arr) => (Array.isArray(arr)) ? arr : [];
-        const safeObj = (obj) => (obj && typeof obj === 'object') ? obj : {};
+        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
 
         const Icon = ({ name, size=24, className="", onClick }) => {
             const p = { 
@@ -54,7 +54,6 @@
         const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], color:'#1e3a8a', id:null, coachMsg:'', videoUrl:'' });
             const [idx, setIdx] = useState(null);
-            const [step, setStep] = useState(1);
             const [loading, setLoading] = useState(true);
             const [water, setWater] = useState(0);
 
@@ -63,17 +62,22 @@
                 const uId = params.get('id');
                 const pIdx = params.get('p');
                 
+                if(!uId) {
+                    setLoading(false);
+                    return;
+                }
+
                 const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ 
-                            players: d.players||[], 
-                            log: d.trainingLog||{}, 
-                            ex: d.exercises||[], 
-                            color: d.themeColor||'#1e3a8a', 
+                            players: safeArray(d.players), 
+                            log: safeObj(d.trainingLog), 
+                            ex: safeArray(d.exercises), 
+                            color: d.themeColor || '#1e3a8a', 
                             id: doc.id,
-                            coachMsg: d.coachMsg||'',
-                            videoUrl: d.videoUrl||''
+                            coachMsg: d.coachMsg || '',
+                            videoUrl: d.videoUrl || ''
                         });
                         if(pIdx !== null) setIdx(parseInt(pIdx));
                     }
@@ -83,18 +87,21 @@
             }, []);
 
             if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-blue-500 font-bold animate-pulse">Carregando Módulo Atleta...</div>;
+            
+            if(!data.id) return <div className="h-screen flex items-center justify-center bg-slate-950 text-red-500 font-bold text-center p-6">Erro: Link inválido ou treinador não encontrado.<br/>Peça um novo link ao seu treinador.</div>;
 
             // TELA DE SELEÇÃO DE JOGADOR
             if(idx === null) return (
-                <div className="p-6 h-screen flex flex-col items-center justify-center animate-fade-in">
+                <div className="p-6 h-screen flex flex-col items-center justify-center animate-fade-in overflow-y-auto">
                     <h1 className="text-3xl font-black italic mb-8"><span style={{color:data.color}}>PRO</span>COACH</h1>
-                    <div className="grid grid-cols-3 gap-4 w-full max-w-md">
+                    <div className="text-sm text-slate-400 font-bold mb-6 uppercase tracking-wider">Selecione seu perfil</div>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl pb-10">
                         {data.players.map((p, i) => (
                             <div key={i} onClick={()=>setIdx(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform">
                                 <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 ${p.highlight ? 'border-yellow-400' : 'border-slate-800'}`}>
                                     {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-5 text-slate-600"/>}
                                 </div>
-                                <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-300">{p.name.split(' ')[0]}</span>
+                                <span className="text-xs font-bold uppercase truncate w-full text-center text-slate-300">{p.name.split(' ')[0]}</span>
                             </div>
                         ))}
                     </div>
@@ -102,7 +109,7 @@
             );
 
             const p = data.players[idx];
-            if(!p) return <div className="text-white text-center mt-20">Atleta não encontrado.</div>;
+            if(!p) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold text-center mt-20">Atleta não encontrado no sistema.</div>;
             
             const isSuspended = p.suspended === true;
             const isHighlight = p.highlight === true;
@@ -144,13 +151,13 @@
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center shadow-sm">
                                 <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">Gols na Temporada</span>
-                                <span className="text-3xl font-black text-white">{p.goals || 0}</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase text-center leading-tight">Gols na<br/>Temporada</span>
+                                <span className="text-3xl font-black text-white mt-1">{p.goals || 0}</span>
                             </div>
                             <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex flex-col items-center shadow-sm">
                                 <Icon name="target" className="text-blue-500 mb-1" size={20}/>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">Assistências</span>
-                                <span className="text-3xl font-black text-white">{p.assists || 0}</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase text-center leading-tight">Assistências<br/>na Temporada</span>
+                                <span className="text-3xl font-black text-white mt-1">{p.assists || 0}</span>
                             </div>
                         </div>
 
