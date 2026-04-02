@@ -9,6 +9,7 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
@@ -83,6 +84,20 @@
             );
         };
 
+        const getMotivationalQuote = () => {
+            const quotes = [
+                "O suor de hoje é a vitória de amanhã. Vá com tudo!",
+                "A disciplina é a ponte entre a meta e a realização.",
+                "Trabalhe em silêncio e deixe o sucesso fazer barulho no campo.",
+                "Talento ganha jogos, mas trabalho em equipe e inteligência ganham campeonatos.",
+                "Onde a vontade não falha, o caminho se abre. Bom treino!",
+                "Não pare quando estiver cansado, pare quando tiver terminado.",
+                "A dedicação supera o talento quando o talento não se dedica."
+            ];
+            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+            return quotes[dayOfYear % quotes.length];
+        };
+
         const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'' });
             const [idx, setIdx] = useState(null);
@@ -108,7 +123,6 @@
             const [rpe, setRpe] = useState(5); 
             const [dur, setDur] = useState(60);
             const [feedbackMsg, setFeedbackMsg] = useState("");
-            const [showStats, setShowStats] = useState(false);
             const [expandedDay, setExpandedDay] = useState(null); 
             const [viewMode, setViewMode] = useState('finished');
             const [showProfile, setShowProfile] = useState(false);
@@ -263,7 +277,7 @@
                 return { workouts: wCompleted, mins: totalMins, streak: currentStreak };
             };
 
-            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 5); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
+            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
             const getRankingData = () => {
                 const validPlayers = safeArray(data.players).filter(p => p);
@@ -346,6 +360,20 @@
             const d2g = data.nextG && data.nextG.date ? Math.ceil((new Date(data.nextG.date) - new Date(getTodayStr()))/(1000*60*60*24)) : null;
             const isMatchDay = d2g === 0;
 
+            // IA DO DM
+            const activeDm = safeArray(data.dm).find(r => r && r.playerId == idx && r.status === 'Active');
+            let daysInDm = 0;
+            if(activeDm && activeDm.dateIn) {
+                const dIn = new Date(activeDm.dateIn);
+                const td = new Date(getTodayStr());
+                daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24)));
+            }
+
+            // IA DE PESO (BF)
+            const lastAss = data.ass[idx]?.[0] || {};
+            const bf = parseFloat(lastAss.bf) || 0;
+            const isOverweight = bf > 12;
+
             let pw = data.postW; let ai = "";
             if(pw==='IA') { if(wl.fatigue>=5||wl.soreness>=5){pw='Crioterapia + Massagem'; ai="Fadiga alta. Foco na Crio imediata.";} else if(wl.fatigue>=3||wl.soreness>=3){pw='Bota Pneumática'; ai="Cansaço moderado detectado.";} else pw='Piscina/Passiva'; }
             else if(wl.fatigue>=5||wl.soreness>=5) ai="⚠️ Fadiga crítica. Aumente o tempo de recuperação em 10 min.";
@@ -388,14 +416,15 @@
             return (
                 <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
                     
-                    {/* CABEÇALHO */}
-                    <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10" style={{ background: isSuspended ? 'linear-gradient(to bottom, #7f1d1d, #020617)' : `linear-gradient(135deg, ${data.color}, #020617)` }}>
+                    {/* CABEÇALHO COM MENSAGEM MOTIVACIONAL */}
+                    <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10" style={{ background: `linear-gradient(135deg, ${data.color}, #020617)` }}>
                         <div className="flex items-center gap-4 mt-2">
                             <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer ${isHighlight ? 'gold-glow' : ''}`}>
                                 {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
                             </div>
                             <div className="flex-1">
                                 <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
+                                <div className="text-[9px] text-slate-300 font-medium italic mt-1.5 opacity-90 leading-tight">"{getMotivationalQuote()}"</div>
                                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                                     <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
                                     {isHighlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
@@ -403,7 +432,19 @@
                             </div>
                             {!isPriv && <button onClick={()=>setIdx(null)} className="bg-white/10 p-2 rounded-full text-white/50 hover:text-white transition-colors"><Icon name="refresh" size={20}/></button>}
                         </div>
+
                         {isSuspended && <div className="mt-4 bg-red-600 text-white p-3 rounded-2xl flex items-center gap-3 animate-pulse border border-red-400 shadow-lg"><Icon name="alert" size={24}/><div className="text-[10px] font-black uppercase">Você está Suspenso para o próximo jogo oficial!</div></div>}
+                        
+                        {/* ALERTA DE DM (CONTADOR DE DIAS) */}
+                        {activeDm && (
+                            <div className="mt-3 bg-red-900/50 text-white p-3 rounded-2xl flex items-center gap-3 border border-red-500 shadow-lg">
+                                <Icon name="medkit" size={24} className="text-red-400"/>
+                                <div>
+                                    <div className="text-[10px] font-black uppercase text-red-200">Departamento Médico</div>
+                                    <div className="text-[10px] font-bold text-white">Há {daysInDm} dia(s) em tratamento ({activeDm.location}).</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-28">
@@ -433,7 +474,7 @@
                                             {agendaAck && <div className="flex items-center gap-1 text-[9px] font-bold text-green-400 bg-green-900/30 px-2 py-0.5 rounded border border-green-800"><Icon name="check" size={10}/> CIENTE</div>}
                                         </div>
                                         <p className="text-sm font-bold text-white mb-3">{data.coachMsg}</p>
-                                        {!agendaAck && <button onClick={ackAgenda} className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2.5 rounded-xl shadow transition-colors flex items-center justify-center gap-1"><Icon name="check" size={14}/> ESTOU CIENTE</button>}
+                                        {!agendaAck && <button onClick={ackAgenda} className="w-full bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2.5 rounded-xl shadow transition-colors flex items-center justify-center gap-1"><Icon name="check" size={14}/> CLIQUE AQUI PARA CONFIRMAR LEITURA</button>}
                                     </div>
                                 )}
 
@@ -478,8 +519,6 @@
                                 ) : (
                                     <>
                                         {/* EXERCÍCIOS DIVIDIDOS POR BLOCOS */}
-                                        {isFinished && viewMode === 'review' && <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 text-white text-xs font-bold p-3 rounded-xl flex items-center justify-center gap-2 mb-4 border border-slate-700"><Icon name="arrowUp"/> VOLTAR PARA O RESUMO</button>}
-
                                         {exData.act.length > 0 && (
                                             <div className="bg-orange-900/20 border border-orange-800/50 p-4 rounded-3xl relative overflow-hidden mb-4">
                                                 <div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div>
@@ -566,7 +605,14 @@
                                 {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={60} className="m-8 text-white/20"/>}
                             </div>
                             <h2 className="text-3xl font-black uppercase text-white mb-1 text-center">{p.name}</h2>
-                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-8">{p.pos || 'Atleta'}</p>
+                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-4">{p.pos || 'Atleta'}</p>
+                            
+                            {/* ALERTA DE PESO/BF */}
+                            {isOverweight && (
+                                <div className="bg-orange-500/20 border border-orange-500 text-orange-400 p-3 rounded-xl mb-4 flex items-center gap-2 text-[10px] font-bold">
+                                    <Icon name="alert" size={16}/> ATENÇÃO: BF em {bf}% (Acima da meta ideal para a posição).
+                                </div>
+                            )}
                             
                             <div className="w-full bg-slate-900 rounded-[40px] p-6 border border-slate-800 mb-6">
                                 <h3 className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Atributos de Performance</h3>
@@ -576,7 +622,7 @@
                                     <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center"><div className="text-[10px] font-bold text-slate-600 uppercase mb-1">Potencial</div><div className="text-2xl font-black text-blue-400">94</div></div>
                                 </div>
                             </div>
-                            <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl">VOLTAR</button>
+                            <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl border border-slate-700">FECHAR PERFIL</button>
                         </div>
                     )}
 
@@ -677,11 +723,18 @@
                         </div>
                     )}
 
-                    {/* BOTÃO FINALIZAR FIXO (APARECE APENAS NO WORKOUT QUANDO HÁ TREINO) */}
-                    {tab === 'workout' && (!isFinished || viewMode === 'review') && tEx > 0 && (
+                    {/* BOTOES FIXOS DE FINALIZAR E RETORNAR */}
+                    {tab === 'workout' && !isFinished && tEx > 0 && (
                         <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
                             <button onClick={()=>setRpeMod(true)} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-900/50 flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
                                 <Icon name="check"/> FINALIZAR TREINO
+                            </button>
+                        </div>
+                    )}
+                    {tab === 'workout' && isFinished && viewMode === 'review' && (
+                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
+                            <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform uppercase tracking-widest">
+                                <Icon name="arrowUp"/> VOLTAR AO RESUMO DO TREINO
                             </button>
                         </div>
                     )}
@@ -713,7 +766,7 @@
                                 <div className="flex-1 flex flex-col justify-center items-center bg-slate-900 p-6 relative">
                                      <h2 className="text-xl font-bold text-slate-400 uppercase mb-2 tracking-widest">Descanso Ativo</h2>
                                      <div className="text-8xl font-black text-yellow-400 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{restTimer}</div>
-                                     <div className="text-slate-500 mt-4 text-xs font-bold uppercase tracking-widest">Celular vai apitar ao terminar</div>
+                                     <div className="text-slate-500 mt-4 text-xs font-bold uppercase tracking-widest">O celular vai apitar...</div>
                                      <button onClick={()=>{setRestTimer(0);}} className="mt-10 bg-slate-800 text-white border border-slate-700 px-8 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform">Pular Descanso ⏭️</button>
                                 </div>
                             )}
@@ -725,7 +778,7 @@
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
                          <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
                          <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
-                         {!isPriv && <div onClick={()=>setIdx(null)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="user" size={24}/><span className="text-[8px] font-black uppercase mt-1">Sair</span></div>}
+                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
                     </div>
                 </div>
             );
