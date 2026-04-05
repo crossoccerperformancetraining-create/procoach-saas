@@ -202,7 +202,8 @@
                 darkMode: !!data.darkMode,
                 days: safeArray(data.days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''})),
                 exercises: safeArray(data.exercises),
-                library: safeArray(data.library),
+                // Localize e substitua apenas esta linha dentro de sanitizeCloudData:
+library: data.library && Array.isArray(data.library) ? data.library : [],,
                 postWorkout: data.postWorkout || 'Livre',
                 coachMsg: data.coachMsg || '',
                 videoUrl: data.videoUrl || '',
