@@ -2160,7 +2160,27 @@
             const [showNotifications, setShowNotifications] = useState(false);
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
-
+// PASSO 1: Sincronizador em tempo real
+useEffect(() => {
+    if (initialData) {
+        // Atualiza os estados locais sempre que o Firebase mandar algo novo
+        setPlayers(initialData.players || []);
+        setTrainingLog(initialData.trainingLog || {});
+        setAssessments(initialData.assessments || {});
+        setDmRecords(initialData.dmRecords || []);
+        setMatchMinutes(initialData.matchMinutes || {});
+        setDays(initialData.days || DEFAULT_DAYS);
+        setExercises(initialData.exercises || []);
+        setLibrary(initialData.library || []);
+        setThemeColor(initialData.themeColor || '#1e3a8a');
+        setDarkMode(!!initialData.darkMode);
+        setLogo(initialData.logo || null);
+        setHeader(initialData.header || {});
+        setPostWorkout(initialData.postWorkout || 'Livre');
+        setCoachMsg(initialData.coachMsg || '');
+        setVideoUrl(initialData.videoUrl || '');
+    }
+}, [initialData]); // Isso faz a mágica acontecer!
             const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
 
             useEffect(() => {
