@@ -1949,12 +1949,19 @@
     const [importDate, setImportDate] = useState('');
 
     // 2. Sincroniza novos Públicos/Blocos com o Firebase automaticamente
-    useEffect(() => {
+  useEffect(() => {
+        // Só tenta atualizar se o usuário estiver logado e se houver opções reais
         if(user && targetOptions.length > 0) {
-            db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
+            db.collection('coachData').doc(user.uid).update({ 
+                customTargets: targetOptions 
+            }).catch(err => {
+                // Caso o documento ainda não exista (primeiro uso), ele cria com set
+                if(err.code === 'not-found') {
+                    db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
+                }
+            });
         }
     }, [targetOptions, user]);
-
     // 3. IA de Sugestão baseada na fadiga do elenco
     const getAiSuggestion = () => {
         const today = getTodayStr(); 
@@ -2196,18 +2203,44 @@ useEffect(() => {
                 return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
             }, []);
 
-            useEffect(() => {
-                if(!user) return;
-                const timeoutId = setTimeout(() => {
-                    setSyncStatus('A Guardar...');
-                    const dataToSave = { themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl };
-                    db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true })
-                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
-                        .catch((err) => { setSyncStatus('❌ Erro na Nuvem'); console.error(err); });
-                }, 2000); 
-                return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, user]);
+           useEffect(() => {
+        if(!user) return;
+        
+        // BLOQUEIO DE SEGURANÇA: Se não há atletas na tela, não salva nada na nuvem.
+        // Isso evita que um erro de carregamento limpe seu banco de dados.
+        if (!players || players.length === 0) {
+            return; 
+        }
 
+        const timeoutId = setTimeout(() => {
+            setSyncStatus('A Guardar...');
+            
+            const dataToSave = { 
+                themeColor, players, trainingLog, assessments, 
+                dmRecords, matchMinutes, header, logo, 
+                darkMode, days, exercises, library, 
+                postWorkout, coachMsg, videoUrl 
+            };
+            
+            // Usamos .update() para proteger os dados existentes
+            db.collection('coachData').doc(user.uid).update(dataToSave)
+                .then(() => { 
+                    setSyncStatus('☁️ Sincronizado'); 
+                    setTimeout(() => setSyncStatus(''), 3000);
+                })
+                .catch((err) => { 
+                    // Se o documento não existir (primeiro acesso do cliente), usamos o set
+                    if(err.code === 'not-found' || err.message.includes('no document')) {
+                        db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
+                    } else {
+                        setSyncStatus('❌ Erro de Conexão');
+                        console.error("Erro ao sincronizar:", err);
+                    }
+                });
+        }, 800); // Reduzi para 800ms para a sincronização ser quase instantânea
+
+        return () => clearTimeout(timeoutId);
+    }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, user]);
             const activeAlerts = useMemo(() => {
                 const today = getTodayStr(); let alerts = [];
                 safeArray(players).forEach((p, i) => {
