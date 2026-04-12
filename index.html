@@ -683,7 +683,16 @@
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
-            const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
+            const addP = () => {
+    const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
+    setPlayers(newPlayers);
+    
+    // 🔥 Garante que o Firebase já saiba que um novo card (vazio) foi criado
+    const user = firebase.auth().currentUser;
+    if (user) {
+        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+    }
+};
             const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
