@@ -57,14 +57,21 @@
         .mini-gauge-container { width: 80px; height: 40px; overflow: hidden; position: relative; }
         .mini-gauge-needle { width: 2px; height: 35px; background: #334155; position: absolute; left: 39px; top: 5px; transform-origin: bottom center; transition: transform 0.5s ease-out; border-radius: 1px; z-index: 10; }
         .dark .mini-gauge-needle { background: #cbd5e1; }
-        @media print {
-    /* 1. Esconde tudo que está ao fundo */
+    @media print {
+    /* Força o fundo da página a ser branco e remove o tema escuro */
+    body, html {
+        background: white !important;
+        color: black !important;
+    }
+
+    /* Esconde o fundo escuro do modal e o site que fica atrás */
     body * { visibility: hidden; }
 
-    /* 2. Localiza o modal do atleta e torna ele visível e branco */
-    .fixed.inset-0, .fixed.inset-0 div {
+    /* Localiza a ficha do atleta e garante que ela fique branca e visível */
+    .fixed.inset-0, 
+    .fixed.inset-0 > div {
         visibility: visible !important;
-        background: white !important;
+        background-color: white !important;
         color: black !important;
         position: absolute !important;
         left: 0 !important;
@@ -72,6 +79,25 @@
         width: 100% !important;
         box-shadow: none !important;
     }
+
+    /* Garante que todos os textos dentro da ficha fiquem pretos */
+    .fixed.inset-0 h1, .fixed.inset-0 h2, .fixed.inset-0 h3, 
+    .fixed.inset-0 p, .fixed.inset-0 span, .fixed.inset-0 label {
+        color: black !important;
+    }
+
+    /* Esconde os botões para economizar tinta e ficar profissional */
+    button, .no-print {
+        display: none !important;
+    }
+
+    /* Faz com que os gráficos e velocímetros apareçam com cor no PDF */
+    canvas, .gauge-container {
+        visibility: visible !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
 
     /* 3. Garante que os textos e títulos fiquem pretos */
     h1, h2, h3, p, span, label, input {
