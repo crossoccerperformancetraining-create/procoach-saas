@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -683,7 +684,7 @@
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
-            const addP = () => setPlayers([...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }]);
+            const addP = () => setPlayers([...safePlayers, {name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: ''}]);
             const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
@@ -760,53 +761,9 @@
                             </div>
 
                             <div className="flex gap-2 pt-2">
-    <button onClick={() => {
-        if (confirm('Excluir Atleta da Equipe?')) {
-            const newPlayers = safePlayers.filter((_, i) => i !== editPlayer);
-            setPlayers(newPlayers);
-            setEditPlayer(null);
-            
-            // AQUI ESTÁ O QUE FALTAVA: SALVAR NO FIREBASE
-            const user = firebase.auth().currentUser;
-            if (user) {
-                db.collection('coachData').doc(user.uid).update({ players: newPlayers })
-                  .then(() => showToast("Atleta removido!"))
-                  .catch(() => showToast("Erro ao sincronizar", "❌"));
-            }
-        }
- <button onClick={() => {
-    if (confirm('Excluir Atleta da Equipe?')) {
-        const newPlayers = safePlayers.filter((_, i) => i !== editPlayer);
-        setPlayers(newPlayers);
-        setEditPlayer(null);
-        
-        // SALVA A EXCLUSÃO NO FIREBASE
-        const user = firebase.auth().currentUser;
-        if (user) {
-            db.collection('coachData').doc(user.uid).update({ players: newPlayers })
-              .then(() => showToast("Atleta removido!"))
-              .catch(() => showToast("Erro ao sincronizar", "❌"));
-        }
-    }
-}} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-xs uppercase">
-    Excluir Atleta
-</button> 
-    
-    <button onClick={() => {
-        const n = [...safePlayers];
-        n[editPlayer] = localData;
-        setPlayers(n);
-        setEditPlayer(null);
-        
-        // SALVAR TAMBÉM AO EDITAR/SALVAR O NOME
-        const user = firebase.auth().currentUser;
-        if (user) {
-            db.collection('coachData').doc(user.uid).update({ players: n });
-        }
-    }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs uppercase">
-        Salvar Alterações
-    </button>
-</div>
+                                <button onClick={()=>{if(confirm('Excluir Atleta da Equipe?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
+                                <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
+                            </div>
                         </div>
                     </div>
                 ); 
