@@ -1891,7 +1891,7 @@
                 if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
                 const newLibrary = [...library, { id: Date.now(), ...form }];
                 setLibrary(newLibrary);
-                if(user) {
+             if(user) {
                     db.collection('coachData').doc(user.uid).update({
                         library: newLibrary
                     }).then(() => showToast("Sincronizado!")).catch(() => {
@@ -1899,8 +1899,39 @@
                     });
                 }
                 setForm({...form, title: '', gifUrl: ''});
-            };
+            }; // <--- ESSA chave fecha a função add
 
+            const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
+   return (
+            <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow mb-6 border dark:border-slate-700">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-bold dark:text-white flex gap-2 items-center"><Icon name="folder" /> BIBLIOTECA DE EXERCÍCIOS</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
+                        <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
+                        <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+                            {['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção'].map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <button onClick={add} className="bg-purple-600 text-white font-bold py-2 rounded shadow-lg hover:bg-purple-700 transition-all">ADICIONAR</button>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {filtered.map(l => (
+                        <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow relative group border dark:border-slate-700">
+                            <img src={l.gifUrl} className="w-full h-32 object-cover rounded mb-2 bg-slate-100 dark:bg-slate-700"/>
+                            <div className="text-[10px] font-black dark:text-white uppercase truncate">{l.title}</div>
+                            <button onClick={()=>{
+                                const newL = library.filter(x=>x.id!==l.id);
+                                setLibrary(newL);
+                                if(user) db.collection('coachData').doc(user.uid).update({ library: newL });
+                            }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
             const addFolder = () => {
                 const name = prompt("Nome da nova pasta:");
                 if (name && !categories.includes(name)) setCategories([...categories, name]);
