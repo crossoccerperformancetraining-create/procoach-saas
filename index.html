@@ -676,35 +676,24 @@
                 </div>
             );
         };
- const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
-    const [viewProfile, setViewProfile] = useState(null);
-    const [editPlayer, setEditPlayer] = useState(null); 
-    const today = getTodayStr(); 
-    const safePlayers = safeArray(players);
-    const fileInputRef = useRef(null); 
-    const [localData, setLocalData] = useState({});
+
+        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+            const [viewProfile, setViewProfile] = useState(null);
+            const [editPlayer, setEditPlayer] = useState(null); 
+            const today = getTodayStr(); 
+            const safePlayers = safeArray(players);
+            
+            const addP = () => {
+    const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
+    setPlayers(newPlayers);
     
-    const addP = () => {
-        const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
-        setPlayers(newPlayers);
-        const user = firebase.auth().currentUser;
-        if (user) {
-            db.collection('coachData').doc(user.uid).update({ players: newPlayers });
-        }
-    };
-
-    const getWeeklyLoad = (playerIndex) => { 
-        const dates = getDatesInRange(today, 7); 
-        let sum = 0; 
-        dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); 
-        return Math.min(100, sum/2000*100); 
-    };
-
-    const getPlayerDMStatus = (playerId) => { 
-        const dmRecs = safeArray(dmRecords); 
-        return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); 
-    };
-};    const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
+    // 🔥 Garante que o Firebase já saiba que um novo card (vazio) foi criado
+    const user = firebase.auth().currentUser;
+    if (user) {
+        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+    }
+};
+            const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
@@ -1882,56 +1871,15 @@
             );
         };
 
-     const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+        const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
             const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
             const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
 
-            const add = () => {
-                if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
-                const newLibrary = [...library, { id: Date.now(), ...form }];
-                setLibrary(newLibrary);
-             if(user) {
-                    db.collection('coachData').doc(user.uid).update({
-                        library: newLibrary
-                    }).then(() => showToast("Sincronizado!")).catch(() => {
-                        db.collection('coachData').doc(user.uid).set({ library: newLibrary }, { merge: true });
-                    });
-                }
-                setForm({...form, title: '', gifUrl: ''});
-            }; // <--- ESSA chave fecha a função add
+            useEffect(() => {
+                if(user) db.collection('coachData').doc(user.uid).set({ customCategories: categories }, { merge: true });
+            }, [categories, user]);
 
-            const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
-   return (
-            <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow mb-6 border dark:border-slate-700">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-bold dark:text-white flex gap-2 items-center"><Icon name="folder" /> BIBLIOTECA DE EXERCÍCIOS</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                        <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
-                        <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
-                            {['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção'].map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <button onClick={add} className="bg-purple-600 text-white font-bold py-2 rounded shadow-lg hover:bg-purple-700 transition-all">ADICIONAR</button>
-                    </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {filtered.map(l => (
-                        <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow relative group border dark:border-slate-700">
-                            <img src={l.gifUrl} className="w-full h-32 object-cover rounded mb-2 bg-slate-100 dark:bg-slate-700"/>
-                            <div className="text-[10px] font-black dark:text-white uppercase truncate">{l.title}</div>
-                            <button onClick={()=>{
-                                const newL = library.filter(x=>x.id!==l.id);
-                                setLibrary(newL);
-                                if(user) db.collection('coachData').doc(user.uid).update({ library: newL });
-                            }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
             const addFolder = () => {
                 const name = prompt("Nome da nova pasta:");
                 if (name && !categories.includes(name)) setCategories([...categories, name]);
@@ -1952,6 +1900,12 @@
                 }
             };
 
+            const add = () => {
+                if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
+                setLibrary([...library, { id: Date.now(), ...form }]);
+                setForm({...form, title: '', gifUrl: ''});
+            };
+
             const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
 
             return (
@@ -1962,18 +1916,18 @@
                             <button onClick={addFolder} className="bg-emerald-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg">+ NOVA PASTA</button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                            <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
-                            <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+                            <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
+                            <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
+                            <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <button onClick={add} className="bg-purple-600 text-white font-bold py-2 rounded">ADICIONAR</button>
                         </div>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
-                        <button onClick={()=>setFilter('Todas')} className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 ${filter==='Todas'?'bg-slate-800 text-white':'bg-slate-200 text-slate-600 dark:bg-slate-700'}`}>Todas</button>
+                        <button onClick={()=>setFilter('Todas')} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter==='Todas'?'bg-slate-800 text-white':'bg-slate-200 text-slate-600 dark:bg-slate-700'}`}>Todas</button>
                         {categories.map(c => (
-                            <div key={c} className="flex items-center bg-slate-200 dark:bg-slate-700 rounded-full pr-1 group shrink-0">
+                            <div key={c} className="flex items-center bg-slate-200 dark:bg-slate-700 rounded-full pr-1 group">
                                 <button onClick={()=>setFilter(c)} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter===c?'bg-purple-600 text-white':'text-slate-600'}`}>{c}</button>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
                                     <button onClick={()=>renameFolder(c)}><Icon name="edit" size={10}/></button>
@@ -1988,11 +1942,7 @@
                                 <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-purple-600 text-white">{l.category}</span>
                                 <img src={l.gifUrl} className="w-full h-32 object-cover rounded mb-2 bg-slate-100 dark:bg-slate-700"/>
                                 <div className="text-[10px] font-black dark:text-white uppercase truncate">{l.title}</div>
-                                <button onClick={()=>{
-                                    const newL = library.filter(x=>x.id!==l.id);
-                                    setLibrary(newL);
-                                    if(user) db.collection('coachData').doc(user.uid).update({ library: newL });
-                                }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
+                                <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
                             </div>
                         ))}
                     </div>
