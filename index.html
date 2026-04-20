@@ -676,21 +676,34 @@
                 </div>
             );
         };
+ const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+    const [viewProfile, setViewProfile] = useState(null);
+    const [editPlayer, setEditPlayer] = useState(null); 
+    const today = getTodayStr(); 
+    const safePlayers = safeArray(players);
+    const fileInputRef = useRef(null); 
+    const [localData, setLocalData] = useState({});
+    
+    const addP = () => {
+        const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
+        setPlayers(newPlayers);
+        const user = firebase.auth().currentUser;
+        if (user) {
+            db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+        }
+    };
 
-        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
-            const [viewProfile, setViewProfile] = useState(null);
-            const [editPlayer, setEditPlayer] = useState(null); 
-            const today = getTodayStr(); 
-            const safePlayers = safeArray(players);
-            
-       const addP = () => {
-    const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
-    setPlayers(newPlayers);
-    const user = firebase.auth().currentUser;
-    if (user) {
-        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
-    }
-};   
+    const getWeeklyLoad = (playerIndex) => { 
+        const dates = getDatesInRange(today, 7); 
+        let sum = 0; 
+        dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); 
+        return Math.min(100, sum/2000*100); 
+    };
+
+    const getPlayerDMStatus = (playerId) => { 
+        const dmRecs = safeArray(dmRecords); 
+        return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); 
+    };
 };    const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
