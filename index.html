@@ -1886,14 +1886,24 @@
             );
         };
 
-        const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+     const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
             const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
             const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
 
-            useEffect(() => {
-                if(user) db.collection('coachData').doc(user.uid).set({ customCategories: categories }, { merge: true });
-            }, [categories, user]);
+            const add = () => {
+                if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
+                const newLibrary = [...library, { id: Date.now(), ...form }];
+                setLibrary(newLibrary);
+                if(user) {
+                    db.collection('coachData').doc(user.uid).update({
+                        library: newLibrary
+                    }).then(() => showToast("Sincronizado!")).catch(() => {
+                        db.collection('coachData').doc(user.uid).set({ library: newLibrary }, { merge: true });
+                    });
+                }
+                setForm({...form, title: '', gifUrl: ''});
+            };
 
             const addFolder = () => {
                 const name = prompt("Nome da nova pasta:");
@@ -1915,12 +1925,6 @@
                 }
             };
 
-            const add = () => {
-                if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
-                setLibrary([...library, { id: Date.now(), ...form }]);
-                setForm({...form, title: '', gifUrl: ''});
-            };
-
             const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
 
             return (
@@ -1931,18 +1935,18 @@
                             <button onClick={addFolder} className="bg-emerald-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg">+ NOVA PASTA</button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                            <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
-                            <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+                            <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
+                            <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
+                            <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <button onClick={add} className="bg-purple-600 text-white font-bold py-2 rounded">ADICIONAR</button>
                         </div>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
-                        <button onClick={()=>setFilter('Todas')} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter==='Todas'?'bg-slate-800 text-white':'bg-slate-200 text-slate-600 dark:bg-slate-700'}`}>Todas</button>
+                        <button onClick={()=>setFilter('Todas')} className={`px-4 py-1.5 rounded-full text-xs font-bold shrink-0 ${filter==='Todas'?'bg-slate-800 text-white':'bg-slate-200 text-slate-600 dark:bg-slate-700'}`}>Todas</button>
                         {categories.map(c => (
-                            <div key={c} className="flex items-center bg-slate-200 dark:bg-slate-700 rounded-full pr-1 group">
+                            <div key={c} className="flex items-center bg-slate-200 dark:bg-slate-700 rounded-full pr-1 group shrink-0">
                                 <button onClick={()=>setFilter(c)} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter===c?'bg-purple-600 text-white':'text-slate-600'}`}>{c}</button>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
                                     <button onClick={()=>renameFolder(c)}><Icon name="edit" size={10}/></button>
@@ -1957,7 +1961,11 @@
                                 <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-purple-600 text-white">{l.category}</span>
                                 <img src={l.gifUrl} className="w-full h-32 object-cover rounded mb-2 bg-slate-100 dark:bg-slate-700"/>
                                 <div className="text-[10px] font-black dark:text-white uppercase truncate">{l.title}</div>
-                                <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
+                                <button onClick={()=>{
+                                    const newL = library.filter(x=>x.id!==l.id);
+                                    setLibrary(newL);
+                                    if(user) db.collection('coachData').doc(user.uid).update({ library: newL });
+                                }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
                             </div>
                         ))}
                     </div>
