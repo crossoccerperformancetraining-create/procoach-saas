@@ -683,31 +683,14 @@
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
-           const add = () => {
-    if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
-    
-    // 1. Prepara a nova lista
-    const newLibrary = [...library, { id: Date.now(), ...form }];
-    
-    // 2. Atualiza a tela imediatamente
-    setLibrary(newLibrary);
-    
-    // 3. COMANDO DE FORÇA BRUTA PARA O FIREBASE (Salva na hora)
-    if(user) {
-        setSyncStatus('A Guardar...');
-        db.collection('coachData').doc(user.uid).update({
-            library: newLibrary
-        }).then(() => {
-            setSyncStatus('☁️ Biblioteca Sincronizada');
-            showToast("Exercício Salvo na Nuvem!");
-            setTimeout(() => setSyncStatus(''), 3000);
-        }).catch(err => {
-            // Se der erro (ex: documento não existe), tenta o set merge
-            db.collection('coachData').doc(user.uid).set({ library: newLibrary }, { merge: true });
-        });
+       const addP = () => {
+    const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
+    setPlayers(newPlayers);
+    const user = firebase.auth().currentUser;
+    if (user) {
+        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
     }
-    
-    setForm({...form, title: '', gifUrl: ''});
+};   
 };    const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
