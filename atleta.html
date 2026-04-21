@@ -17,6 +17,7 @@
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
         .special-card { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border: 1px solid rgba(255,255,255,0.2); }
+        .gold-border { border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
     </style>
 </head>
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
@@ -46,33 +47,37 @@
                 });
             }, []);
 
-            // FILTRO INTELIGENTE DE EXERCÍCIOS
             const myWorkouts = useMemo(() => {
                 if (idx === null) return [];
                 const myName = (data.players[idx]?.name || "").toLowerCase();
                 return data.ex.filter(e => {
                     const target = (e.target || "").toLowerCase();
-                    return target.includes(myName) || target.includes("pdi") || target.includes("transição") || target.includes("geral");
+                    return target.includes(myName) || target.includes("pdi") || target.includes("transição") || target.includes("geral") || target.includes("convocado");
                 });
             }, [data.ex, idx]);
+
+            // ANTENA DE CONVOCAÇÃO
+            const convocacao = useMemo(() => {
+                return myWorkouts.find(e => (e.target || "").toUpperCase().includes("CONVOCADO"));
+            }, [myWorkouts]);
 
             const hasSpecialMission = myWorkouts.some(e => {
                 const t = (e.target || "").toLowerCase();
                 return t.includes("pdi") || t.includes("transição") || t.includes((data.players[idx]?.name || "").toLowerCase());
             });
 
-            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white">Carregando...</div>;
+            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold animate-pulse">CARREGANDO PORTAL...</div>;
 
             if(step===1) return (
                 <div className="p-6 h-screen flex flex-col items-center justify-center bg-slate-950">
-                    <h1 className="text-3xl font-black italic mb-8 text-white">PROCOACH</h1>
+                    <h1 className="text-3xl font-black italic mb-8 text-white">PRO<span style={{color: data.color}}>COACH</span></h1>
                     <div className="grid grid-cols-3 gap-6 w-full max-w-2xl">
                         {data.players.map((p, i) => (
                             <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer">
-                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="m-6 text-slate-700">👤</div>}
+                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900 shadow-lg">
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex items-center justify-center h-full text-2xl">👤</div>}
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-300">{(p.name || '').split(' ')[0]}</span>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter">{(p.name || '').split(' ')[0]}</span>
                             </div>
                         ))}
                     </div>
@@ -83,22 +88,38 @@
             return (
                 <div className="h-full flex flex-col bg-slate-950 p-6 overflow-y-auto custom-scroll">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="w-20 h-20 rounded-full border-4 border-white/10 overflow-hidden shrink-0">
-                            {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="m-6 text-white">👤</div>}
+                        <div className="w-20 h-20 rounded-full border-4 border-white/10 overflow-hidden shrink-0 shadow-2xl">
+                            {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex items-center justify-center h-full text-2xl">👤</div>}
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black uppercase text-white">{p.name}</h1>
-                            <div className="text-xs font-bold text-blue-400 uppercase">{p.position || 'Atleta'}</div>
+                            <h1 className="text-2xl font-black uppercase text-white leading-tight">{p.name}</h1>
+                            <div className="text-xs font-bold text-blue-400 uppercase tracking-widest">{p.position || 'Atleta'}</div>
                         </div>
                     </div>
 
-                    {/* DESTAQUE DE MISSÃO ESPECIAL */}
-                    {hasSpecialMission && (
+                    {/* CARD DOURADO DE CONVOCAÇÃO ✨ */}
+                    {convocacao && (
+                        <div className="mb-8 animate-bounce">
+                            <div className="bg-gradient-to-r from-yellow-600 via-yellow-300 to-yellow-600 p-[2px] rounded-3xl shadow-[0_0_30px_rgba(234,179,8,0.4)]">
+                                <div className="bg-slate-950 rounded-[22px] p-5 flex items-center justify-between border border-yellow-500/20">
+                                    <div>
+                                        <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] mb-1">Match Day</div>
+                                        <div className="text-lg font-black text-white uppercase italic leading-none">✨ VOCÊ ESTÁ CONVOCADO!</div>
+                                        <div className="text-[11px] text-slate-300 mt-2 font-bold uppercase">{convocacao.title}</div>
+                                    </div>
+                                    <div className="text-3xl drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">🏆</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MISSÃO ESPECIAL (PDI/TRANSIÇÃO) - Só aparece se não for Convocação */}
+                    {hasSpecialMission && !convocacao && (
                         <div className="mb-6 animate-pulse-slow">
                             <div className="special-card p-4 rounded-3xl flex items-center justify-between shadow-xl">
                                 <div>
                                     <div className="text-[10px] font-black text-white/70 uppercase tracking-widest">Missão Individual</div>
-                                    <div className="text-sm font-black text-white uppercase">Trabalho PDI / Transição</div>
+                                    <div className="text-sm font-black text-white uppercase italic">Trabalho PDI / Transição</div>
                                 </div>
                                 <div className="text-2xl">⚡</div>
                             </div>
@@ -106,45 +127,58 @@
                     )}
 
                     <div className="space-y-6">
-                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Programação do Dia</h3>
-                        
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-slate-800 pb-2">Programação do Dia</h3>
                         {myWorkouts.length > 0 ? (
                             myWorkouts.map((ex, i) => (
-                                <div key={i} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-xl overflow-hidden">
-                                        {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover"/> : "🏋️"}
+                                <div key={i} className={`bg-slate-900 border p-4 rounded-2xl flex items-center gap-4 transition-all ${ (ex.target || "").toUpperCase().includes("CONVOCADO") ? 'border-yellow-500/50 bg-slate-900' : 'border-slate-800' }`}>
+                                    <div className="w-14 h-14 bg-slate-800 rounded-xl flex items-center justify-center text-xl overflow-hidden shrink-0 border border-slate-700">
+                                        {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover"/> : "⚽"}
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="text-xs font-black text-white uppercase">{ex.title}</div>
-                                        <div className="text-[10px] font-bold text-slate-500">{ex.sets}x{ex.reps} - {ex.target}</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-xs font-black text-white uppercase truncate">{ex.title}</div>
+                                        <div className="text-[9px] font-bold text-slate-400 mt-1 uppercase">
+                                            {ex.sets && ex.reps ? `${ex.sets}x${ex.reps} • ` : ''} 
+                                            <span className={(ex.target || "").toUpperCase().includes("CONVOCADO") ? "text-yellow-500" : ""}>{ex.target}</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center p-12 bg-slate-900/50 rounded-[40px] border border-dashed border-slate-800">
+                            <div className="text-center p-12 bg-slate-900/30 rounded-[40px] border border-dashed border-slate-800">
                                 <div className="text-5xl mb-4">🔋</div>
-                                <div className="text-xs font-black text-slate-500 uppercase tracking-widest">Recuperação / Folga</div>
+                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-loose">Recuperação / Folga<br/>Corpo em manutenção</div>
                             </div>
                         )}
                     </div>
 
-                    <div className="mt-10 space-y-6">
-                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Diário de Prontidão</h3>
-                         {[{id:'sleep',l:'Sono'},{id:'stress',l:'Estresse'},{id:'fatigue',l:'Cansaço'},{id:'soreness',l:'Dor'},{id:'mood',l:'Humor'}].map(m=>(
-                            <div key={m.id} className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                                <div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="text-blue-400">{scores[m.id]}</span></div>
+                    <div className="mt-12 space-y-6 mb-10">
+                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-slate-800 pb-2 text-center">Diário de Prontidão</h3>
+                         {[{id:'sleep',l:'Qualidade do Sono', ic:'🌙'},{id:'stress',l:'Nível de Estresse', ic:'🧠'},{id:'fatigue',l:'Cansaço Geral', ic:'🔋'},{id:'soreness',l:'Dor Muscular', ic:'🩹'},{id:'mood',l:'Estado de Humor', ic:'🎭'}].map(m=>(
+                            <div key={m.id} className="bg-slate-900/50 p-5 rounded-3xl border border-slate-800 shadow-inner">
+                                <div className="flex justify-between mb-4 font-bold text-white text-xs uppercase tracking-tighter">
+                                    <span>{m.ic} {m.l}</span>
+                                    <span className="text-blue-400 bg-blue-400/10 px-2 rounded-lg">{scores[m.id]}</span>
+                                </div>
                                 <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/>
                             </div>
                         ))}
+                        
+                        <button onClick={()=>{
+                            const td = new Date().toISOString().split('T')[0];
+                            const toast = document.getElementById('toast');
+                            db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { wellness: scores } } } }, {merge:true})
+                            .then(()=>{ 
+                                if(toast) {
+                                    toast.innerHTML = '✅ PRONTIDÃO ENVIADA!';
+                                    toast.style.opacity = '1';
+                                    setTimeout(() => toast.style.opacity = '0', 3000);
+                                }
+                            });
+                        }} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] shadow-[0_10px_20px_rgba(37,99,235,0.3)] uppercase tracking-[0.2em] active:scale-95 transition-all text-sm mt-4">
+                            Enviar Dados ao Coach
+                        </button>
                     </div>
-
-                    <button onClick={()=>{
-                        const td = new Date().toISOString().split('T')[0];
-                        db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { wellness: scores } } } }, {merge:true})
-                        .then(()=>{ alert("Enviado com sucesso!"); });
-                    }} className="mt-10 w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase tracking-widest active:scale-95 transition-transform">
-                        Enviar Prontidão
-                    </button>
+                    <div className="text-center text-[8px] text-slate-700 font-bold tracking-[0.5em] uppercase mb-4">ProCoach Cloud V144 MAX</div>
                 </div>
             );
         };
