@@ -2176,65 +2176,6 @@
             const [showNotifications, setShowNotifications] = useState(false);
             const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
-            // ... (estados anteriores)
-const [syncStatus, setSyncStatus] = useState('');
-
-// --- COLE AS FUNÇÕES AQUI ---
-const handleExport = () => {
-    try {
-        const dataToExport = { 
-            themeColor, players, trainingLog, assessments, 
-            dmRecords, matchMinutes, header, logo, 
-            darkMode, days, exercises, library, 
-            postWorkout, coachMsg, videoUrl 
-        };
-        
-        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const dataStr = new Date().toISOString().split('T')[0];
-        
-        a.href = url;
-        a.download = `procoach_backup_${dataStr}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        showToast("Arquivo de Backup gerado! ✅");
-    } catch (err) {
-        console.error(err);
-        showToast("Erro ao exportar ❌", "#ef4444");
-    }
-};
-
-const handleImport = (newData) => {
-    if(!newData) return;
-    if(confirm("Isso irá substituir seus dados atuais. Continuar?")) {
-        setThemeColor(newData.themeColor || '#1e3a8a');
-        setPlayers(newData.players || []);
-        setTrainingLog(newData.trainingLog || {});
-        setAssessments(newData.assessments || {});
-        setDmRecords(newData.dmRecords || []);
-        setMatchMinutes(newData.matchMinutes || {});
-        setHeader(newData.header || {});
-        setLogo(newData.logo || null);
-        setDarkMode(!!newData.darkMode);
-        setDays(newData.days || DEFAULT_DAYS);
-        setExercises(newData.exercises || []);
-        setLibrary(newData.library || []);
-        setPostWorkout(newData.postWorkout || 'Livre');
-        setCoachMsg(newData.coachMsg || '');
-        setVideoUrl(newData.videoUrl || '');
-        showToast("Dados importados com sucesso! 🔄");
-    }
-};
-// --- FIM DA COLA ---
-
-// PASSO 1: Sincronizador em tempo real
-useEffect(() => {
-// ... restante do código
-
 // PASSO 1: Sincronizador em tempo real
 useEffect(() => {
     if (initialData) {
