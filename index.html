@@ -95,7 +95,170 @@
             {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo com minutagem controlada em jogo. Liberado treino com o grupo sem restrições."}, 
             {id:9, label:"Fase 9: Liberação", desc:"Responsabilidade do atleta com cuidados antes e após treinos e jogos."} 
         ];
+const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
+            const [modalOpen, setModalOpen] = useState(false);
+            const [aiModal, setAiModal] = useState(null);
+            const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null });
+            
+            // Estado para a data de início (Sempre Segunda-Feira)
+            const [startDate, setStartDate] = useState(() => {
+                const d = new Date();
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+                const monday = new Date(d.setDate(diff));
+                return monday.toISOString().split('T')[0];
+            });
 
+            const safeDays = days.map(d => ({...d, plannedMins: d.plannedMins || ''}));
+
+            // 🔥 CORREÇÃO: Função com ajuste de fuso horário para a data bater com o dia
+            const getDayDate = (index) => {
+                const date = new Date(startDate + 'T12:00:00'); 
+                date.setDate(date.getDate() + index);
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            };
+
+            const eventTypes = [ 
+                { label: 'JOGO', color: 'bg-[#dc2626]', text: 'text-white', load: 100 }, 
+                { label: 'RECUPERAÇÃO', color: 'bg-[#3b82f6]', text: 'text-white', load: 20 }, 
+                { label: 'ACADEMIA', color: 'bg-[#eab308]', text: 'text-slate-900', load: 40 }, 
+                { label: 'FOLGA', color: 'bg-[#94a3b8]', text: 'text-slate-800', load: 0 },
+                { label: 'TREINO FÍSICO', color: 'bg-[#16a34a]', text: 'text-white', load: 60 },
+                { label: 'TÉCNICO', color: 'bg-[#2563eb]', text: 'text-white', load: 50 }, 
+                { label: 'JOGUINHO', color: 'bg-[#ec4899]', text: 'text-white', load: 60 },
+                { label: 'ORG. OFENSIVA', color: 'bg-[#0ea5e9]', text: 'text-white', load: 60 }, 
+                { label: 'ORG. DEFENSIVA', color: 'bg-[#f97316]', text: 'text-white', load: 60 }, 
+                { label: 'TRANS. OFENSIVA', color: 'bg-[#06b6d4]', text: 'text-white', load: 70 }, 
+                { label: 'TRANS. DEFENSIVA', color: 'bg-[#f43f5e]', text: 'text-white', load: 70 }, 
+                { label: 'ABP OFENSIVA', color: 'bg-[#8b5cf6]', text: 'text-white', load: 30 }, 
+                { label: 'ABP DEFENSIVA', color: 'bg-[#d946ef]', text: 'text-white', load: 30 }, 
+                { label: 'TÁTICO GERAL', color: 'bg-[#10b981]', text: 'text-white', load: 60 }, 
+                { label: 'PDI', color: 'bg-[#14b8a6]', text: 'text-white', load: 40 }
+            ];
+
+            const openModal = (dayId, period) => { setActiveSlot({ dayId, period }); setModalOpen(true); };
+            
+            const addEvent = (typeObj) => {
+                const newDays = safeDays.map(d => {
+                    if(d.id === activeSlot.dayId) {
+                        return { ...d, [activeSlot.period]: [...(d[activeSlot.period] || []), { id: Date.now(), ...typeObj }] };
+                    }
+                    return d;
+                });
+                setDays(newDays);
+                setModalOpen(false);
+            };
+
+            const removeEvent = (dayId, period, eventId) => {
+                setDays(safeDays.map(d => d.id === dayId ? { ...d, [period]: d[period].filter(e => e.id !== eventId) } : d));
+            };
+
+            const updateHeader = (dayId, field, val) => {
+                setDays(safeDays.map(d => d.id === dayId ? { ...d, [field]: val } : d));
+            };
+
+            const renderAiAnalysis = () => {
+                if(!aiModal) return null;
+                const md = aiModal.md || "";
+                const mins = Number(aiModal.plannedMins) || 0;
+                let focus = "", advice = "", timeRange = "", pseRange = "", volStatus = "";
+                if(md.includes('MD-4')) { focus = "Aquisição (Força/Resistência)"; advice = "Dia longe do jogo. Ideal para cargas altas."; timeRange = "70 a 90 min"; pseRange = "7 a 8 (Intenso)"; }
+                else if(md.includes('MD-3')) { focus = "Específico (Tática/Intensidade)"; advice = "Dia de 'choque'. Intensidade simil jogo."; timeRange = "60 a 75 min"; pseRange = "8 a 9 (Muito Intenso)"; }
+                else if(md.includes('MD-2')) { focus = "Velocidade / Polimento"; advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; timeRange = "45 a 60 min"; pseRange = "5 a 6 (Moderado)"; }
+                else if(md.includes('MD-1')) { focus = "Ativação / Bola Parada"; advice = "Véspera de jogo. Carga mínima. Apenas ativação neural."; timeRange = "30 a 45 min"; pseRange = "3 a 4 (Fácil)"; }
+                else if(md === 'JOGO') { focus = "Competição"; advice = "Foco total na estratégia e hidratação."; timeRange = "90+ min"; pseRange = "10 (Máximo)"; }
+                else { focus = "Recuperação / Ajuste"; advice = "Foco em remover metabólitos e soltura."; timeRange = "30 a 45 min"; pseRange = "2 a 3 (Muito Fácil)"; }
+                volStatus = mins > 0 ? (mins > 90 ? "Volume ALTO. Risco de fadiga residual." : "Volume dentro dos parâmetros sugeridos.") : "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
+
+                return (
+                    <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
+                        <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-700" onClick={e=>e.stopPropagation()}>
+                            <div className="flex flex-col items-center mb-6"><div className="bg-blue-500/20 p-3 rounded-full mb-2"><Icon name="brain" size={32} className="text-blue-400"/></div><h3 className="text-xl font-black text-white uppercase">Análise {aiModal.name} <span className="text-blue-400">({md})</span></h3></div>
+                            <div className="bg-slate-800/50 p-4 rounded-xl mb-4 border border-slate-700"><div className="text-[10px] font-black text-slate-400 uppercase mb-1">Foco Sugerido</div><div className="text-white font-bold">{focus}</div></div>
+                            <p className="text-xs text-slate-300 mb-6 leading-relaxed">{advice}</p>
+                            <div className="grid grid-cols-2 gap-4 mb-6"><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center"><div className="text-[9px] font-black text-slate-500 uppercase mb-1">Tempo Alvo Máx</div><div className="text-blue-400 font-black">{timeRange}</div></div><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center"><div className="text-[9px] font-black text-slate-500 uppercase mb-1">PSE Alvo</div><div className="text-orange-400 font-black">{pseRange}</div></div></div>
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl mb-6"><div className="text-[9px] font-black text-emerald-400 uppercase mb-1">Análise de Tempo (Sem GPS)</div><div className="text-xs text-emerald-200 font-bold">{volStatus}</div></div>
+                            <button onClick={()=>setAiModal(null)} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700 transition-all">Entendido</button>
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="h-full bg-slate-900 flex flex-col relative overflow-hidden animate-fade-in">
+                    {renderAiAnalysis()}
+                    <div className="bg-[#0f172a] p-4 border-b border-slate-800 flex justify-between items-center shrink-0">
+                        <div className="flex flex-col">
+                            <h2 className="font-black text-lg text-white italic flex gap-2 uppercase">
+                                <Icon name="calendar" className="not-italic text-blue-500"/> Planeamento Semanal
+                            </h2>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase">Início da Semana:</span>
+                                <input type="date" className="bg-slate-800 text-white text-[10px] font-black p-1 rounded border border-slate-700 outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-2 border border-slate-700"><Icon name="share" size={14}/> PNG</button>
+                            <button className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-2 shadow-lg"><Icon name="download" size={14}/> PDF</button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-auto p-2 flex flex-col custom-scroll">
+                        <div className="flex gap-3 min-w-max pb-12 items-stretch">
+                            {safeDays.map((day, index) => (
+                                <div key={day.id} className="w-44 flex flex-col bg-[#1e293b] rounded-2xl overflow-hidden shrink-0 border border-slate-700 shadow-xl">
+                                    <div className="bg-[#1a4a3e] p-3 text-center shrink-0 relative">
+                                        {/* DATA CORRIGIDA AQUI */}
+                                        <div className="text-[9px] font-black text-emerald-400 mb-1 uppercase tracking-tighter">{getDayDate(index)}</div>
+                                        <button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/40 hover:text-white transition-colors"><Icon name="info" size={14}/></button>
+                                        <BufferedInput className="bg-transparent text-center font-black text-xs w-full outline-none uppercase tracking-widest text-white mb-1" value={day.name || ''} onSave={(val)=>updateHeader(day.id,'name',val)} />
+                                        <select className="bg-white/10 rounded text-center text-[10px] text-white w-full outline-none font-black uppercase mb-2 border-none" value={day.md || ''} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>
+                                            {['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}
+                                        </select>
+                                        <div className="flex items-center gap-1 bg-black/20 rounded-lg px-2 py-1 border border-white/5">
+                                            <Icon name="activity" size={10} className="text-emerald-400" />
+                                            <BufferedInput type="number" className="bg-transparent text-center text-[10px] text-white w-full outline-none font-black placeholder-white/30" placeholder="Minutos" value={day.plannedMins || ''} onSave={(val)=>updateHeader(day.id,'plannedMins',val)} />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-col p-2 gap-4 pb-4 bg-gradient-to-b from-[#1e293b] to-[#0f172a]">
+                                        {['am','pm'].map(period => (
+                                            <div key={period} className="flex flex-col gap-1">
+                                                <div className="text-[8px] font-black uppercase text-slate-500 text-center tracking-[0.2em] mb-1">{period==='am'?'Manhã':'Tarde'}</div>
+                                                <div className="flex flex-col gap-1.5 min-h-[100px]">
+                                                    {(day[period] || []).map(ev => (
+                                                        <div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-black py-2.5 px-1 rounded-lg shadow-lg text-center relative group/item uppercase tracking-tighter border-b-2 border-black/20`}>
+                                                            {ev.type}
+                                                            <button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute -top-1 -right-1 bg-black text-white rounded-full w-4 h-4 flex items-center justify-center hidden group-hover/item:flex border border-white/20">×</button>
+                                                        </div>
+                                                    ))}
+                                                    <button onClick={()=>openModal(day.id, period)} className="mt-auto w-full border-2 border-dashed border-slate-700 text-slate-500 py-2 rounded-lg text-[9px] font-black uppercase hover:border-blue-500 hover:text-blue-500 transition-all">+ Add</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {modalOpen && (
+                        <div className="absolute inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}>
+                            <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700 flex flex-col max-h-[85vh]" onClick={e=>e.stopPropagation()}>
+                                <h3 className="text-center font-black text-white mb-6 text-lg uppercase tracking-tighter">Adicionar Evento</h3>
+                                <div className="grid grid-cols-1 gap-2 overflow-y-auto flex-1 custom-scroll pr-2">
+                                    {eventTypes.map(t => (
+                                        <button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-4 rounded-xl font-black shadow-xl ${t.color} ${t.text} text-xs tracking-widest uppercase border-b-4 border-black/20 active:translate-y-1 active:border-b-0 transition-all`}>{t.label}</button>
+                                    ))}
+                                </div>
+                                <button onClick={()=>setModalOpen(false)} className="w-full mt-6 py-4 text-slate-400 font-black text-xs uppercase tracking-widest">Cancelar</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+     
         class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, resetting: false }; }
             static getDerivedStateFromError(error) { return { hasError: true }; }
@@ -684,15 +847,14 @@
             const safePlayers = safeArray(players);
             
             const addP = () => {
-    const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
-    setPlayers(newPlayers);
-    
-    // 🔥 Garante que o Firebase já saiba que um novo card (vazio) foi criado
-    const user = firebase.auth().currentUser;
-    if (user) {
-        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
-    }
-};
+                const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "" }];
+                setPlayers(newPlayers);
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+                }
+            };
+
             const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
@@ -776,7 +938,7 @@
                     </div>
                 ); 
             };
-            
+
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
 
@@ -1116,323 +1278,6 @@
                             ); 
                         })}
                     </div>
-                </div>
-            );
-        };
-
-        const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
-            const [modalOpen, setModalOpen] = useState(false);
-            const [aiModal, setAiModal] = useState(null); 
-            const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null }); 
-            const safeDays = safeArray(days, DEFAULT_DAYS).map(d => ({...d, plannedMins: d.plannedMins || ''}));
-            
-            const eventTypes = [ 
-                { label: 'JOGO', color: 'bg-[#dc2626]', text: 'text-white', load: 100 }, 
-                { label: 'RECUPERAÇÃO', color: 'bg-[#3b82f6]', text: 'text-white', load: 20 }, 
-                { label: 'ACADEMIA', color: 'bg-[#eab308]', text: 'text-slate-900', load: 40 }, 
-                { label: 'FOLGA', color: 'bg-[#94a3b8]', text: 'text-slate-800', load: 0 },
-                { label: 'TREINO FÍSICO', color: 'bg-[#16a34a]', text: 'text-white', load: 60 },
-                { label: 'TÉCNICO', color: 'bg-[#2563eb]', text: 'text-white', load: 50 }, 
-                { label: 'JOGUINHO', color: 'bg-[#ec4899]', text: 'text-white', load: 60 },
-                { label: 'ORG. OFENSIVA', color: 'bg-[#0ea5e9]', text: 'text-white', load: 60 }, 
-                { label: 'ORG. DEFENSIVA', color: 'bg-[#f97316]', text: 'text-white', load: 60 }, 
-                { label: 'TRANS. OFENSIVA', color: 'bg-[#06b6d4]', text: 'text-white', load: 70 }, 
-                { label: 'TRANS. DEFENSIVA', color: 'bg-[#f43f5e]', text: 'text-white', load: 70 }, 
-                { label: 'ABP OFENSIVA', color: 'bg-[#8b5cf6]', text: 'text-white', load: 30 }, 
-                { label: 'ABP DEFENSIVA', color: 'bg-[#d946ef]', text: 'text-white', load: 30 }, 
-                { label: 'TÁTICO GERAL', color: 'bg-[#10b981]', text: 'text-white', load: 60 }, 
-                { label: 'PDI', color: 'bg-[#14b8a6]', text: 'text-white', load: 40 }
-            ];
-            
-            const openModal = (dayId, period) => { setActiveSlot({ dayId, period }); setModalOpen(true); };
-            const addEvent = (typeObj) => { const newDays = safeDays.map(d => { if(d.id === activeSlot.dayId) { const list = d[activeSlot.period] || []; const newEvent = { id: Date.now(), type: typeObj.label, colorClass: typeObj.color, textClass: typeObj.text, load: typeObj.load }; return { ...d, [activeSlot.period]: [...list, newEvent] }; } return d; }); setDays(newDays); setModalOpen(false); };
-            const removeEvent = (dayId, period, eventId) => { const newDays = safeDays.map(d => { if(d.id === dayId) { return { ...d, [period]: (d[period] || []).filter(e => e.id !== eventId) }; } return d; }); setDays(newDays); };
-            const updateHeader = (dayId, field, val) => { setDays(safeDays.map(d => d.id === dayId ? { ...d, [field]: val } : d)); };
-            const exportAsImage = async () => { 
-                const element = document.getElementById('microcycle-container'); 
-                if(!element) return; 
-                showToast("A gerar PNG...");
-                const originalBg = element.style.backgroundColor;
-                element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
-                try { 
-                    const canvas = await html2canvas(element, { 
-                        scale: 2, 
-                        useCORS: true, 
-                        scrollX: 0, 
-                        scrollY: 0, 
-                        windowWidth: element.scrollWidth,
-                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
-                    }); 
-                    canvas.toBlob(blob => { smartShare(blob, 'microciclo_semana.png', 'Planeamento Semanal'); }); 
-                } catch(e) { showToast("Erro ao exportar"); } 
-                element.style.backgroundColor = originalBg;
-            };
-
-            const exportAsPDF = async () => { 
-                const element = document.getElementById('microcycle-container'); 
-                if(!element) return; 
-                showToast("A gerar PDF A4...");
-                const originalBg = element.style.backgroundColor;
-                element.style.backgroundColor = document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc';
-                
-                try { 
-                    const canvas = await html2canvas(element, { 
-                        scale: 2, 
-                        useCORS: true,
-                        scrollX: 0,
-                        scrollY: 0,
-                        windowWidth: element.scrollWidth,
-                        backgroundColor: document.body.classList.contains('dark') ? '#0f172a' : '#f8fafc'
-                    }); 
-                    
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdf = new window.jspdf.jsPDF({
-                        orientation: 'landscape',
-                        unit: 'mm',
-                        format: 'a4'
-                    });
-                    
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                    
-                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                    pdf.save('microciclo_semana.pdf');
-                    showToast("PDF Gerado com Sucesso!");
-                } catch(e) { 
-                    showToast("Erro ao exportar PDF"); 
-                } 
-                element.style.backgroundColor = originalBg;
-            };
-
-            const getTeamFatigue = () => {
-                const today = getTodayStr();
-                let totalFatigue = 0; let count = 0;
-                safeArray(players).forEach((p, i) => {
-                    if(p && !p.injured) {
-                        const w = safeObj(trainingLog[today]?.[i]?.wellness);
-                        if(w.sleep) {
-                            totalFatigue += (Number(w.fatigue) || 1) + (Number(w.soreness) || 1);
-                            count++;
-                        }
-                    }
-                });
-                const avgFatigue = count > 0 ? (totalFatigue / count) : 2; 
-                return avgFatigue >= 8; 
-            };
-            const isTeamFatigued = getTeamFatigue();
-
-            const getYesterdayLoad = () => {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                yesterday.setMinutes(yesterday.getMinutes() - yesterday.getTimezoneOffset());
-                const yStr = yesterday.toISOString().split('T')[0];
-                let totalLoad = 0; let count = 0;
-                safeArray(players).forEach((p, i) => {
-                    if(p && !p.injured) {
-                        const l = trainingLog[yStr]?.[i];
-                        if(l) { totalLoad += calcDailyLoad(l); count++; }
-                    }
-                });
-                return count > 0 ? totalLoad / count : 0;
-            };
-            const yLoad = getYesterdayLoad();
-            
-            const renderDayAnalysisModal = () => {
-                if(!aiModal) return null; 
-                const md = aiModal.md || ""; 
-                const mins = Number(aiModal.plannedMins) || 0;
-                let advice = "", focus = "", volAdvice = "";
-                let sugTime = "", sugRPE = "";
-                let maxMins = 0;
-
-                if(md.includes('MD-4')) { 
-                    focus = "Aquisição (Força/Resistência)"; 
-                    advice = "Dia longe do jogo. Ideal para cargas altas, treinos de força na academia ou resistência específica em campo."; 
-                    sugTime = "70 a 90 min"; sugRPE = "7 a 8 (Intenso)";
-                    maxMins = 90;
-                }
-                else if(md.includes('MD-3')) { 
-                    focus = "Específico (Tática/Intensidade)"; 
-                    advice = "Dia de 'choque'. Intensidade deve ser alta (simil jogo), mas o volume total começa a ser controlado."; 
-                    sugTime = "60 a 75 min"; sugRPE = "8 a 9 (Muito Intenso)";
-                    maxMins = 75;
-                }
-                else if(md.includes('MD-2')) { 
-                    focus = "Velocidade / Polimento"; 
-                    advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; 
-                    sugTime = "45 a 60 min"; sugRPE = "5 a 6 (Moderado)";
-                    maxMins = 60;
-                }
-                else if(md.includes('MD-1')) { 
-                    focus = "Ativação / Bola Parada"; 
-                    advice = "Véspera de jogo. Carga mínima. Apenas ativação neural e ensaio de bolas paradas."; 
-                    sugTime = "30 a 45 min"; sugRPE = "3 a 4 (Fácil)";
-                    maxMins = 45;
-                }
-                else if(md === 'JOGO') { 
-                    focus = "COMPETIÇÃO"; 
-                    advice = "Dia do jogo. Foco total em hidratação, nutrição e estratégia pré-jogo."; 
-                    sugTime = "90+ min"; sugRPE = "10 (Esforço Máximo)";
-                    maxMins = 120;
-                }
-                else if(md.includes('MD+1')) { 
-                    focus = "Recuperação Passiva/Ativa"; 
-                    advice = "Dia seguinte. Foco em remover metabólitos. Bicicleta, massagem, crioterapia ou folga total."; 
-                    sugTime = "30 a 45 min"; sugRPE = "2 a 3 (Muito Fácil)";
-                    maxMins = 45;
-                }
-                else if(md.includes('MD+2')) { 
-                    focus = "Retorno / Compensatório"; 
-                    advice = "Transição para quem jogou. Carga alta (compensatório) para quem não jogou."; 
-                    sugTime = "45 a 70 min"; sugRPE = "6 a 8 (Intenso)";
-                    maxMins = 70;
-                }
-                else { 
-                    focus = "Dia Normal"; 
-                    advice = "Sem designação MD específica. Mantenha o equilíbrio da carga."; 
-                    sugTime = "60 min"; sugRPE = "5 a 6 (Moderado)";
-                    maxMins = 90;
-                }
-                
-                let isTimeExceeded = false;
-                if (mins > 0) {
-                    if (mins > maxMins) {
-                        volAdvice = `ALERTA DE TEMPO EXCEDIDO: A sessão planeada de ${mins} min ultrapassa o teto máximo de ${maxMins} min para este dia! Corte ${mins - maxMins} minutos.`;
-                        isTimeExceeded = true;
-                    } else if (md === 'MD-4' && mins < 70) volAdvice = "Alerta: Volume muito baixo para dia de Aquisição.";
-                    else if (md === 'MD-3' && mins < 50) volAdvice = "Alerta: Volume baixo para dia Específico.";
-                    else volAdvice = "Volume dentro dos parâmetros sugeridos.";
-                } else {
-                    volAdvice = "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
-                }
-
-                let fatigueWarning = null;
-                if (yLoad > 450) {
-                    fatigueWarning = `⚠️ Carga de ontem foi ALTA (${Math.round(yLoad)} sRPE). A IA sugere reduzir o tempo de hoje em 15-20 min para evitar lesões.`;
-                } else if(isTeamFatigued && (md.includes('MD-3') || md.includes('MD-4') || md.includes('MD+2'))) {
-                    fatigueWarning = "⚠️ Equipa com fadiga acumulada hoje. Considere reduzir o tempo em 15-20 min.";
-                }
-
-                return (
-                    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden" onClick={e=>e.stopPropagation()}>
-                            <div className={`absolute top-0 left-0 w-full h-2 ${isTimeExceeded ? 'bg-red-600 animate-pulse' : 'bg-blue-600'}`}></div>
-                            <div className="flex flex-col items-center text-center gap-2 mb-4">
-                                <div className={`${isTimeExceeded ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'} p-3 rounded-full`}><Icon name="brain" size={32}/></div>
-                                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 uppercase">Análise {aiModal.name} <span className={isTimeExceeded ? 'text-red-600' : 'text-blue-600'}>({md})</span></h3>
-                            </div>
-                            
-                            <div className="bg-slate-50 dark:bg-slate-700 p-3 rounded-lg border border-slate-100 dark:border-slate-600 mb-3">
-                                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Foco Sugerido</div>
-                                <div className="text-sm font-black text-slate-800 dark:text-slate-200">{focus}</div>
-                            </div>
-                            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">{advice}</div>
-                            
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-                                <div className="bg-slate-100 dark:bg-slate-900 p-2 rounded text-center border dark:border-slate-600">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase block">Tempo Alvo Máx</span>
-                                    <span className="text-sm font-black text-blue-600 dark:text-blue-400">{sugTime}</span>
-                                </div>
-                                <div className="bg-slate-100 dark:bg-slate-900 p-2 rounded text-center border dark:border-slate-600">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase block">PSE Alvo</span>
-                                    <span className="text-sm font-black text-orange-500 dark:text-orange-400">{sugRPE}</span>
-                                </div>
-                            </div>
-                            
-                            {fatigueWarning && (
-                                <div className="p-2 mb-4 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-[10px] font-bold border border-orange-200 dark:border-orange-800 leading-tight">
-                                    {fatigueWarning}
-                                </div>
-                            )}
-
-                            <div className={`p-3 rounded-lg border mb-6 ${isTimeExceeded ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200' : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-200'}`}>
-                                <div className="text-[10px] font-black uppercase mb-1 flex items-center gap-1">{isTimeExceeded && <Icon name="alert" size={10}/>} Análise de Tempo (Sem GPS)</div>
-                                <div className="text-xs font-bold">{volAdvice}</div>
-                            </div>
-
-                            <button onClick={()=>setAiModal(null)} className="w-full bg-slate-800 dark:bg-slate-700 text-white font-bold py-3 rounded-lg hover:opacity-90">ENTENDIDO</button>
-                        </div>
-                    </div>
-                );
-            };
-            
-            const renderWeeklyCoach = () => {
-                let totalLoad = 0; let hasGame = false; safeDays.forEach((d) => { if(d) { [...(d.am||[]), ...(d.pm||[])].forEach(ev => { if(ev) { totalLoad += (ev.load || 0); if(ev.type === 'JOGO') hasGame = true; } }); } }); const intensityPct = Math.min(100, (totalLoad / 800) * 100); const barColor = intensityPct > 80 ? 'bg-red-500' : intensityPct > 50 ? 'bg-yellow-500' : 'bg-green-500';
-                return (<div className="bg-white dark:bg-slate-800 p-3 mb-2 rounded-xl border-l-4 border-blue-600 dark:border-blue-500 shadow-sm flex items-center justify-between gap-4 mx-2"><div className="flex items-center gap-3"><div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full text-blue-700 dark:text-blue-400"><Icon name="info" size={20}/></div><div><h4 className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Painel Tático IA</h4><p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">{hasGame ? "Semana de Jogo. Atenção ao Tapering e Volume." : "Semana de Treinos. Foco na Aquisição de Força/Volume."}</p></div></div><div className="flex flex-col items-end min-w-[100px]"><span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Intensidade Est.</span><div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${barColor}`} style={{width: `${intensityPct}%`}}></div></div></div></div>);
-            };
-            
-            return (
-                <div className="h-full bg-slate-200 dark:bg-slate-950 flex flex-col relative overflow-hidden animate-fade-in">
-                    {renderDayAnalysisModal()}
-                    <div className="bg-white dark:bg-slate-800 p-4 border-b dark:border-slate-700 shadow-sm flex justify-between items-center shrink-0">
-                        <h2 className="font-bold text-lg flex gap-2 dark:text-slate-100" style={{color: themeColor}}>
-                            <Icon name="calendar"/> PLANEAMENTO SEMANAL
-                        </h2>
-                        <div className="flex gap-2">
-                            <button onClick={exportAsImage} className="bg-slate-800 dark:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="share" size={14}/> PNG</button>
-                            <button onClick={exportAsPDF} className="bg-red-600 dark:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:opacity-90"><Icon name="download" size={14}/> PDF</button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 overflow-auto p-2 flex flex-col custom-scroll" id="microcycle-container" style={{ WebkitOverflowScrolling: 'touch' }}>
-                        {renderWeeklyCoach()}
-                        <div className="flex gap-3 min-w-max pb-12 items-stretch" style={{ minHeight: 'max-content' }}>
-                            {safeDays.map(day => { 
-                                if(!day) return null; 
-                                return (
-                                    <div key={day.id} className="w-44 flex flex-col bg-slate-100 dark:bg-slate-800/50 rounded-xl overflow-hidden shrink-0 border border-slate-300 dark:border-slate-700 shadow-sm">
-                                        <div className="micro-header p-2 text-center shrink-0 relative">
-                                            <button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 text-white/80 hover:text-white bg-white/20 rounded-full p-1"><Icon name="brain" size={12}/></button>
-                                            <BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-wide text-white mb-1" value={day.name || ''} onSave={(val)=>updateHeader(day.id,'name',val)} />
-                                            <div className="bg-white/10 rounded px-1 py-0.5 flex items-center justify-center gap-1">
-                                                <select className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold uppercase cursor-pointer" value={day.md || ''} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>
-                                                    {['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}
-                                                </select>
-                                            </div>
-                                            <div className="flex items-center gap-1 mt-1 bg-white/10 rounded px-1 py-0.5" title="Tempo total previsto da sessão">
-                                                <Icon name="activity" size={10} className="text-white/70" />
-                                                <BufferedInput type="number" className="bg-transparent text-center text-[9px] text-white w-full outline-none font-bold placeholder-white/50" placeholder="Tempo (min)" value={day.plannedMins || ''} onSave={(val)=>updateHeader(day.id,'plannedMins',val)} />
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex flex-col p-2 gap-3 pb-4">
-                                            {['am','pm'].map(period => (
-                                                <div key={period} className="flex flex-col gap-0 relative min-h-[160px]">
-                                                    <div className="micro-header text-[8px] font-bold uppercase text-center py-0.5 rounded-t-md opacity-90">{period==='am'?'Manhã':'Tarde'}</div>
-                                                    <div className="bg-white dark:bg-slate-800 flex-1 border border-t-0 border-slate-300 dark:border-slate-700 rounded-b-md p-1 flex flex-col gap-1 min-h-[80px] shadow-sm">
-                                                        {(day[period] || []).map(ev => { 
-                                                            if(!ev) return null; 
-                                                            return (
-                                                                <div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-bold py-2 px-1 rounded shadow-sm text-center relative group/item tag-btn uppercase tracking-wider`}>
-                                                                    {ev.type}
-                                                                    <button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute top-0 right-0 text-white/70 hover:text-white hidden group-hover/item:block"><Icon name="x" size={10}/></button>
-                                                                </div>
-                                                            ); 
-                                                        })}
-                                                        <button onClick={()=>openModal(day.id, period)} className="mt-auto w-full dashed-btn flex items-center justify-center gap-1 uppercase tracking-wider" data-html2canvas-ignore="true">+ Add</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                    </div>
-                                ); 
-                            })}
-                        </div>
-                    </div>
-                    {modalOpen && (
-                        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}>
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform transition-all scale-100 max-h-[90vh] flex flex-col" onClick={e=>e.stopPropagation()}>
-                                <h3 className="text-center font-bold text-slate-800 dark:text-slate-100 mb-4 text-lg shrink-0">Adicionar Evento</h3>
-                                <div className="space-y-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-2">
-                                    {eventTypes.map(t => (
-                                        <button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-lg font-bold shadow-md ${t.color} ${t.text} tag-btn text-sm tracking-wide uppercase`}>{t.label}</button>
-                                    ))}
-                                </div>
-                                <button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-3 text-slate-400 dark:text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg shrink-0">CANCELAR</button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         };
@@ -1871,37 +1716,76 @@
             );
         };
 
-        const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+       const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
             const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
             const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
+            const importInputRef = useRef(null);
 
+            // Sincroniza categorias com o Firebase
             useEffect(() => {
                 if(user) db.collection('coachData').doc(user.uid).set({ customCategories: categories }, { merge: true });
             }, [categories, user]);
 
-            const addFolder = () => {
-                const name = prompt("Nome da nova pasta:");
-                if (name && !categories.includes(name)) setCategories([...categories, name]);
+            // 🔥 FUNÇÃO DE EXPORTAR PASTA (Para comercializar)
+            const exportFolder = () => {
+                if(filter === 'Todas') {
+                    alert("Por favor, selecione uma pasta específica para exportar.");
+                    return;
+                }
+                const folderContent = library.filter(l => l.category === filter);
+                if(folderContent.length === 0) {
+                    alert("Esta pasta está vazia.");
+                    return;
+                }
+
+                const dataToExport = {
+                    appName: "ProCoach_AdrianoCabeça",
+                    category: filter,
+                    content: folderContent
+                };
+
+                const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `PASTA_${filter.toUpperCase()}_PROCOACH.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                alert("Pasta exportada com sucesso! Agora você pode enviar este arquivo para outros treinadores.");
             };
 
-            const renameFolder = (old) => {
-                const n = prompt("Novo nome:", old);
-                if (n && n !== old) {
-                    setCategories(categories.map(c => c === old ? n : c));
-                    setLibrary(library.map(i => i.category === old ? {...i, category: n} : i));
-                }
-            };
+            // 🔥 FUNÇÃO DE IMPORTAR PASTA
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if(!importedData.content) throw new Error();
 
-            const deleteFolder = (n) => {
-                if(confirm(`Excluir pasta ${n}?`)) {
-                    setCategories(categories.filter(c => c !== n));
-                    setLibrary(library.map(i => i.category === n ? {...i, category: 'Geral'} : i));
-                }
+                        // Adiciona a categoria se não existir
+                        if(!categories.includes(importedData.category)) {
+                            setCategories([...categories, importedData.category]);
+                        }
+
+                        // Mescla os novos GIFs evitando duplicados pelo link
+                        const currentUrls = new Set(library.map(i => i.gifUrl));
+                        const newGifs = importedData.content.filter(i => !currentUrls.has(i.gifUrl));
+                        
+                        setLibrary([...library, ...newGifs]);
+                        alert(`${newGifs.length} exercícios importados para a pasta ${importedData.category}!`);
+                    } catch(err) {
+                        alert("Erro ao importar: Arquivo inválido.");
+                    }
+                };
+                reader.readAsText(file);
             };
 
             const add = () => {
-                if(!form.title || !form.gifUrl) return showToast("Preencha tudo!");
+                if(!form.title || !form.gifUrl) return;
                 setLibrary([...library, { id: Date.now(), ...form }]);
                 setForm({...form, title: '', gifUrl: ''});
             };
@@ -1909,40 +1793,218 @@
             const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow mb-6 border dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-bold dark:text-white flex gap-2 items-center"><Icon name="folder" /> BIBLIOTECA DE EXERCÍCIOS</h2>
-                            <button onClick={addFolder} className="bg-emerald-600 text-white text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg">+ NOVA PASTA</button>
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-6 border border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-black dark:text-white flex gap-2 items-center uppercase italic">
+                                <Icon name="folder" className="text-purple-600"/> BIBLIOTECA DE EXERCÍCIOS
+                            </h2>
+                            <div className="flex gap-2">
+                                <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleImport} />
+                                <button onClick={() => importInputRef.current.click()} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
+                                    <Icon name="upload" size={14}/> IMPORTAR PASTA
+                                </button>
+                                <button onClick={() => {const n = prompt("Nome da pasta:"); if(n) setCategories([...categories, n])}} className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-emerald-700">
+                                    + NOVA PASTA
+                                </button>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <input type="text" placeholder="Nome" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                            <input type="text" placeholder="Link GIF" className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
-                            <select className="p-2 border rounded dark:bg-slate-700 dark:text-white text-sm" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <input type="text" placeholder="Nome do Exercício" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
+                            <input type="text" placeholder="Link do GIF (URL)" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
+                            <select className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm font-bold" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                            <button onClick={add} className="bg-purple-600 text-white font-bold py-2 rounded">ADICIONAR</button>
+                            <button onClick={add} className="bg-purple-600 text-white font-black py-3 rounded-xl hover:bg-purple-700 shadow-lg uppercase tracking-widest transition-all">SALVAR GIF</button>
                         </div>
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
-                        <button onClick={()=>setFilter('Todas')} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter==='Todas'?'bg-slate-800 text-white':'bg-slate-200 text-slate-600 dark:bg-slate-700'}`}>Todas</button>
-                        {categories.map(c => (
-                            <div key={c} className="flex items-center bg-slate-200 dark:bg-slate-700 rounded-full pr-1 group">
-                                <button onClick={()=>setFilter(c)} className={`px-4 py-1.5 rounded-full text-xs font-bold ${filter===c?'bg-purple-600 text-white':'text-slate-600'}`}>{c}</button>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
-                                    <button onClick={()=>renameFolder(c)}><Icon name="edit" size={10}/></button>
-                                    <button onClick={()=>deleteFolder(c)}><Icon name="trash" size={10}/></button>
+
+                    <div className="flex items-center justify-between mb-6 bg-slate-200/50 dark:bg-slate-800/50 p-3 rounded-2xl">
+                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 max-w-[75%]">
+                            <button onClick={()=>setFilter('Todas')} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${filter==='Todas'?'bg-slate-800 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>Todas</button>
+                            {categories.map(c => (
+                                <button key={c} onClick={()=>setFilter(c)} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${filter===c?'bg-purple-600 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>{c}</button>
+                            ))}
+                        </div>
+                        
+                        {/* Botão de Exportar que aparece só quando seleciona uma pasta */}
+                        {filter !== 'Todas' && (
+                            <button onClick={exportFolder} className="bg-orange-500 text-white text-[10px] font-black px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg animate-fade-in hover:bg-orange-600">
+                                <Icon name="share" size={14}/> EXPORTAR {filter.toUpperCase()}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-24">
+                        {filtered.map(l => (
+                            <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-lg relative group border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-purple-500 transition-all">
+                                <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-black/60 text-white backdrop-blur-md border border-white/20">{l.category}</span>
+                                <div className="w-full h-32 rounded-xl mb-2 overflow-hidden bg-slate-100 dark:bg-slate-900 border dark:border-slate-700">
+                                    <img src={l.gifUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 </div>
+                                <div className="text-[10px] font-black dark:text-slate-200 uppercase truncate px-1 text-center">{l.title}</div>
+                                <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-xl hover:bg-red-700"><Icon name="trash" size={12}/></button>
                             </div>
                         ))}
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {filtered.map(l => (
-                            <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow relative group border dark:border-slate-700">
-                                <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-0.5 rounded bg-purple-600 text-white">{l.category}</span>
-                                <img src={l.gifUrl} className="w-full h-32 object-cover rounded mb-2 bg-slate-100 dark:bg-slate-700"/>
-                                <div className="text-[10px] font-black dark:text-white uppercase truncate">{l.title}</div>
-                                <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100"><Icon name="trash" size={12}/></button>
+                </div>
+            );
+        };
+        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
+            const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
+            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '' });
+            const [editId, setEditId] = useState(null);
+            const [importDate, setImportDate] = useState('');
+
+            useEffect(() => {
+                if(user && targetOptions.length > 0) {
+                    db.collection('coachData').doc(user.uid).update({ 
+                        customTargets: targetOptions 
+                    }).catch(err => {
+                        if(err.code === 'not-found') {
+                            db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
+                        }
+                    });
+                }
+            }, [targetOptions, user]);
+
+            const getAiSuggestion = () => {
+                const today = getTodayStr(); 
+                let totalFatigue = 0;
+                let count = 0;
+                const safePs = Array.isArray(players) ? players : [];
+                
+                safePs.forEach((p, i) => {
+                    const logForPlayer = trainingLog?.[today]?.[i];
+                    const stats = safeObj(logForPlayer?.wellness);
+                    if(stats.sleep) {
+                        totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1);
+                        count++;
+                    }
+                });
+                const avg = count > 0 ? totalFatigue / count : 0;
+                if (avg >= 10) return "🚨 IA: CRIOTERAPIA OBRIGATÓRIA (FADIGA CRÍTICA)";
+                if (avg >= 7) return "⚠️ IA: BANHEIRA DE GELO (FADIGA ALTA)";
+                return "✅ IA: RECUPERAÇÃO LIVRE (TIME PRONTO)";
+            };
+
+            const addTarget = () => {
+                const name = prompt("Nome do novo Público ou Bloco (ex: Goleiros, Grupo B):");
+                if (name && !targetOptions.includes(name)) {
+                    setTargetOptions([...targetOptions, name]);
+                    setForm({...form, target: name});
+                }
+            };
+
+            const importFromDate = () => {
+                if(!importDate) return showToast("Selecione uma data no calendário!");
+                db.collection('coachData').doc(user.uid).get().then(doc => {
+                    if(doc.exists()){
+                        const pastWorkout = doc.data().exerciseHistory?.[importDate];
+                        if(pastWorkout && pastWorkout.length > 0){
+                            setExercises(pastWorkout);
+                            showToast("Treino importado com sucesso!");
+                        } else {
+                            showToast("Nenhum treino encontrado nesta data.");
+                        }
+                    }
+                });
+            };
+
+            const fixWorkoutForToday = () => {
+                const today = getTodayStr();
+                db.collection('coachData').doc(user.uid).set({
+                    exerciseHistory: { [today]: exercises }
+                }, { merge: true }).then(() => {
+                    showToast("Sessão salva no histórico!");
+                });
+            };
+
+            const saveExercise = () => {
+                if(!form.title) return showToast("Digite o nome do exercício!");
+                if (editId) {
+                    setExercises(exercises.map(ex => ex.id === editId ? { ...ex, ...form } : ex));
+                    setEditId(null);
+                } else {
+                    setExercises([{ id: Date.now(), ...form }, ...exercises]);
+                }
+                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: form.target, order: '' });
+                showToast("Lista atualizada!");
+            };
+
+            return (
+                <div className="p-6 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-xl no-print">
+                        <div className="flex items-center gap-3">
+                            <div className="text-white">
+                                <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Repetir Sessão Anterior</div>
+                                <div className="flex gap-2">
+                                    <input type="date" className="bg-slate-700 text-white text-xs p-2 rounded-lg outline-none border border-slate-600 focus:border-blue-500" value={importDate} onChange={e=>setImportDate(e.target.value)} />
+                                    <button onClick={importFromDate} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1 transition-all">
+                                        <Icon name="refresh" size={14}/> IMPORTAR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={fixWorkoutForToday} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm">
+                            <Icon name="save" size={20}/> FINALIZAR E ATUALIZAR SESSÃO
+                        </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+                            <div>
+                                <h2 className="text-xl font-black uppercase flex items-center gap-2 text-slate-700 dark:text-white"><Icon name="bolt" className="text-yellow-500"/> Prescrição da Sessão</h2>
+                                <div className="text-[10px] font-bold text-blue-500 mt-1 uppercase bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded inline-block border border-blue-100">
+                                    {getAiSuggestion()}
+                                </div>
+                            </div>
+                            <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-700 md:w-80">
+                                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recuperação Pós-Treino:</label>
+                                <select className="w-full rounded p-2 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none border dark:border-slate-600" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
+                                    <option value="IA">🤖 IA: Sugestão Automática</option>
+                                    <option value="Livre">Livre (Recuperação Passiva)</option>
+                                    <option value="Banheira de Gelo (10 min)">Banheira de Gelo (10 min)</option>
+                                    <option value="Bota Pneumática (15 min)">Bota Pneumática (15 min)</option>
+                                    <option value="Piscina / Soltura Aquática">Piscina / Soltura Aquática</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                            <div className="md:col-span-12 mb-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
+                                <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1 mb-1">
+                                    <Icon name="folder" size={12}/> Buscar Exercício na sua Biblioteca de GIFs
+                                </label>
+                                <select 
+                                    className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer border-purple-200 dark:border-purple-700"
+                                    onChange={(e) => {
+                                        const selected = library.find(l => l.id === parseInt(e.target.value));
+                                        if(selected) {
+                                            setForm({ ...form, title: selected.title, gifUrl: selected.gifUrl });
+                                            showToast("Exercício carregado!");
+                                        }
+                                    }}
+                                >
+                                    <option value="">Selecione para preencher automaticamente...</option>
+                                    {library.map(l => (
+                                        <option key={l.id} value={l.id}>{l.category} | {l.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Ordem</label><input type="text" placeholder="1º" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.order} onChange={e=>setForm({...form, order: e.target.value})} /></div>
+                            <div className="md:col-span-4"><label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label><input type="text" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                            <div className="md:col-span-3"><div className="flex justify-between items-center mb-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Público / Bloco</label><button onClick={addTarget} className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-0.5"><Icon name="plus" size={8}/> NOVO</button></div><select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>{targetOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <div className="md:col-span-4"><button onClick={saveExercise} className={`w-full text-white font-black py-2.5 rounded-lg shadow-md transition-all ${editId ? 'bg-orange-500' : 'bg-blue-600'}`}>{editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À LISTA'}</button></div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                        {exercises.map((ex, idx) => (
+                            <div key={ex.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between group shadow-sm">
+                                <div className="flex items-center gap-4"><div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-blue-600">{ex.order || idx + 1}</div><div><div className="text-[10px] font-black text-purple-500 uppercase">{ex.target}</div><div className="font-bold text-slate-800 dark:text-white uppercase">{ex.title}</div></div></div>
+                                <div className="flex gap-2"><button onClick={() => {setForm(ex); setEditId(ex.id);}} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button><button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button></div>
                             </div>
                         ))}
                     </div>
@@ -1950,211 +2012,6 @@
             );
         };
 
- const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
-    // 1. Estados Iniciais com suporte a dados customizados do banco
-    const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
-    const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '' });
-    const [editId, setEditId] = useState(null);
-    const [importDate, setImportDate] = useState('');
-
-    // 2. Sincroniza novos Públicos/Blocos com o Firebase automaticamente
-  useEffect(() => {
-        // Só tenta atualizar se o usuário estiver logado e se houver opções reais
-        if(user && targetOptions.length > 0) {
-            db.collection('coachData').doc(user.uid).update({ 
-                customTargets: targetOptions 
-            }).catch(err => {
-                // Caso o documento ainda não exista (primeiro uso), ele cria com set
-                if(err.code === 'not-found') {
-                    db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
-                }
-            });
-        }
-    }, [targetOptions, user]);
-    // 3. IA de Sugestão baseada na fadiga do elenco
-    const getAiSuggestion = () => {
-        const today = getTodayStr(); 
-        let totalFatigue = 0;
-        let count = 0;
-        const safePs = Array.isArray(players) ? players : [];
-        
-        safePs.forEach((p, i) => {
-            const logForPlayer = trainingLog?.[today]?.[i];
-            const stats = safeObj(logForPlayer?.wellness);
-            if(stats.sleep) {
-                totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1);
-                count++;
-            }
-        });
-        const avg = count > 0 ? totalFatigue / count : 0;
-        if (avg >= 10) return "🚨 IA: CRIOTERAPIA OBRIGATÓRIA (FADIGA CRÍTICA)";
-        if (avg >= 7) return "⚠️ IA: BANHEIRA DE GELO (FADIGA ALTA)";
-        return "✅ IA: RECUPERAÇÃO LIVRE (TIME PRONTO)";
-    };
-
-    // 4. Funções de Ação
-    const addTarget = () => {
-        const name = prompt("Nome do novo Público ou Bloco (ex: Goleiros, Grupo B):");
-        if (name && !targetOptions.includes(name)) {
-            setTargetOptions([...targetOptions, name]);
-            setForm({...form, target: name});
-        }
-    };
-
-    const importFromDate = () => {
-        if(!importDate) return showToast("Selecione uma data no calendário!");
-        db.collection('coachData').doc(user.uid).get().then(doc => {
-            if(doc.exists()){
-                const pastWorkout = doc.data().exerciseHistory?.[importDate];
-                if(pastWorkout && pastWorkout.length > 0){
-                    setExercises(pastWorkout);
-                    showToast("Treino importado com sucesso!");
-                } else {
-                    showToast("Nenhum treino encontrado nesta data.");
-                }
-            }
-        });
-    };
-
-    const fixWorkoutForToday = () => {
-        const today = getTodayStr();
-        db.collection('coachData').doc(user.uid).set({
-            exerciseHistory: { [today]: exercises }
-        }, { merge: true }).then(() => {
-            showToast("Sessão salva no histórico!");
-        });
-    };
-
-    const saveExercise = () => {
-        if(!form.title) return showToast("Digite o nome do exercício!");
-        if (editId) {
-            setExercises(exercises.map(ex => ex.id === editId ? { ...ex, ...form } : ex));
-            setEditId(null);
-        } else {
-            setExercises([{ id: Date.now(), ...form }, ...exercises]);
-        }
-        setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: form.target, order: '' });
-        showToast("Lista atualizada!");
-    };
-
-    return (
-        <div className="p-6 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
-            
-            {/* BARRA DE FERRAMENTAS: IMPORTAÇÃO E SALVAMENTO DEFINITIVO */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-xl no-print">
-                <div className="flex items-center gap-3">
-                    <div className="text-white">
-                        <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Repetir Sessão Anterior</div>
-                        <div className="flex gap-2">
-                            <input type="date" className="bg-slate-700 text-white text-xs p-2 rounded-lg outline-none border border-slate-600 focus:border-blue-500" value={importDate} onChange={e=>setImportDate(e.target.value)} />
-                            <button onClick={importFromDate} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1 transition-all">
-                                <Icon name="refresh" size={14}/> IMPORTAR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <button onClick={fixWorkoutForToday} className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all text-sm">
-                    <Icon name="save" size={20}/> FINALIZAR E ATUALIZAR SESSÃO
-                </button>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                    <div>
-                        <h2 className="text-xl font-black uppercase flex items-center gap-2 text-slate-700 dark:text-white"><Icon name="bolt" className="text-yellow-500"/> Prescrição da Sessão</h2>
-                        <div className="text-[10px] font-bold text-blue-500 mt-1 uppercase bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded inline-block border border-blue-100">
-                            {getAiSuggestion()}
-                        </div>
-                    </div>
-                    <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-700 md:w-80">
-                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recuperação Pós-Treino:</label>
-                        <select className="w-full rounded p-2 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none border dark:border-slate-600" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
-                            <option value="IA">🤖 IA: Sugestão Automática</option>
-                            <option value="Livre">Livre (Recuperação Passiva)</option>
-                            <option value="Banheira de Gelo (10 min)">Banheira de Gelo (10 min)</option>
-                            <option value="Bota Pneumática (15 min)">Bota Pneumática (15 min)</option>
-                            <option value="Piscina / Soltura Aquática">Piscina / Soltura Aquática</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                    {/* BUSCA NA BIBLIOTECA - OCUPA TODA A LARGURA ACIMA */}
-                    <div className="md:col-span-12 mb-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
-                        <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1 mb-1">
-                            <Icon name="folder" size={12}/> Buscar Exercício na sua Biblioteca de GIFs
-                        </label>
-                        <select 
-                            className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer border-purple-200 dark:border-purple-700"
-                            onChange={(e) => {
-                                const selected = library.find(l => l.id === parseInt(e.target.value));
-                                if(selected) {
-                                    setForm({ ...form, title: selected.title, gifUrl: selected.gifUrl });
-                                    showToast("Exercício carregado!");
-                                }
-                            }}
-                        >
-                            <option value="">Selecione para preencher automaticamente...</option>
-                            {library.map(l => (
-                                <option key={l.id} value={l.id}>{l.category} | {l.title}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="md:col-span-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Ordem</label>
-                        <input type="text" placeholder="1º" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.order} onChange={e=>setForm({...form, order: e.target.value})} />
-                    </div>
-                    
-                    <div className="md:col-span-4">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label>
-                        <input type="text" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
-                    </div>
-
-                    <div className="md:col-span-3">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Público / Bloco</label>
-                            <button onClick={addTarget} className="text-[9px] font-black text-blue-500 hover:text-blue-600 uppercase flex items-center gap-0.5">
-                                <Icon name="plus" size={8}/> NOVO
-                            </button>
-                        </div>
-                        <select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
-                            {targetOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-
-                    <div className="md:col-span-4">
-                        <button onClick={saveExercise} className={`w-full text-white font-black py-2.5 rounded-lg shadow-md transition-all ${editId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À LISTA'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* LISTAGEM DOS EXERCÍCIOS ADICIONADOS */}
-            <div className="grid grid-cols-1 gap-3">
-                {exercises.map((ex, idx) => (
-                    <div key={ex.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between group shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-blue-600">
-                                {ex.order || idx + 1}
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-black text-purple-500 uppercase">{ex.target}</div>
-                                <div className="font-bold text-slate-800 dark:text-white uppercase">{ex.title}</div>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => {setForm(ex); setEditId(ex.id);}} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button>
-                            <button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
@@ -2169,35 +2026,31 @@
             const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
             const [exercises, setExercises] = useState(initialData?.exercises || []); 
             const [library, setLibrary] = useState(initialData?.library || []);
-            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'IA');
+            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Livre');
             const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
             const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
             const [showSettings, setShowSettings] = useState(false);
-            const [showNotifications, setShowNotifications] = useState(false);
-            const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [syncStatus, setSyncStatus] = useState(''); 
-// PASSO 1: Sincronizador em tempo real
-useEffect(() => {
-    if (initialData) {
-        // Atualiza os estados locais sempre que o Firebase mandar algo novo
-        setPlayers(initialData.players || []);
-        setTrainingLog(initialData.trainingLog || {});
-        setAssessments(initialData.assessments || {});
-        setDmRecords(initialData.dmRecords || []);
-        setMatchMinutes(initialData.matchMinutes || {});
-        setDays(initialData.days || DEFAULT_DAYS);
-        setExercises(initialData.exercises || []);
-        setLibrary(initialData.library || []);
-        setThemeColor(initialData.themeColor || '#1e3a8a');
-        setDarkMode(!!initialData.darkMode);
-        setLogo(initialData.logo || null);
-        setHeader(initialData.header || {});
-        setPostWorkout(initialData.postWorkout || 'Livre');
-        setCoachMsg(initialData.coachMsg || '');
-        setVideoUrl(initialData.videoUrl || '');
-    }
-}, [initialData]); // Isso faz a mágica acontecer!
-            const isAdmin = user && user.email === 'crossoccerperformancetraining@gmail.com';
+
+            useEffect(() => {
+                if (initialData) {
+                    setPlayers(initialData.players || []);
+                    setTrainingLog(initialData.trainingLog || {});
+                    setAssessments(initialData.assessments || {});
+                    setDmRecords(initialData.dmRecords || []);
+                    setMatchMinutes(initialData.matchMinutes || {});
+                    setDays(initialData.days || DEFAULT_DAYS);
+                    setExercises(initialData.exercises || []);
+                    setLibrary(initialData.library || []);
+                    setThemeColor(initialData.themeColor || '#1e3a8a');
+                    setDarkMode(!!initialData.darkMode);
+                    setLogo(initialData.logo || null);
+                    setHeader(initialData.header || {});
+                    setPostWorkout(initialData.postWorkout || 'Livre');
+                    setCoachMsg(initialData.coachMsg || '');
+                    setVideoUrl(initialData.videoUrl || '');
+                }
+            }, [initialData]);
 
             useEffect(() => {
                 if (darkMode) document.body.classList.add('dark');
@@ -2205,89 +2058,94 @@ useEffect(() => {
             }, [darkMode]);
 
             useEffect(() => {
-                const handleOnline = () => setIsOnline(true);
-                const handleOffline = () => setIsOnline(false);
-                window.addEventListener('online', handleOnline);
-                window.addEventListener('offline', handleOffline);
-                return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-            }, []);
+                if(!user || !players || players.length === 0) return;
+                const timeoutId = setTimeout(() => {
+                    setSyncStatus('A Guardar...');
+                    const dataToSave = { 
+                        themeColor, players, trainingLog, assessments, 
+                        dmRecords, matchMinutes, header, logo, 
+                        darkMode, days, exercises, library, 
+                        postWorkout, coachMsg, videoUrl 
+                    };
+                    db.collection('coachData').doc(user.uid).update(dataToSave)
+                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
+                        .catch((err) => { 
+                            if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
+                            else setSyncStatus('❌ Erro Sinc');
+                        });
+                }, 800);
+                return () => clearTimeout(timeoutId);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, user]);
 
-           useEffect(() => {
-        if(!user) return;
-        
-        // BLOQUEIO DE SEGURANÇA: Se não há atletas na tela, não salva nada na nuvem.
-        // Isso evita que um erro de carregamento limpe seu banco de dados.
-        if (!players || players.length === 0) {
-            return; 
-        }
-
-        const timeoutId = setTimeout(() => {
-            setSyncStatus('A Guardar...');
-            
-            const dataToSave = { 
-                themeColor, players, trainingLog, assessments, 
-                dmRecords, matchMinutes, header, logo, 
-                darkMode, days, exercises, library, 
-                postWorkout, coachMsg, videoUrl 
-            };
-            
-            // Usamos .update() para proteger os dados existentes
-            db.collection('coachData').doc(user.uid).update(dataToSave)
-                .then(() => { 
-                    setSyncStatus('☁️ Sincronizado'); 
-                    setTimeout(() => setSyncStatus(''), 3000);
-                })
-                .catch((err) => { 
-                    // Se o documento não existir (primeiro acesso do cliente), usamos o set
-                    if(err.code === 'not-found' || err.message.includes('no document')) {
-                        db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
-                    } else {
-                        setSyncStatus('❌ Erro de Conexão');
-                        console.error("Erro ao sincronizar:", err);
-                    }
-                });
-        }, 800); // Reduzi para 800ms para a sincronização ser quase instantânea
-
-        return () => clearTimeout(timeoutId);
-    }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, user]);
-            const activeAlerts = useMemo(() => {
-                const today = getTodayStr(); let alerts = [];
-                safeArray(players).forEach((p, i) => {
-                    if(!p) return;
-                    const logObj = trainingLog[today]?.[i] || {};
-                    const wellness = safeObj(logObj.wellness);
-                    if(Number(wellness.soreness) >= 5) alerts.push({ type: 'danger', icon: 'bolt', text: `${p.name} relatou dor aguda.`});
-                    if(Number(wellness.sleep) >= 5) alerts.push({ type: 'warning', icon: 'moon', text: `${p.name} relatou sono ruim.`});
-                });
-                return alerts;
-            }, [players, trainingLog]);
-
-            const downloadCurrentView = async () => {
-                const el = document.getElementById('print-area');
-                if(!el) return;
-                showToast("Gerando imagem...");
+            const handleExport = () => {
                 try {
-                    const canvas = await html2canvas(el, { scale: 2, useCORS: true });
-                    canvas.toBlob(blob => { smartShare(blob, `procoach_view.png`, 'ProCoach Export'); });
-                } catch(e) { showToast("Erro exportar"); }
+                    const dataToExport = { 
+                        themeColor, players, trainingLog, assessments, 
+                        dmRecords, matchMinutes, header, logo, 
+                        darkMode, days, exercises, library, 
+                        postWorkout, coachMsg, videoUrl 
+                    };
+                    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `procoach_backup_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast("Backup gerado com sucesso! ✅");
+                } catch (err) {
+                    showToast("Erro ao exportar arquivo ❌", "#ef4444");
+                }
+            };
+
+            const handleImport = (newData) => {
+                if(!newData) return;
+                if(confirm("Isso irá substituir todos os dados atuais. Continuar?")) {
+                    setThemeColor(newData.themeColor || '#1e3a8a');
+                    setPlayers(newData.players || []);
+                    setTrainingLog(newData.trainingLog || {});
+                    setAssessments(newData.assessments || {});
+                    setDmRecords(newData.dmRecords || []);
+                    setMatchMinutes(newData.matchMinutes || {});
+                    setHeader(newData.header || {});
+                    setLogo(newData.logo || null);
+                    setDarkMode(!!newData.darkMode);
+                    setDays(newData.days || DEFAULT_DAYS);
+                    setExercises(newData.exercises || []);
+                    setLibrary(newData.library || []);
+                    setPostWorkout(newData.postWorkout || 'Livre');
+                    setCoachMsg(newData.coachMsg || '');
+                    setVideoUrl(newData.videoUrl || '');
+                    showToast("Dados restaurados! 🔄");
+                }
             };
 
             return (
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
-                    <SettingsModal show={showSettings} onClose={()=>setShowSettings(false)} themeColor={themeColor} setThemeColor={setThemeColor} header={header} setHeader={setHeader} logo={logo} setLogo={setLogo} onExport={()=> {}} onImport={()=> {}} />
-                    {showNotifications && <NotificationCenter alerts={activeAlerts} onClose={()=>setShowNotifications(false)} />}
-                    <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print transition-colors duration-300">
+                    <SettingsModal 
+                        show={showSettings} 
+                        onClose={() => setShowSettings(false)} 
+                        themeColor={themeColor} 
+                        setThemeColor={setThemeColor} 
+                        header={header} 
+                        setHeader={setHeader} 
+                        logo={logo} 
+                        setLogo={setLogo} 
+                        onExport={handleExport} 
+                        onImport={handleImport} 
+                    />
+                    <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
                             <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${isOnline ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}><div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>{isOnline ? 'ONLINE' : 'OFFLINE'}</div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
                             <button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase">Portal Atleta</button>
-                            <button onClick={()=>setShowNotifications(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700 relative"><Icon name="bell" size={20}/>{activeAlerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>}</button>
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
                             <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="settings" size={24}/></button>
-                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500"><Icon name="logout" size={20}/></button>
+                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded text-red-500"><Icon name="logout" size={20}/></button>
                         </div>
                     </div>
                     
@@ -2297,31 +2155,28 @@ useEffect(() => {
                         ))}
                     </div>
                     
-                    <div className="flex-1 overflow-hidden relative flex flex-col" id="print-area">
+                    <div className="flex-1 overflow-hidden relative">
                         {tab === 'squad' && (
                             <div className="px-6 pt-4 pb-2 bg-slate-100 dark:bg-slate-900 shrink-0 transition-colors shadow-sm z-10 border-b border-slate-200 dark:border-slate-800">
-                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-2 tracking-wider"><Icon name="bell" size={14}/> Comunicação & Análise (Atletas)</label>
+                                <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-2 tracking-wider"><Icon name="bell" size={14}/> Comunicado aos Atletas</label>
                                 <div className="flex flex-col gap-2"><div className="flex flex-col md:flex-row gap-2">
-                                        <select className="w-full md:w-1/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white p-2 rounded-lg text-xs font-bold outline-none shadow-sm cursor-pointer" onChange={e => {if(e.target.value) setCoachMsg(e.target.value)}}>
+                                        <select className="w-full md:w-1/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white p-2 rounded-lg text-xs font-bold outline-none" onChange={e => {if(e.target.value) setCoachMsg(e.target.value)}}>
                                             <option value="">📋 Selecionar aviso rápido...</option>
                                             <option value="🎥 ATENÇÃO: Reunião de Vídeo Análise antes do treino.">🎥 Vídeo Análise Tática</option>
-                                            <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica / Fisioterapia.">🩺 Avaliação Médica / Fisio</option>
-                                            <option value="🏋️ Foco de Hoje: Academia (Membros Superiores).">🏋️ Academia (Superiores)</option>
-                                            <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia (Inferiores)</option>
-                                            <option value="⚡ Foco de Hoje: Treino Funcional / Potência no Campo.">⚡ Treino Funcional / Potência</option>
-                                            <option value="🧊 RECUPERAÇÃO: Crioterapia (Banheira de Gelo) obrigatória pós-treino.">🧊 Crioterapia Obrigatória</option>
+                                            <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica.">🩺 Avaliação Médica</option>
+                                            <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia</option>
+                                            <option value="🧊 RECUPERAÇÃO: Crioterapia obrigatória pós-treino.">🧊 Crioterapia</option>
                                         </select>
-                                        <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2 rounded-lg text-sm font-bold outline-none shadow-sm placeholder-slate-400" placeholder="Ou digite um recado da comissão técnica..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
+                                        <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2 rounded-lg text-sm font-bold outline-none" placeholder="Digite um recado..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
                                     </div>
                                     <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm mt-1">
                                         <Icon name="play" size={20} className="text-red-500 ml-2 shrink-0"/>
-                                        <BufferedInput className="w-full bg-transparent text-slate-800 dark:text-white p-1.5 text-xs outline-none placeholder-slate-400" placeholder="Cole o link do YouTube para Vídeo-Análise Tática (Opcional)" value={videoUrl} onSave={val=>setVideoUrl(val)} />
+                                        <BufferedInput className="w-full bg-transparent text-slate-800 dark:text-white p-1.5 text-xs outline-none" placeholder="Cole link do YouTube para Vídeo-Análise" value={videoUrl} onSave={val=>setVideoUrl(val)} />
                                     </div>
                                 </div>
                             </div>
                         )}
-                        
-                        <div className="flex-1 overflow-hidden relative">
+                        <div className="h-full">
                             {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
                             {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                             {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
@@ -2353,7 +2208,7 @@ useEffect(() => {
                 return () => unsubscribe();
             }, [user]);
 
-            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold"><Icon name="cloud" size={40} className="animate-bounce text-blue-500 mb-4"/>A sincronizar...</div>;
+            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold">A sincronizar...</div>;
             return <ErrorBoundary><MainApp user={user} initialData={initialData} /></ErrorBoundary>;
         };
 
