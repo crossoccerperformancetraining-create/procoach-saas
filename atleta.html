@@ -10,234 +10,145 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
-        body { background-color: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; overflow-x: hidden; }
+        body { background-color: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
         .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #1e293b; outline: none; }
         .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
-        .tab-active { color: #3b82f6 !important; font-weight: 900; }
-        .card-pro { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
-        .visto-verde { position: absolute; top: 0; right: 0; background: #22c55e; border: 2px solid #020617; border-radius: 50%; padding: 2px; z-index: 10; }
+        .special-card { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-    <div id="root"></div>
+<body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-3 rounded-full shadow-2xl z-[300] text-xs font-bold transition-opacity duration-300 pointer-events-none flex items-center gap-2" style="opacity:0;"></div>
+    <div id="root" class="h-full w-full flex flex-col"></div>
     
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
 
-        const getTodayStr = () => new Date().toISOString().split('T')[0];
-        const getGreeting = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; };
-        const getEmbedUrl = (url) => { if(!url) return null; const reg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/; const m = url.match(reg); return (m && m[2].length === 11) ? `https://www.youtube.com/embed/${m[2]}` : null; };
-
         const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, exercises:[], days:[], coachMsg:'', videoUrl:'', id:null });
-            const [idx, setIdx] = useState(null); const [step, setStep] = useState(1);
-            const [tab, setTab] = useState('treino');
-            const [scores, setScores] = useState({sleep:4, stress:4, fatigue:4, soreness:1, mood:4});
-            const [water, setWater] = useState(0);
-            const [pain, setPain] = useState([]); const [tp, setTp] = useState(''); const [ts, setTs] = useState('');
-            const [respondedWellness, setRespondedWellness] = useState(false);
-            const [agendaAck, setAgendaAck] = useState(false);
+            const [data, setData] = useState({ players:[], log:{}, ex:[], id:null, color:'#1e3a8a' });
+            const [idx, setIdx] = useState(null); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
+            const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
 
             useEffect(() => {
-                const params = new URLSearchParams(window.location.search);
-                const uId = params.get('id'); const pIdx = params.get('p');
-                if(!uId) return;
+                const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
+                if(!uId) { setLoading(false); return; }
                 db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        setData({ ...d, id: doc.id });
-                        if(pIdx !== null && step === 1) { 
-                            setIdx(parseInt(pIdx)); setStep(2); 
-                            const logHoje = d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)];
-                            if(logHoje?.wellness) setRespondedWellness(true);
-                            if(logHoje?.agendaAck) setAgendaAck(true);
-                            setWater(Number(logHoje?.waterIntake) || 0);
-                        }
+                        setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], id: doc.id, color: d.themeColor||'#1e3a8a' });
+                        if(pIdx !== null) { setIdx(parseInt(pIdx)); setStep(2); }
                     }
+                    setLoading(false);
                 });
-            }, [step]);
+            }, []);
 
-            const handleSendWellness = () => {
-                const td = getTodayStr();
-                db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { wellness: scores, painZones: pain } } } }, {merge:true})
-                .then(()=> { setRespondedWellness(true); alert("PRONTIDÃO ENVIADA! ✅"); });
-            };
+            // FILTRO INTELIGENTE DE EXERCÍCIOS
+            const myWorkouts = useMemo(() => {
+                if (idx === null) return [];
+                const myName = (data.players[idx]?.name || "").toLowerCase();
+                return data.ex.filter(e => {
+                    const target = (e.target || "").toLowerCase();
+                    return target.includes(myName) || target.includes("pdi") || target.includes("transição") || target.includes("geral");
+                });
+            }, [data.ex, idx]);
 
-            const handleAck = () => {
-                const td = getTodayStr();
-                db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { agendaAck: true } } } }, {merge:true}).then(()=> setAgendaAck(true));
-            };
+            const hasSpecialMission = myWorkouts.some(e => {
+                const t = (e.target || "").toLowerCase();
+                return t.includes("pdi") || t.includes("transição") || t.includes((data.players[idx]?.name || "").toLowerCase());
+            });
+
+            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white">Carregando...</div>;
 
             if(step===1) return (
-                <div className="p-8 flex flex-col items-center justify-center min-h-screen bg-slate-950">
-                    <h1 className="text-3xl font-black italic mb-10 text-white uppercase tracking-tighter">PROCOACH</h1>
-                    <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
-                        {data.players.map((p, i) => {
-                            const pronto = !!(data.trainingLog?.[getTodayStr()]?.[i]?.wellness);
-                            return (
-                                <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer relative">
-                                    <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-xl ${pronto ? 'border-green-500' : 'border-slate-800'}`}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}
-                                        {pronto && <div className="visto-verde"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg></div>}
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full text-center">{p.name}</span>
+                <div className="p-6 h-screen flex flex-col items-center justify-center bg-slate-950">
+                    <h1 className="text-3xl font-black italic mb-8 text-white">PROCOACH</h1>
+                    <div className="grid grid-cols-3 gap-6 w-full max-w-2xl">
+                        {data.players.map((p, i) => (
+                            <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer">
+                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="m-6 text-slate-700">👤</div>}
                                 </div>
-                            )
-                        })}
+                                <span className="text-[10px] font-bold text-slate-300">{(p.name || '').split(' ')[0]}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
 
+            const p = data.players[idx];
             return (
-                <div className="flex flex-col min-h-screen pb-32 bg-slate-950">
-                    {/* TOPO PREMIUM */}
-                    <div className="p-6 rounded-b-[40px] shadow-2xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a8a, #020617)' }}>
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shrink-0">
-                                    {data.players[idx]?.image ? <img src={data.players[idx].image} className="w-full h-full object-cover"/> : <div className="p-4 text-center">👤</div>}
-                                </div>
+                <div className="h-full flex flex-col bg-slate-950 p-6 overflow-y-auto custom-scroll">
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="w-20 h-20 rounded-full border-4 border-white/10 overflow-hidden shrink-0">
+                            {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="m-6 text-white">👤</div>}
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black uppercase text-white">{p.name}</h1>
+                            <div className="text-xs font-bold text-blue-400 uppercase">{p.position || 'Atleta'}</div>
+                        </div>
+                    </div>
+
+                    {/* DESTAQUE DE MISSÃO ESPECIAL */}
+                    {hasSpecialMission && (
+                        <div className="mb-6 animate-pulse-slow">
+                            <div className="special-card p-4 rounded-3xl flex items-center justify-between shadow-xl">
                                 <div>
-                                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{getGreeting()}!</div>
-                                    <h2 className="text-xl font-black text-white uppercase italic leading-tight">{data.players[idx].name.split(' ')[0]}</h2>
+                                    <div className="text-[10px] font-black text-white/70 uppercase tracking-widest">Missão Individual</div>
+                                    <div className="text-sm font-black text-white uppercase">Trabalho PDI / Transição</div>
                                 </div>
+                                <div className="text-2xl">⚡</div>
                             </div>
-                            <button onClick={()=>setStep(1)} className="bg-white/10 px-3 py-1 rounded-full text-[8px] font-black uppercase border border-white/10">Sair</button>
                         </div>
-                        <div className="mt-4 p-3 bg-white/5 rounded-2xl border border-white/5 text-[11px] text-white font-bold italic">
-                            ✨ "O suor de hoje é a glória de amanhã! Vamos com tudo."
-                        </div>
-                    </div>
+                    )}
 
-                    <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll">
-                        {tab === 'treino' && (
-                            <div className="space-y-6 animate-fade-in">
-                                {/* RECADOS */}
-                                {data.coachMsg && (
-                                    <div className="card-pro p-5 border-l-4 border-orange-500">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-widest">📢 Mensagem do Professor</h4>
-                                            {agendaAck && <span className="text-[8px] font-black bg-green-500 text-white px-2 py-0.5 rounded">CIENTE</span>}
-                                        </div>
-                                        <p className="text-sm text-slate-200 font-semibold mb-4">{data.coachMsg}</p>
-                                        {!agendaAck && <button onClick={handleAck} className="w-full bg-orange-600 text-white font-black py-2 rounded-xl text-[10px] uppercase">Responder Ciente</button>}
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Programação do Dia</h3>
+                        
+                        {myWorkouts.length > 0 ? (
+                            myWorkouts.map((ex, i) => (
+                                <div key={i} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center text-xl overflow-hidden">
+                                        {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover"/> : "🏋️"}
                                     </div>
-                                )}
-
-                                {/* VÍDEO ANÁLISE */}
-                                {data.videoUrl && (
-                                    <div className="card-pro p-4">
-                                        <h4 className="text-[10px] font-black text-red-500 uppercase mb-3 tracking-widest flex items-center gap-2">🎥 Estudo de Vídeo</h4>
-                                        <div className="w-full aspect-video rounded-xl overflow-hidden bg-black"><iframe src={getEmbedUrl(data.videoUrl)} frameBorder="0" allowFullScreen className="w-full h-full"></iframe></div>
-                                    </div>
-                                )}
-
-                                {/* QUESTIONÁRIO */}
-                                {!respondedWellness ? (
-                                    <div className="space-y-5">
-                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Prontidão Diária</h3>
-                                        {[
-                                            {id:'sleep',l:'Sono', ic:'😴'}, {id:'stress',l:'Estresse', ic:'🤯'},
-                                            {id:'fatigue',l:'Cansaço', ic:'🔋'}, {id:'soreness',l:'Dor Muscular', ic:'🦵'}, {id:'mood',l:'Humor', ic:'🧠'}
-                                        ].map(m=>(
-                                            <div key={m.id} className="card-pro p-4">
-                                                <div className="flex justify-between mb-3 font-bold text-white text-[10px] uppercase"><span>{m.ic} {m.l}</span><span className="text-blue-400">{scores[m.id]}</span></div>
-                                                <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/>
-                                            </div>
-                                        ))}
-                                        <div className="card-pro p-5 border-red-500/30">
-                                            <h3 className="text-red-400 text-[10px] font-black uppercase mb-3">⚠️ Localizar Dor</h3>
-                                            <div className="flex gap-2">
-                                                <select className="flex-1 bg-slate-900 text-white text-[10px] p-3 rounded-xl border border-slate-700 outline-none" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local...</option>{["Tornozelo","Joelho","Coxa","Lombar","Adutor","Quadril"].map(x=><option key={x}>{x}</option>)}</select>
-                                                <select className="w-24 bg-slate-900 text-white text-[10px] p-3 rounded-xl border border-slate-700 outline-none" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado</option><option value="Dir">Dir.</option><option value="Esq">Esq.</option></select>
-                                                <button onClick={()=>{if(tp){setPain([...pain,`${tp} ${ts}`]); setTp(''); setTs('');}}} className="bg-red-600 text-white px-4 rounded-xl font-black">+</button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/40 text-red-300 text-[9px] font-bold px-2 py-1 rounded border border-red-800">{z} ×</span>)}</div>
-                                        </div>
-                                        <button onClick={handleSendWellness} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase text-xs">Enviar Prontidão</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-green-400 uppercase tracking-widest">✅ Prontidão de hoje cumprida</p></div>
-                                        <div className="card-pro p-5 border-l-4 border-emerald-500 bg-emerald-500/5">
-                                            <h4 className="text-[10px] font-black text-emerald-400 uppercase mb-2">🍎 Sugestão Nutricional</h4>
-                                            <p className="text-xs text-slate-200 font-bold italic leading-relaxed uppercase">Priorize Carboidratos (Arroz/Massa) 3h antes do campo e Proteína após o treino para recuperação.</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {/* HIDRATAÇÃO */}
-                                <div className="card-pro p-5 border-l-4 border-blue-500">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</span>
-                                        <span className="text-[10px] font-bold text-slate-300">{water.toFixed(2)}L / 3.0L</span>
-                                    </div>
-                                    <button onClick={()=>{const n=water+0.25;setWater(n);db.collection('coachData').doc(data.id).set({trainingLog:{[getTodayStr()]:{[idx]:{waterIntake:n}}}},{merge:true});}} className="w-full bg-blue-600 text-white font-black py-3 rounded-2xl text-xs uppercase shadow-lg shadow-blue-900/40">+ BEBI 250ML</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'micro' && (
-                            <div className="space-y-4 animate-fade-in">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Agenda Semanal</h3>
-                                {data.days?.map((day, di) => (
-                                    <div key={di} className="card-pro p-5 space-y-4 border border-white/5">
-                                        <div className="flex justify-between items-center"><span className="text-lg font-black italic uppercase text-white leading-none">{day.name}</span><span className="text-[9px] font-bold bg-blue-600 px-2 py-1 rounded text-white uppercase">{day.md || 'Treino'}</span></div>
-                                        <div className="grid grid-cols-2 gap-3 text-[10px] font-black uppercase text-center">
-                                            <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-blue-500 mb-1 tracking-widest">Manhã ☀️</div>{(day.am || []).map(e=>e.type).join(', ') || 'Folga'}</div>
-                                            <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-orange-500 mb-1 tracking-widest">Tarde 🌤️</div>{(day.pm || []).map(e=>e.type).join(', ') || 'Folga'}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {tab === 'convoca' && (
-                            <div className="animate-fade-in text-center py-20 opacity-40 grayscale card-pro m-4">
-                                <div className="text-7xl mb-4">🏆</div>
-                                <h3 className="text-sm font-black uppercase tracking-widest">Aguardando Convocação</h3>
-                            </div>
-                        )}
-
-                        {tab === 'rank' && (
-                            <div className="space-y-4 animate-fade-in">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Ranking Artilharia</h3>
-                                {data.players.sort((a,b)=> (Number(b.stats?.g)||0) - (Number(a.stats?.g)||0)).slice(0,10).map((pl, ri) => (
-                                    <div key={ri} className="card-pro p-4 flex justify-between items-center border border-white/5">
-                                        <div className="flex items-center gap-3"><span className="text-xl font-black text-slate-800">#{ri+1}</span><span className="text-xs font-bold uppercase">{pl.name}</span></div>
-                                        <div className="bg-yellow-500 text-slate-950 px-4 py-1.5 rounded-full font-black text-[10px] shadow-lg">{pl.stats?.g || 0} GOLS</div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {tab === 'perfil' && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="card-pro p-8 text-center border border-blue-500/20 shadow-2xl">
-                                    <div className="w-24 h-24 rounded-full border-4 border-blue-600 mx-auto mb-6 overflow-hidden"><img src={p.image || ''} className="w-full h-full object-cover" /></div>
-                                    <h2 className="text-2xl font-black uppercase italic leading-none">{p.name}</h2>
-                                    <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest mt-2">{p.position || 'ATLETA'}</p>
-                                    <div className="grid grid-cols-2 gap-4 mt-8">
-                                        <div className="bg-slate-950 p-5 rounded-3xl border border-white/5 shadow-inner text-center"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Geral</div><div className="text-3xl font-black text-green-400">88</div></div>
-                                        <div className="bg-slate-950 p-5 rounded-3xl border border-white/5 shadow-inner text-center"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Potencial</div><div className="text-3xl font-black text-blue-400">94</div></div>
+                                    <div className="flex-1">
+                                        <div className="text-xs font-black text-white uppercase">{ex.title}</div>
+                                        <div className="text-[10px] font-bold text-slate-500">{ex.sets}x{ex.reps} - {ex.target}</div>
                                     </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="text-center p-12 bg-slate-900/50 rounded-[40px] border border-dashed border-slate-800">
+                                <div className="text-5xl mb-4">🔋</div>
+                                <div className="text-xs font-black text-slate-500 uppercase tracking-widest">Recuperação / Folga</div>
                             </div>
                         )}
                     </div>
 
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 p-4 flex justify-around items-center z-[110] rounded-t-[40px] shadow-[0_-15px_40px_rgba(0,0,0,0.7)]">
-                         <div onClick={()=>setTab('treino')} className={`flex flex-col items-center gap-1 transition-all ${tab==='treino'?'tab-active':'text-slate-600'}`}><span className="text-2xl">⚽</span><span className="text-[7px] font-black uppercase">Treino</span></div>
-                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center gap-1 transition-all ${tab==='micro'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📅</span><span className="text-[7px] font-black uppercase">Micro</span></div>
-                         <div onClick={()=>setTab('convoca')} className={`flex flex-col items-center gap-1 transition-all ${tab==='convoca'?'text-yellow-500 scale-125':'text-slate-600'}`}><span className="text-2xl">🏆</span><span className="text-[7px] font-black uppercase">Convocar</span></div>
-                         <div onClick={()=>setTab('rank')} className={`flex flex-col items-center gap-1 transition-all ${tab==='rank'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📊</span><span className="text-[7px] font-black uppercase">Rank</span></div>
-                         <div onClick={()=>setTab('perfil')} className={`flex flex-col items-center gap-1 transition-all ${tab==='perfil'?'tab-active':'text-slate-600'}`}><span className="text-2xl">👤</span><span className="text-[7px] font-black uppercase">Perfil</span></div>
+                    <div className="mt-10 space-y-6">
+                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Diário de Prontidão</h3>
+                         {[{id:'sleep',l:'Sono'},{id:'stress',l:'Estresse'},{id:'fatigue',l:'Cansaço'},{id:'soreness',l:'Dor'},{id:'mood',l:'Humor'}].map(m=>(
+                            <div key={m.id} className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                <div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="text-blue-400">{scores[m.id]}</span></div>
+                                <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/>
+                            </div>
+                        ))}
                     </div>
+
+                    <button onClick={()=>{
+                        const td = new Date().toISOString().split('T')[0];
+                        db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { wellness: scores } } } }, {merge:true})
+                        .then(()=>{ alert("Enviado com sucesso!"); });
+                    }} className="mt-10 w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase tracking-widest active:scale-95 transition-transform">
+                        Enviar Prontidão
+                    </button>
                 </div>
             );
         };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AthletePortal />);
     </script>
