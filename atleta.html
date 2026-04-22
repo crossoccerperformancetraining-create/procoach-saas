@@ -9,22 +9,19 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { background-color: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; overflow-x: hidden; }
         .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #1e293b; outline: none; }
-        .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+        .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #ffffff; cursor: pointer; }
         .card-pro { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
         .tab-active { color: #3b82f6 !important; font-weight: 900; }
-        .gold-glow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); border: 2px solid #eab308; }
-        .btn-check { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #334155; display: flex; items-center; justify-content: center; }
+        .visto-verde { position: absolute; top: 0; right: 0; background: #22c55e; border: 2px solid #020617; border-radius: 50%; padding: 2px; z-index: 10; }
+        .btn-check { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #334155; display: flex; items-center; justify-content: center; transition: 0.2s; }
         .btn-check.done { background: #22c55e; border-color: #22c55e; color: white; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body>
     <div id="root"></div>
-    
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
@@ -34,21 +31,19 @@
         const getGreeting = () => { const h = new Date().getHours(); return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'; };
 
         const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], trainingLog:{}, exercises:[], days:[], coachMsg:'', id:null });
+            const [data, setData] = useState({ players:[], log:{}, exercises:[], days:[], coachMsg:'', id:null });
             const [idx, setIdx] = useState(null); const [step, setStep] = useState(1);
             const [tab, setTab] = useState('treino');
-            const [scores, setScores] = useState({sleep:4, stress:4, fatigue:4, soreness:1, mood:4});
+            const [scores, setScores] = useState({sleep:4, fatigue:4, soreness:1});
             const [water, setWater] = useState(0);
             const [completed, setCompleted] = useState([]);
-            const [showPSE, setShowPSE] = useState(false);
-            const [pseValue, setPseValue] = useState(5);
             const [respondedWellness, setRespondedWellness] = useState(false);
-            const [isFinished, setIsFinished] = useState(false);
+            const [loading, setLoading] = useState(true);
 
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const uId = params.get('id'); const pIdx = params.get('p');
-                if(!uId) return;
+                if(!uId) { setLoading(false); return; }
                 db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -57,11 +52,11 @@
                             setIdx(parseInt(pIdx)); setStep(2); 
                             const logHoje = d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)];
                             if(logHoje?.wellness) setRespondedWellness(true);
-                            if(logHoje?.rpe_am) setIsFinished(true);
                             setWater(Number(logHoje?.waterIntake) || 0);
                         }
                     }
-                });
+                    setLoading(false);
+                }, () => setLoading(false));
             }, []);
 
             const myWorkouts = useMemo(() => {
@@ -70,87 +65,76 @@
                 return (data.exercises || []).filter(e => e.target?.toLowerCase().includes(name) || e.target?.toLowerCase().includes('geral'));
             }, [data.exercises, idx]);
 
-            const convocado = useMemo(() => {
-                if (idx === null) return false;
-                return (data.exercises || []).some(e => e.target?.toLowerCase().includes('convocado') && e.target?.toLowerCase().includes(data.players[idx].name.toLowerCase()));
-            }, [data.exercises, idx]);
+            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-blue-500 font-black animate-pulse">CARREGANDO PROCOACH...</div>;
 
-            const subWellness = () => {
-                db.collection('coachData').doc(data.id).set({ trainingLog: { [getTodayStr()]: { [idx]: { wellness: scores } } } }, {merge:true})
-                .then(()=> setRespondedWellness(true));
-            };
-
-            const subPSE = () => {
-                db.collection('coachData').doc(data.id).set({ trainingLog: { [getTodayStr()]: { [idx]: { rpe_am: pseValue, rpeSubmitted: true } } } }, {merge:true})
-                .then(()=> { setIsFinished(true); setShowPSE(false); confetti(); });
-            };
-
-            if(step===1) return <div className="p-20 text-center font-black animate-pulse">PROCOACH CARREGANDO...</div>;
+            // TELA 1: SELEÇÃO DE ELENCO
+            if(step===1) return (
+                <div className="p-8 flex flex-col items-center justify-center min-h-screen bg-slate-950">
+                    <h1 className="text-3xl font-black italic mb-10 text-white uppercase italic tracking-tighter">PROCOACH</h1>
+                    <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
+                        {data.players.map((p, i) => (
+                            <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer">
+                                <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-xl ${data.trainingLog?.[getTodayStr()]?.[i]?.wellness ? 'border-green-500' : 'border-slate-800'}`}>
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full text-center">{p.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
 
             const p = data.players[idx];
             return (
                 <div className="flex flex-col min-h-screen pb-32 bg-slate-950">
-                    {/* HEADER */}
+                    {/* CABEÇALHO */}
                     <div className="p-6 rounded-b-[40px] shadow-2xl relative" style={{ background: 'linear-gradient(135deg, #1e3a8a, #020617)' }}>
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden"><img src={p.image || ''} className="w-full h-full object-cover"/></div>
-                                <div><h2 className="text-xl font-black text-white uppercase italic">{p.name}</h2><p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">EM EVOLUÇÃO 🌱</p></div>
+                                <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shrink-0">
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="p-4 text-center">👤</div>}
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{getGreeting()}!</div>
+                                    <h2 className="text-xl font-black text-white uppercase italic leading-tight">{p.name.split(' ')[0]}</h2>
+                                </div>
                             </div>
                             <button onClick={()=>setStep(1)} className="bg-white/10 px-3 py-1 rounded-full text-[8px] font-black uppercase">Mudar</button>
                         </div>
-                        <p className="mt-4 text-[11px] text-white/70 italic font-bold">"Onde a vontade não falha, o caminho se abre."</p>
                     </div>
 
-                    <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll">
+                    <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                         {tab === 'treino' && (
                             <div className="space-y-6 animate-fade-in">
-                                {data.coachMsg && (
-                                    <div className="card-pro p-4 border-l-4 border-orange-500">
-                                        <h4 className="text-[9px] font-black text-orange-400 uppercase">📢 Mensagem do Professor</h4>
-                                        <p className="text-sm font-bold text-white my-2">{data.coachMsg}</p>
-                                        <button className="w-full bg-orange-600 py-2 rounded-xl text-[9px] font-black uppercase">Confirmar Leitura</button>
-                                    </div>
-                                )}
-
+                                {/* QUESTIONÁRIO */}
                                 {!respondedWellness ? (
                                     <div className="space-y-4">
-                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status do Dia</h3>
-                                        {[ {id:'sleep',l:'Sono'}, {id:'fatigue',l:'Cansaço'}, {id:'soreness',l:'Dor'} ].map(m=>(
+                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status Fisiológico</h3>
+                                        {[ {id:'sleep',l:'Sono',ic:'😴'}, {id:'fatigue',l:'Cansaço',ic:'🔋'}, {id:'soreness',l:'Dor',ic:'🦵'} ].map(m=>(
                                             <div key={m.id} className="card-pro p-4">
-                                                <div className="flex justify-between text-white text-[10px] font-bold uppercase mb-2"><span>{m.l}</span><span>{scores[m.id]}</span></div>
+                                                <div className="flex justify-between mb-2 font-bold text-white text-[10px] uppercase"><span>{m.ic} {m.l}</span><span className="text-blue-400">{scores[m.id]}</span></div>
                                                 <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider"/>
                                             </div>
                                         ))}
-                                        <button onClick={subWellness} className="w-full bg-blue-600 py-4 rounded-2xl font-black text-xs uppercase">Enviar Prontidão</button>
-                                    </div>
-                                ) : !isFinished ? (
-                                    <div className="space-y-4">
-                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Treino Principal</h3>
-                                        {myWorkouts.map((ex, i) => (
-                                            <div key={i} className="card-pro p-4 flex items-center gap-4 border border-white/5">
-                                                <div className="w-14 h-14 bg-slate-800 rounded-xl overflow-hidden shrink-0"><img src={ex.gifUrl} className="w-full h-full object-cover"/></div>
-                                                <div className="flex-1"><div className="text-xs font-black text-white uppercase">{ex.title}</div><div className="text-[9px] font-bold text-blue-400 uppercase">{ex.sets}x {ex.reps}</div></div>
-                                                <button onClick={()=>{if(completed.includes(ex.id)) setCompleted(completed.filter(id=>id!==ex.id)); else setCompleted([...completed, ex.id]);}} className={`btn-check ${completed.includes(ex.id) ? 'done' : ''}`}>{completed.includes(ex.id) ? '✓' : ''}</button>
-                                            </div>
-                                        ))}
-                                        <button onClick={()=>setShowPSE(true)} className="w-full bg-green-500 text-white font-black py-4 rounded-3xl shadow-xl uppercase text-xs">Finalizar Treino 🏆</button>
+                                        <button onClick={()=>{const td=getTodayStr(); db.collection('coachData').doc(data.id).set({trainingLog:{[td]:{[idx]:{wellness:scores}}}},{merge:true}).then(()=>setRespondedWellness(true));}} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase text-xs">Enviar Prontidão</button>
                                     </div>
                                 ) : (
-                                    <div className="space-y-4 animate-fade-in">
-                                        <div className="bg-green-500/10 p-5 rounded-3xl text-center border border-green-500/20 shadow-lg">
-                                            <div className="text-2xl mb-2">✅</div>
-                                            <p className="text-sm font-black text-green-400 uppercase tracking-widest">Treino Concluído!</p>
-                                        </div>
-                                        <div className="nutri-card p-5 rounded-[24px]">
-                                            <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-1">🍗 Nutrição de Recuperação</h4>
-                                            <p className="text-xs text-emerald-50 font-bold uppercase italic leading-tight">Priorize proteína e carboidratos complexos agora para reconstruir a fibra muscular.</p>
-                                        </div>
+                                    <div className="card-pro p-5 border-l-4 border-emerald-500 bg-emerald-500/5">
+                                        <h4 className="text-[10px] font-black text-emerald-400 uppercase mb-2">🍎 Sugestão Nutricional</h4>
+                                        <p className="text-xs text-slate-200 font-bold italic leading-relaxed uppercase">Carboidratos 3h antes do campo e Proteína após o treino para recuperação.</p>
                                     </div>
                                 )}
-                                <div className="card-pro p-5 border-l-4 border-blue-500">
-                                    <div className="flex justify-between items-center mb-3"><span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</span><span className="text-[10px] font-bold text-slate-300">{water.toFixed(2)}L / 3.0L</span></div>
-                                    <button onClick={()=>{const n=water+0.25; setWater(n); db.collection('coachData').doc(data.id).set({trainingLog:{[getTodayStr()]:{[idx]:{waterIntake:n}}}},{merge:true});}} className="w-full bg-blue-600 text-white font-black py-3 rounded-2xl text-xs uppercase">+ BEBI 250ML</button>
+
+                                {/* LISTA DE EXERCÍCIOS */}
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-2">Exercícios do Dia</h3>
+                                    {myWorkouts.length > 0 ? myWorkouts.map((ex, i) => (
+                                        <div key={i} className={`card-pro p-4 flex items-center gap-4 border border-white/5 ${completed.includes(ex.id) ? 'opacity-40 grayscale' : ''}`}>
+                                            <div className="w-14 h-14 bg-slate-800 rounded-xl overflow-hidden shrink-0"><img src={ex.gifUrl} className="w-full h-full object-cover"/></div>
+                                            <div className="flex-1"><div className="text-xs font-black text-white uppercase">{ex.title}</div><div className="text-[9px] font-bold text-blue-400 uppercase">{ex.sets}x {ex.reps}</div></div>
+                                            <button onClick={()=>{if(completed.includes(ex.id)) setCompleted(completed.filter(id=>id!==ex.id)); else setCompleted([...completed, ex.id]);}} className={`btn-check ${completed.includes(ex.id) ? 'done' : ''}`}>{completed.includes(ex.id) ? '✓' : ''}</button>
+                                        </div>
+                                    )) : <div className="text-center p-10 card-pro opacity-50 uppercase text-[10px] font-black tracking-widest italic">Recuperação ou Folga</div>}
                                 </div>
                             </div>
                         )}
@@ -159,7 +143,7 @@
                             <div className="space-y-4 animate-fade-in">
                                 {data.days?.map((day, di) => (
                                     <div key={di} className="card-pro p-5 space-y-4 border border-white/5">
-                                        <div className="flex justify-between items-center"><span className="text-lg font-black italic uppercase text-white">{day.name}</span><span className="text-[9px] font-bold bg-blue-600 px-2 py-1 rounded text-white uppercase">{day.md || 'Treino'}</span></div>
+                                        <div className="flex justify-between items-center"><span className="text-lg font-black italic uppercase text-white leading-none">{day.name}</span><span className="text-[9px] font-bold bg-blue-600 px-2 py-1 rounded text-white uppercase">{day.md || 'Treino'}</span></div>
                                         <div className="grid grid-cols-2 gap-3 text-[10px] font-black uppercase text-center">
                                             <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-blue-500 mb-1 tracking-widest">Manhã ☀️</div>{(day.am || []).map(e=>e.type).join(', ') || 'FOLGA'}</div>
                                             <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-orange-500 mb-1 tracking-widest">Tarde 🌤️</div>{(day.pm || []).map(e=>e.type).join(', ') || 'FOLGA'}</div>
@@ -169,25 +153,10 @@
                             </div>
                         )}
 
-                        {tab === 'convoca' && (
-                            <div className="animate-fade-in text-center py-20">
-                                {convocado ? (
-                                    <div className="bg-yellow-500/10 border-2 border-yellow-500/50 p-10 rounded-[40px] gold-glow animate-bounce">
-                                        <div className="text-8xl mb-6">🏆</div><h2 className="text-3xl font-black text-white uppercase italic">CONVOCADO!</h2>
-                                        <p className="text-xs text-yellow-500 font-black uppercase mt-4 tracking-widest">Você está na lista oficial para o jogo.</p>
-                                    </div>
-                                ) : (
-                                    <div className="card-pro p-16 opacity-30 grayscale border-dashed border-2">
-                                        <div className="text-7xl mb-6">📋</div><p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500 text-center">Aguardando Convocação...</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         {tab === 'rank' && (
                             <div className="space-y-4 animate-fade-in">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Artilharia & Rank</h3>
-                                {data.players.sort((a,b)=> (Number(b.stats?.g)||0) - (Number(a.stats?.g)||0)).slice(0,5).map((pl, ri) => (
+                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Ranking de Artilharia</h3>
+                                {data.players.sort((a,b)=> (Number(b.stats?.g)||0) - (Number(a.stats?.g)||0)).slice(0,10).map((pl, ri) => (
                                     <div key={ri} className="card-pro p-4 flex justify-between items-center border border-white/5">
                                         <div className="flex items-center gap-3"><span className="text-xl font-black text-slate-800">#{ri+1}</span><span className="text-xs font-bold uppercase truncate">{pl.name}</span></div>
                                         <div className="bg-yellow-500 text-slate-950 px-4 py-1.5 rounded-full font-black text-[10px] shadow-lg">{pl.stats?.g || 0} GOLS</div>
@@ -195,11 +164,11 @@
                                 ))}
                             </div>
                         )}
-                        
+
                         {tab === 'perfil' && (
-                             <div className="animate-fade-in space-y-6">
+                            <div className="animate-fade-in space-y-6">
                                 <div className="card-pro p-8 text-center border border-blue-500/20 shadow-2xl">
-                                    <div className="w-24 h-24 rounded-full border-4 border-blue-600 mx-auto mb-6 overflow-hidden"><img src={p.image || ''} className="w-full h-full object-cover" /></div>
+                                    <div className="w-24 h-24 rounded-full border-4 border-blue-600 mx-auto mb-6 overflow-hidden shadow-lg"><img src={p.image || ''} className="w-full h-full object-cover" /></div>
                                     <h2 className="text-2xl font-black uppercase italic leading-none">{p.name}</h2>
                                     <div className="grid grid-cols-2 gap-4 mt-8">
                                         <div className="bg-slate-950 p-5 rounded-3xl border border-white/5 shadow-inner text-center"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Nota Geral</div><div className="text-3xl font-black text-green-400">88</div></div>
@@ -210,25 +179,10 @@
                         )}
                     </div>
 
-                    {/* MODAL PSE */}
-                    {showPSE && (
-                        <div className="fixed inset-0 bg-slate-950/95 z-[500] flex items-center justify-center p-6 animate-fade-in">
-                            <div className="card-pro p-8 w-full max-w-sm border-blue-500/50 space-y-6">
-                                <h3 className="text-xl font-black text-white text-center uppercase tracking-tighter">Muito Bem! 🔥</h3>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase flex justify-between"><span>Esforço do Treino (PSE)</span><span className="text-blue-400">{pseValue}/10</span></label>
-                                    <input type="range" min="1" max="10" value={pseValue} onChange={e=>setPseValue(parseInt(e.target.value))} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#ef4444)'}}/>
-                                </div>
-                                <button onClick={subPSE} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase text-xs shadow-lg">Salvar e Finalizar</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MENU INFERIOR ✨ */}
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 p-4 flex justify-around items-center z-[110] rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.7)]">
+                    {/* MENU INFERIOR */}
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 p-4 flex justify-around items-center z-[110] rounded-t-[40px] shadow-[0_-15px_40px_rgba(0,0,0,0.7)]">
                          <div onClick={()=>setTab('treino')} className={`flex flex-col items-center gap-1 ${tab==='treino'?'tab-active':'text-slate-600'}`}><span className="text-2xl">⚽</span><span className="text-[7px] font-black uppercase">Treino</span></div>
-                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center gap-1 ${tab==='micro'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📅</span><span className="text-[7px] font-black uppercase">Semana</span></div>
-                         <div onClick={()=>setTab('convoca')} className={`flex flex-col items-center gap-1 ${tab==='convoca'?'text-yellow-500 scale-125':'text-slate-600'}`}><span className="text-2xl">🏆</span><span className="text-[7px] font-black uppercase tracking-tighter">Convocar</span></div>
+                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center gap-1 ${tab==='micro'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📅</span><span className="text-[7px] font-black uppercase">Micro</span></div>
                          <div onClick={()=>setTab('rank')} className={`flex flex-col items-center gap-1 ${tab==='rank'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📊</span><span className="text-[7px] font-black uppercase">Rank</span></div>
                          <div onClick={()=>setTab('perfil')} className={`flex flex-col items-center gap-1 ${tab==='perfil'?'tab-active':'text-slate-600'}`}><span className="text-2xl">👤</span><span className="text-[7px] font-black uppercase">Perfil</span></div>
                     </div>
