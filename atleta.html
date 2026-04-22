@@ -499,76 +499,7 @@
                                         ))}
                                     </div>
                                 </div>
-{tab === 'agenda' && (
-                        <div className="space-y-6 animate-fade-in pb-10 overflow-y-auto h-full custom-scroll">
-                            {/* CARD DE CONVOCAÇÃO */}
-                            <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
-                                <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase tracking-widest">Status</div>
-                                <h3 className="text-xl font-black text-white uppercase mb-4 flex items-center gap-2">
-                                    <Icon name="trophy" size={20} className="text-yellow-500"/> CONVOCAÇÃO
-                                </h3>
-                                <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
-                                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white italic text-xl shadow-lg border-2 border-blue-400">
-                                        {p.number || "!"}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-black text-white uppercase tracking-tight">VOCÊ ESTÁ CONVOCADO!</div>
-                                        <div className="text-[10px] font-bold text-blue-400 uppercase italic mt-1">Apresentação: 08:30h no CT</div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* LOGÍSTICA DO DIA */}
-                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] shadow-inner">
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Icon name="clock" size={16} className="text-blue-400"/> Cronograma da Viagem / Jogo
-                                </h3>
-                                <div className="space-y-3">
-                                    {[
-                                        {h: "09:00", t: "Café da Manhã", i: "☕"},
-                                        {h: "10:30", t: "Saída para o Estádio", i: "🚌"},
-                                        {h: "11:45", t: "Preleção Técnica", i: "📋"},
-                                        {h: "13:00", t: "Início do Aquecimento", i: "🏃"},
-                                    ].map((item, i) => (
-                                        <div key={i} className="flex items-center gap-4 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 hover:border-blue-500/30 transition-colors">
-                                            <span className="text-blue-400 font-black text-xs w-10 shrink-0">{item.h}</span>
-                                            <span className="text-xl shrink-0">{item.i}</span>
-                                            <span className="text-[11px] font-black text-white uppercase tracking-tight">{item.t}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* PROGRAMAÇÃO SEMANAL (MICROCICLO) */}
-                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] shadow-inner mb-20">
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Icon name="calendar" size={16} className="text-emerald-500"/> Programação Microciclo
-                                </h3>
-                                <div className="grid grid-cols-1 gap-2.5">
-                                    {data.days && data.days.map((day, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{day.name}</span>
-                                                <span className="text-[11px] font-black text-white uppercase">{day.md}</span>
-                                            </div>
-                                            <div className="flex flex-col gap-1 items-end">
-                                                {(day.am || []).map((ev, idx) => (
-                                                    <span key={idx} className={`${ev.colorClass || 'bg-blue-600'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase shadow-sm`}>
-                                                        {ev.type}
-                                                    </span>
-                                                ))}
-                                                {(day.pm || []).map((ev, idx) => (
-                                                    <span key={idx} className={`${ev.colorClass || 'bg-slate-700'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase shadow-sm`}>
-                                                        {ev.type}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                                 <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
                                     <div className="flex items-center gap-3 mb-6"><div className="bg-orange-500/20 p-2 rounded-full"><Icon name="fire" size={20} className="text-orange-500"/></div><h3 className="font-black text-lg uppercase text-white">Consistência (🔥)</h3></div>
                                     <div className="space-y-3">
@@ -755,47 +686,13 @@
                         </div>
                     )}
 
-               {/* MENU INFERIOR DE NAVEGAÇÃO - 5 BOTÕES */}
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl no-print">
-                        <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}>
-                            <Icon name="play" size={24}/>
-                            <span className="text-[8px] font-black uppercase mt-1">Treino</span>
-                        </div>
-                        
-                        <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}>
-                            <Icon name="calendar" size={24}/>
-                            <span className="text-[8px] font-black uppercase mt-1">Agenda</span>
-                        </div>
-
-                        <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer">
-                            <Icon name="activity" size={24}/>
-                            <span className="text-[8px] font-black uppercase mt-1">Histórico</span>
-                        </div>
-                        
-                        <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}>
-                            <Icon name="trophy" size={24}/>
-                            <span className="text-[8px] font-black uppercase mt-1">Ranking</span>
-                        </div>
-                        
-                        <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer">
-                            <Icon name="target" size={24}/>
-                            <span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span>
-                        </div>
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
+                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
+                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
+                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
+                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
                     </div>
 
-                    {/* SHARE CARD (USADO PARA O INSTAGRAM) */}
-                    <div id="share-card" className="fixed z-[-1]" style={{left: '-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
-                        <div className="p-8 border-4 border-slate-800 rounded-[40px] flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
-                            <div className="absolute top-0 left-0 w-full h-40 opacity-40" style={{background: `linear-gradient(to bottom, ${data.color}, transparent)`}}></div>
-                            <div className="z-10 w-full flex justify-between items-center mb-6">
-                                {data.logo ? <img src={data.logo} className="w-12 h-12 object-contain drop-shadow-lg"/> : <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-700"><Icon name="trophy" size={20} className="text-slate-500"/></div>}
-                                <div className="text-right">
-                                    <div className="text-[10px] font-black text-slate-400 tracking-widest uppercase truncate max-w-[200px]">{data.teamName}</div>
-                                    <div className="text-xs font-black text-white uppercase tracking-widest">PROCOACH ATHLETE</div>
-                                </div>
-                            </div>
-
-                    {/* INÍCIO DO SHARE CARD (MANTIDO) */}
                     <div id="share-card" className="fixed z-[-1]" style={{left: '-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
                         <div className="p-8 border-4 border-slate-800 rounded-[40px] flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
                             <div className="absolute top-0 left-0 w-full h-40 opacity-40" style={{background: `linear-gradient(to bottom, ${data.color}, transparent)`}}></div>
@@ -806,7 +703,6 @@
                                     <div className="text-[10px] font-black text-slate-400 tracking-widest uppercase truncate max-w-[200px]">{data.teamName}</div>
                                     <div className="text-xs font-black text-white uppercase tracking-widest">PROCOACH ATHLETE</div>
                                 </div>
-                            </div>
                             </div>
 
                             <div className="w-40 h-40 rounded-full border-4 overflow-hidden bg-slate-800 shadow-2xl mb-4 z-10 relative" style={{borderColor: data.color}}>
