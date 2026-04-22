@@ -138,25 +138,48 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
 
             const openModal = (dayId, period) => { setActiveSlot({ dayId, period }); setModalOpen(true); };
             
+           // 🔥 FUNÇÃO CORRIGIDA: ADICIONA E SALVA NO FIREBASE
             const addEvent = (typeObj) => {
                 const newDays = safeDays.map(d => {
                     if(d.id === activeSlot.dayId) {
-                        return { ...d, [activeSlot.period]: [...(d[activeSlot.period] || []), { id: Date.now(), ...typeObj }] };
+                        const currentEvents = Array.isArray(d[activeSlot.period]) ? d[activeSlot.period] : [];
+                        const newEvent = { 
+                            id: Date.now(), 
+                            type: typeObj.label, 
+                            colorClass: typeObj.color, 
+                            textClass: typeObj.text 
+                        };
+                        return { ...d, [activeSlot.period]: [...currentEvents, newEvent] };
                     }
                     return d;
                 });
+                
                 setDays(newDays);
                 setModalOpen(false);
+
+                // Salva na Nuvem para não sumir
+                const user = firebase.auth().currentUser;
+                if(user) {
+                    db.collection('coachData').doc(user.uid).update({ days: newDays })
+                      .then(() => console.log("Microciclo Salvo!"))
+                      .catch(err => console.error(err));
+                }
             };
 
             const removeEvent = (dayId, period, eventId) => {
-                setDays(safeDays.map(d => d.id === dayId ? { ...d, [period]: d[period].filter(e => e.id !== eventId) } : d));
+                const newDays = safeDays.map(d => d.id === dayId ? { ...d, [period]: (d[period] || []).filter(e => e.id !== eventId) } : d);
+                setDays(newDays);
+                const user = firebase.auth().currentUser;
+                if(user) db.collection('coachData').doc(user.uid).update({ days: newDays });
             };
 
             const updateHeader = (dayId, field, val) => {
-                setDays(safeDays.map(d => d.id === dayId ? { ...d, [field]: val } : d));
+                const newDays = safeDays.map(d => d.id === dayId ? { ...d, [field]: val } : d);
+                setDays(newDays);
+                // Salva alteração de nome do dia ou MD
+                const user = firebase.auth().currentUser;
+                if(user) db.collection('coachData').doc(user.uid).update({ days: newDays });
             };
-
             const renderAiAnalysis = () => {
                 if(!aiModal) return null;
                 const md = aiModal.md || "";
@@ -943,7 +966,7 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll">
+               <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll min-h-screen pb-32">
                     <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
                     {editPlayer!==null && <Editor/>}
                     <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2><div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300"><Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}</div></div>
