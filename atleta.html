@@ -5,379 +5,186 @@
     <title>Portal do Atleta - ProCoach MAX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { background-color: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
         .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #1e293b; outline: none; }
         .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        .animate-fade-in { animation: fadeIn 0.4s; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
-        .gold-glow { box-shadow: 0 0 25px rgba(234, 179, 8, 0.6); border: 2px solid #eab308; }
-        .card-micro { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); }
-        .lock-overlay { backdrop-blur: 10px; background: rgba(2, 6, 23, 0.85); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+        .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: 900; }
+        .gold-glow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); border: 2px solid #eab308; }
     </style>
 </head>
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
-    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-3 rounded-full shadow-2xl z-[300] text-xs font-bold transition-opacity duration-300 pointer-events-none flex items-center gap-2" style="opacity:0;"></div>
     <div id="root" class="h-full w-full flex flex-col"></div>
     
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
-        
-        const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
-        const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
-        const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
-        const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
-        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
-        const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
-        const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
-        const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
-
-        const smartShare = async (blob, filename, title) => {
-            const file = new File([blob], filename, { type: blob.type });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: title }); return; } catch (err) {} }
-            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-        };
-
-        const getEmbedUrl = (url) => { if(!url) return null; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null; };
-
-        const Icon = ({ name, size=24, className="", onClick }) => {
-            const p = { 
-                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', barChart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>', share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>', fastForward: '<polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/>', plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', ball: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>', target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>', fire: '<path d="M12 2c0 0-6 6.5-6 12a6 6 0 1 0 12 0c0-5.5-6-12-6-12z"/><path d="M12 14c0 0-2 2-2 4a2 2 0 1 0 4 0c0-2-2-4-2-4z"/>', arrowDown: '<polyline points="6 9 12 15 18 9"/>', arrowUp: '<polyline points="18 15 12 9 6 15"/>', medkit: '<rect x="2" y="6" width="20" height="14" rx="2"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>', bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>', brain: '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 1-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>', arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>', logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>', calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
-            };
-            return <svg width={size} height={size} viewBox="0 0 24 24" fill={name==='play'||name==='trophy'||name==='fire'?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick} dangerouslySetInnerHTML={{__html: p[name] || ''}} />;
-        };
-
-        const RadarChart = ({ stats, size = 150 }) => {
-            const center = size / 2; const radius = (size / 2) * 0.7;
-            const points = [ { label: 'FOR', val: stats.force || 50 }, { label: 'VEL', val: stats.speed || 50 }, { label: 'POT', val: stats.power || 50 }, { label: 'PRE', val: stats.prev || 50 }, { label: 'TEC', val: stats.tech || 50 }, { label: 'RES', val: stats.endurance || 50 } ];
-            const polygonPoints = points.map((p, i) => { const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2; const x = center + (radius * (p.val / 100)) * Math.cos(angle); const y = center + (radius * (p.val / 100)) * Math.sin(angle); return `${x},${y}`; }).join(' ');
-            return (
-                <div className="flex flex-col items-center">
-                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-                        {[0.25, 0.5, 0.75, 1].map(scale => ( <circle key={scale} cx={center} cy={center} r={radius * scale} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="2,2" /> ))}
-                        <polygon points={polygonPoints} fill="rgba(59, 130, 246, 0.4)" stroke="#3b82f6" strokeWidth="2" />
-                        {points.map((p, i) => { const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2; const tx = center + (radius + 15) * Math.cos(angle); const ty = center + (radius + 15) * Math.sin(angle); return <text key={i} x={tx} y={ty} textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold" className="uppercase">{p.label}</text> })}
-                    </svg>
-                </div>
-            );
-        };
-
-        const getMotivationalQuote = () => {
-            const quotes = [ "O suor de hoje é a vitória de amanhã. Vá com tudo!", "A disciplina é a ponte entre a meta e a realização.", "Trabalhe em silêncio e deixe o sucesso fazer barulho.", "A dedicação supera o talento quando o talento não se dedica.", "Onde a vontade não falha, o caminho se abre.", "Não pare quando estiver cansado, pare quando tiver terminado." ];
-            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24); return quotes[dayOfYear % quotes.length];
-        };
-
-        const getStreakTitle = (streak) => {
-            if (streak >= 15) return "LENDA INTOCÁVEL 👑";
-            if (streak >= 7) return "MOTOR DA EQUIPE ⚙️";
-            if (streak >= 3) return "FOCADO 🎯";
-            return "EM EVOLUÇÃO 🌱";
-        };
 
         const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', days:[], nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH' });
-            const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
-            const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
-            const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1}); const [pain, setPain] = useState([]);
-            const [tp, setTp] = useState(''); const [ts, setTs] = useState(''); const [submitting, setSubmitting] = useState(false);
-            const [water, setWater] = useState(0); const [agendaAck, setAgendaAck] = useState(false);
-            const [gif, setGif] = useState(null); const [completed, setCompleted] = useState([]);
-            const [skippedExs, setSkippedExs] = useState({}); const [exLoads, setExLoads] = useState({}); const [skipModal, setSkipModal] = useState(null);
-            const [rpeMod, setRpeMod] = useState(false); const [rpe, setRpe] = useState(5); const [dur, setDur] = useState(60);
-            const [feedbackMsg, setFeedbackMsg] = useState(""); const [showStats, setShowStats] = useState(false);
-            const [expandedDay, setExpandedDay] = useState(null); const [viewMode, setViewMode] = useState('finished');
-            const [showProfile, setShowProfile] = useState(false);
-            const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
-            const activeExRef = useRef(null); const audioCtxRef = useRef(null);
+            const [data, setData] = useState({ players:[], log:{}, ex:[], days:[], id:null, coachMsg:'', color:'#1e3a8a' });
+            const [idx, setIdx] = useState(null); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
+            const [tab, setTab] = useState('hoje');
+            const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
 
             useEffect(() => {
-                const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
+                const params = new URLSearchParams(window.location.search);
+                const uId = params.get('id'); const pIdx = params.get('p');
                 if(!uId) { setLoading(false); return; }
-                const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
+                db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ 
-                            players: d.players||[], 
-                            log: d.trainingLog||{}, 
-                            ex: d.exercises||[], 
-                            act: d.activationExercises||[], 
-                            dm: d.dmRecords||[], 
-                            ass: d.assessments||{}, 
-                            matchM: d.matchMinutes||{}, 
-                            postW: d.postWorkout||'IA', 
-                            days: d.days || [],
-                            nextG: d.nextGame||{}, 
-                            coachMsg: d.coachMsg||d.coachMessage||'', 
-                            color: d.themeColor||'#1e3a8a', 
-                            id: doc.id, 
-                            videoUrl: d.videoUrl||'', 
-                            logo: d.logo||null, 
-                            teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH' 
+                            players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], 
+                            days: d.days||[], coachMsg: d.coachMsg||'', id: doc.id, color: d.themeColor||'#1e3a8a' 
                         });
-                        if(pIdx !== null && d.players && d.players[parseInt(pIdx)]) {
-                            setIsPriv(true); setIdx(parseInt(pIdx));
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness.sleep) setStep(3); else setStep(2);
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].agendaAck) setAgendaAck(true);
-                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.waterIntake) || 0);
-                        }
+                        if(pIdx !== null && step === 1) { setIdx(parseInt(pIdx)); setStep(2); }
                     }
                     setLoading(false);
-                }, () => { setLoading(false); });
-                return () => unsubscribe();
+                }, () => setLoading(false));
             }, []);
 
-            const getDM = (id) => { const act = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Active'); if(act.length>0) return (parseInt(act[0].rtpPhase)||1)>=3 ? 'TRANSIÇÃO' : 'DM'; const rec = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Recovered'&&r.dateOut); const td = new Date(getTodayStr()); for(let r of rec) if(!isNaN(new Date(r.dateOut).getTime()) && Math.ceil(Math.abs(td - new Date(r.dateOut))/(1000*60*60*24))<=7) return 'TRANSIÇÃO'; return 'APTO'; };
-            const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500', f: 'bg-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500', f: p<40?'bg-red-500':p<75?'bg-yellow-500':'bg-green-500' }; };
-
-            const getOrderedExs = () => {
-                const pAss = (data.ass && data.ass[idx] && data.ass[idx][0]) ? data.ass[idx][0] : {}; const assStr = (pAss.anamnese || '').toLowerCase();
-                const hasLca = assStr.includes('lca'); const hasPub = assStr.includes('pubalgia'); const hasPost = assStr.includes('posterior')||assStr.includes('muscular'); const hasHist = assStr.trim()!=='' && !assStr.includes('nenhum') && !assStr.includes('sem histórico');
-                let baseExs = safeArray(data.ex); const dm = getDM(idx); const trans = dm==='TRANSIÇÃO'; const inj = dm==='DM';
-                let prevExs = []; let genExs = [];
-                if(trans) { genExs = baseExs.filter(x=>x.target==='Transição (Retorno DM)'); prevExs = baseExs.filter(x=>x.target==='Manutenção (Histórico Lesão)'); } 
-                else if(!inj) { 
-                    const myName = (data.players[idx]?.name || "").toLowerCase();
-                    genExs = baseExs.filter(x => !x.target || x.target === 'Geral' || x.target.toLowerCase().includes(myName) || (!x.target.includes('LCA') && !x.target.includes('Pubalgia') && !x.target.includes('Posterior') && !x.target.includes('Manutenção') && !x.target.includes('Transição'))); 
-                    prevExs = baseExs.filter(x => (x.target==='LCA'&&hasLca) || (x.target==='Pubalgia'&&hasPub) || (x.target==='Posterior'&&hasPost) || (x.target==='Manutenção (Histórico Lesão)'&&hasHist)); 
-                }
-                return { act: safeArray(data.act), prev: prevExs, gen: genExs, flat: [...safeArray(data.act), ...prevExs, ...genExs] };
-            };
-
-            // ANTENA DE CONVOCAÇÃO ✨
-            const convocacao = useMemo(() => {
-                return safeArray(data.ex).find(e => (e.target || "").toUpperCase().includes("CONVOCADO"));
-            }, [data.ex]);
-
-            const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Treino finalizado! 🎉"); } };
-
-            useEffect(() => {
-                let interval = null;
-                if (restTimer !== null && restTimer > 0) { interval = setInterval(() => setRestTimer(p => p - 1), 1000); } 
-                else if (restTimer === 0) { playBeep(); vibrate([300, 150, 300, 150, 500]); setRestTimer(null); if(gif && focusMode === 'rest') goToNextEx(activeExRef.current); }
-                return () => clearInterval(interval);
-            }, [restTimer, gif, focusMode]);
-
-            const initAudio = () => { if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} } if(audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); try { const osc = audioCtxRef.current.createOscillator(); const gain = audioCtxRef.current.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtxRef.current.destination); osc.start(); osc.stop(audioCtxRef.current.currentTime + 0.1); } catch(e) {} };
-            const playBeep = () => { try { const ctx = audioCtxRef.current; if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(1, ctx.currentTime); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => { const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime); gain2.gain.setValueAtTime(1, ctx.currentTime); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(); osc2.stop(ctx.currentTime + 0.3); }, 400); } catch(e) {} };
-
-            const selectP = (i) => { setIdx(i); initAudio(); if(data.log && data.log[getTodayStr()] && data.log[getTodayStr()][i] && data.log[getTodayStr()][i].wellness && data.log[getTodayStr()][i].wellness.sleep) { setStep(3); if(data.log[getTodayStr()][i].agendaAck) setAgendaAck(true); setWater(Number(data.log[getTodayStr()][i].waterIntake) || 0); } else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
-            const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
-            
-            const subData = () => {
-                setSubmitting(true); const td = getTodayStr(); const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
-                nl[td][idx] = {...nl[td][idx], wellness: scores, painZones: pain};
-                db.collection('coachData').doc(data.id).set({trainingLog: nl}, {merge:true}).then(()=>{
-                    setData({...data, log:nl}); setStep(3); setSubmitting(false); window.scrollTo(0,0);
-                    showToast("Wellness Enviado! 🔥", "🧠");
-                    setTimeout(() => alert("⚠️ INFORMAÇÃO LIBERADA:\nTreino Tático hoje à tarde às 15:30.\nConfira o quadro de logística."), 500);
+            const myWorkouts = useMemo(() => {
+                if (idx === null || !data.players[idx]) return [];
+                const myName = (data.players[idx].name || "").toLowerCase();
+                return (data.ex || []).filter(e => {
+                    const t = (e.target || "").toLowerCase();
+                    return t.includes(myName) || t.includes("geral") || t.includes("convocado");
                 });
-            };
+            }, [data.ex, idx, data.players]);
 
-            const ackAgenda = () => {
-                const td = getTodayStr();
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.agendaAck`]: true }).then(()=>{ 
-                    setAgendaAck(true); const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].agendaAck = true; setData({...data, log: nl});
-                }).catch(()=>{ alert("Erro ao confirmar."); });
-            };
+            const convocacao = useMemo(() => myWorkouts.find(e => (e.target || "").toUpperCase().includes("CONVOCADO")), [myWorkouts]);
+            const isResponded = useMemo(() => {
+                const today = new Date().toISOString().split('T')[0];
+                return !!(data.log[today]?.[idx]?.wellness?.sleep);
+            }, [data.log, idx]);
 
-            const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada: ${reason}`, '⚠️'); };
-            const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
+            if(loading) return <div className="h-screen flex items-center justify-center text-white font-black italic uppercase">ProCoach MAX...</div>;
 
-            const saveRPE = () => {
-                if(submitting) return; setSubmitting(true); const td = getTodayStr(); const allExs = getOrderedExs().flat;
-                const doneExsNames = completed.map(id => { const x = allExs.find(e => e.id === id); return x ? `${x.title} ${exLoads[id] ? `(${exLoads[id]}kg)` : ''}` : null; }).filter(Boolean);
-                const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
-
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.rpe_am`]: rpe, [`trainingLog.${td}.${idx}.duration`]: dur, [`trainingLog.${td}.${idx}.feedback`]: feedbackMsg, [`trainingLog.${td}.${idx}.exercisesDone`]: doneExsNames, [`trainingLog.${td}.${idx}.exercisesSkipped`]: skippedInfo, [`trainingLog.${td}.${idx}.rpeSubmitted`]: true }).then(()=>{
-                    setSubmitting(false); setRpeMod(false); showToast("Registro Concluído! 🚀", "🔥"); 
-                    if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 }); vibrate([100, 50, 100]);
-                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].rpe_am = rpe; nl[td][idx].duration = dur; nl[td][idx].rpeSubmitted = true; nl[td][idx].exercisesDone = doneExsNames; nl[td][idx].exercisesSkipped = skippedInfo; setData({...data, log:nl}); window.scrollTo(0,0);
-                }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
-            };
-
-            const shareToInsta = async () => { const el = document.getElementById('share-card'); if(!el) return; showToast("A gerar o seu Card...", "📸"); try { el.style.display = 'flex'; const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#0f172a' }); el.style.display = 'none'; canvas.toBlob(blob => { smartShare(blob, 'meutreino.png', 'Treino Concluído'); }); } catch(e) { el.style.display = 'none'; showToast("Erro ao compartilhar."); } };
-
-            const getPlayerStats = () => { let wCompleted = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = data.log[dateStr]?.[idx]; if(l?.rpeSubmitted) wCompleted++; }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]) || 0); }); } let checkDate = new Date(); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
-
-            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
-            
-            const getRankingData = () => { const players = safeArray(data.players).map((p, i) => { let streak = 0; let checkDate = new Date(); for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); } return { ...p, streak, goals: Number(p?.stats?.g)||0 }; }); return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) }; };
-
-            const getPlayerSkills = (pIdx) => { const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {}; return { force: Math.min(99, Number(pAss.squat_rm)||50), speed: Math.max(30, 100 - ((Number(pAss.speed30)||4.5) * 10)), power: Number(pAss.sj)||50, prev: Math.min(99, (Number(pAss.fms_total)||0) * 4.7), tech: 75, endurance: 70 }; };
-
-            const getNutritionAdvice = (rpeVal) => { if(rpeVal >= 8) return { t: "Desgaste Extremo Detectado!", d: "Reponha carboidratos rápidos e beba muita água nas próximas 2h.", ic: "🍎" }; return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos.", ic: "🍗" }; };
-            const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
-
-            const renderExerciseCard = (ex, typeClass, iconName, borderClassColor) => {
-                const isDone = completed.includes(ex.id); const isSkipped = skippedExs[ex.id] !== undefined;
-                const bColor = isDone ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : isSkipped ? 'border-yellow-500 opacity-60' : borderClassColor;
-                return (
-                    <div key={ex.id} className={`bg-slate-900/80 p-4 rounded-2xl border ${bColor} flex flex-col gap-3 relative transition-colors`}>
-                        {isSkipped && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[8px] font-black px-2 py-0.5 rounded-bl-lg z-10 uppercase">PULOU: {skippedExs[ex.id]}</div>}
-                        <div className="flex gap-4 items-center">
-                            <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
-                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90"/> : <Icon name={iconName} className="m-5 text-slate-500"/>}
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
-                            </div>
-                            <div className="flex-1">
-                                <div className="font-black text-white text-sm uppercase leading-tight">{ex.title}</div>
-                                <div className={`text-[10px] font-bold uppercase mt-1 ${typeClass}`}>{ex.sets}x {ex.reps} {ex.rest && `| ${ex.rest}s Desc.`}</div>
-                                <div className="mt-2 flex items-center gap-1 w-24">
-                                    <input type="number" placeholder="kg" className="w-full bg-slate-950 border border-slate-700 text-[10px] text-white rounded px-2 py-1.5 outline-none focus:border-blue-500" value={exLoads[ex.id] || ''} onChange={e=>setExLoads({...exLoads, [ex.id]: e.target.value})} onClick={e=>e.stopPropagation()}/>
+            if(step===1) return (
+                <div className="p-6 h-screen overflow-y-auto bg-slate-950">
+                    <h1 className="text-3xl font-black italic mb-8 text-center uppercase">Pro<span style={{color:data.color}}>Coach</span></h1>
+                    <div className="grid grid-cols-3 gap-4">
+                        {data.players.map((p, i) => (
+                            <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform">
+                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900 shadow-xl">
+                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}
                                 </div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full text-center">{p.name}</span>
                             </div>
-                            <div className="flex flex-col gap-2">
-                                <button onClick={()=>tog(ex)} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-700 text-slate-600 hover:text-green-500'}`}><Icon name="check" size={20}/></button>
-                                <button onClick={(e)=>{e.stopPropagation(); setSkipModal(ex.id);}} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center cursor-pointer hover:bg-slate-800 text-slate-500" title="Pular"><Icon name="fastForward" size={16}/></button>
-                            </div>
-                        </div>
+                        ))}
                     </div>
-                )
-            };
-
-            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-bold animate-pulse uppercase italic tracking-widest border-b-2 border-blue-500">CARREGANDO...</div>;
+                </div>
+            );
 
             return (
-                <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
-                    
-                    {/* CABEÇALHO DOURADO (SE CONVOCADO) ✨ */}
-                    <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10" style={{ background: convocacao ? 'linear-gradient(135deg, #854d0e, #020617)' : `linear-gradient(135deg, ${data.color}, #020617)` }}>
-                        {convocacao && <div className="absolute top-0 right-0 p-4 opacity-20 animate-pulse"><Icon name="trophy" size={120}/></div>}
-                        <div className="flex items-start justify-between gap-4 mt-2">
-                            <div className="flex items-center gap-4 flex-1">
-                                <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer shrink-0 ${isHighlight ? 'gold-glow' : ''}`}>
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
-                                        {stats.streak > 2 && <div className="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 shadow-sm border border-orange-500/30"><Icon name="fire" size={10}/> {stats.streak}d</div>}
-                                    </div>
-                                    {convocacao ? (
-                                        <div className="text-[11px] font-black text-yellow-400 uppercase mt-1 tracking-widest animate-bounce">✨ VOCÊ ESTÁ CONVOCADO! 🏆</div>
-                                    ) : (
-                                        <div className="text-[10px] font-black text-blue-400 uppercase mt-1 tracking-widest">{streakTitle}</div>
-                                    )}
-                                </div>
-                            </div>
-                            {!isPriv && <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 transition-colors text-[9px] font-bold uppercase shrink-0"><Icon name="arrowLeft" size={12}/> VOLTAR</button>}
-                        </div>
+                <div className="h-full flex flex-col bg-slate-950">
+                    {/* MENU DE ABAS IGUAL AO SEU PADRÃO */}
+                    <div className="flex bg-slate-900 border-b border-white/5 shrink-0">
+                        <button onClick={()=>setTab('hoje')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest ${tab==='hoje'?'tab-active':'text-slate-500'}`}>Hoje</button>
+                        <button onClick={()=>setTab('micro')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest ${tab==='micro'?'tab-active':'text-slate-500'}`}>Semana</button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-28">
-                        {tab === 'workout' && (
-                            <div className="space-y-4 animate-fade-in">
-                                {data.coachMsg && (
-                                    <div className="bg-blue-900/20 border border-blue-800/50 p-4 rounded-3xl relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase"><Icon name="bell" size={16}/> Logística & Recados</div>
-                                            {agendaAck && <div className="text-[9px] font-bold text-green-400 bg-green-900/30 px-2 py-0.5 rounded border border-green-800">CIENTE</div>}
+                    <div className="flex-1 overflow-y-auto p-6 custom-scroll">
+                        {tab === 'hoje' ? (
+                            <div className="space-y-6 animate-fade-in">
+                                {/* CARD DOURADO ✨ */}
+                                {convocacao && (
+                                    <div className="bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 p-[2px] rounded-3xl gold-glow animate-pulse">
+                                        <div className="bg-slate-950 rounded-[22px] p-4 text-center">
+                                            <span className="text-sm font-black text-white italic uppercase tracking-tighter">✨ VOCÊ ESTÁ CONVOCADO! 🏆</span>
                                         </div>
-                                        <p className="text-sm font-bold text-white mb-3 whitespace-pre-wrap">{data.coachMsg}</p>
-                                        {!agendaAck && <button onClick={ackAgenda} className="w-full bg-blue-600 text-white text-[10px] font-bold py-2.5 rounded-xl shadow">CONFIRMAR LEITURA</button>}
                                     </div>
                                 )}
 
-                                {/* LISTA DE EXERCÍCIOS DO DIA */}
-                                <div className="space-y-3">
-                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Treino Prescrito</h3>
-                                    {getOrderedExs().flat.map(ex => renderExerciseCard(ex, "text-blue-400", "activity", "border-slate-800"))}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full border-2 border-blue-500 overflow-hidden shrink-0 shadow-lg shadow-blue-500/20">
+                                        {data.players[idx]?.image ? <img src={data.players[idx].image} className="w-full h-full object-cover"/> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-white uppercase">{data.players[idx]?.name}</h2>
+                                        <p className="text-xs font-bold text-blue-500 uppercase">{data.players[idx]?.position}</p>
+                                    </div>
+                                </div>
+
+                                {data.coachMsg && (
+                                    <div className="bg-blue-600/10 border-l-4 border-blue-600 p-4 rounded-r-2xl shadow-lg">
+                                        <h4 className="text-[10px] font-black text-blue-400 uppercase mb-2">Recado do Treinador</h4>
+                                        <p className="text-sm text-slate-200 leading-relaxed font-semibold italic">{data.coachMsg}</p>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-slate-800 pb-2">Programação</h3>
+                                    {myWorkouts.length > 0 ? myWorkouts.map((ex, i) => (
+                                        <div key={i} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-4 shadow-sm">
+                                            <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-xl overflow-hidden shrink-0 border border-slate-700">⚽</div>
+                                            <div className="flex-1">
+                                                <div className="text-xs font-black text-white uppercase">{ex.title}</div>
+                                                <div className="text-[9px] font-bold text-slate-500 uppercase">{ex.target}</div>
+                                            </div>
+                                        </div>
+                                    )) : <div className="text-center p-8 bg-slate-900/30 rounded-3xl border border-dashed border-slate-800 text-slate-600 font-bold text-xs uppercase italic">Sem atividades hoje</div>}
+                                </div>
+
+                                <div className="space-y-4 pb-10">
+                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] text-center">Diário de Prontidão</h3>
+                                    {['sleep','stress','fatigue','soreness','mood'].map(m=>(
+                                        <div key={m} className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                                            <div className="flex justify-between mb-3 font-bold text-white text-[10px] uppercase"><span>{m}</span><span className="text-blue-400">{scores[m]}</span></div>
+                                            <input type="range" min="1" max="7" value={scores[m]} onChange={e=>setScores({...scores,[m]:parseInt(e.target.value)})} className="hooper-slider"/>
+                                        </div>
+                                    ))}
+                                    <button onClick={()=>{
+                                        const td = new Date().toISOString().split('T')[0];
+                                        db.collection('coachData').doc(data.id).set({ trainingLog: { [td]: { [idx]: { wellness: scores } } } }, {merge:true})
+                                        .then(()=> {
+                                            alert("ENVIADO COM SUCESSO! ✅\n\n⚠️ INFORMAÇÃO LIBERADA:\nTreino Tático hoje à tarde às 15:30!");
+                                        });
+                                    }} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl uppercase text-xs active:scale-95 transition-transform shadow-blue-500/20">
+                                        Enviar Prontidão
+                                    </button>
                                 </div>
                             </div>
-                        )}
-
-                        {tab === 'micro' && (
-                            <div className="space-y-4 animate-fade-in pb-10 relative">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">Planejamento Semanal</h3>
-                                {safeArray(data.days).map((day, dIdx) => (
-                                    <div key={dIdx} className="card-micro rounded-[32px] p-5 mb-3 relative overflow-hidden">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="text-lg font-black italic">{day.name}</span>
-                                            <span className="text-[9px] font-bold bg-white/10 px-2 py-1 rounded text-slate-400 uppercase">{day.md || 'Treino'}</span>
+                        ) : (
+                            /* ABA MICROCICLO */
+                            <div className="space-y-4 pb-10 animate-fade-in">
+                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4">Agenda da Semana</h3>
+                                {data.days && data.days.length > 0 ? data.days.map((day, dIdx) => (
+                                    <div key={dIdx} className="bg-slate-900/50 p-5 rounded-[32px] border border-white/5 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-lg font-black text-white italic uppercase">{day.name}</span>
+                                            <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-1 rounded-lg uppercase shadow-lg shadow-blue-900/40">{day.md || 'Treino'}</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-slate-950/40 p-3 rounded-2xl border border-white/5">
-                                                <div className="text-[8px] font-black text-blue-500 uppercase mb-1">Manhã ☀️</div>
-                                                <div className="text-[10px] font-bold text-slate-300 uppercase truncate">{(day.am || []).map(e => e.type).join(', ') || 'Folga'}</div>
+                                            <div className="bg-slate-950 p-3 rounded-2xl border border-white/5">
+                                                <div className="text-[8px] font-black text-blue-500 uppercase mb-1 tracking-widest">Manhã ☀️</div>
+                                                <div className="text-[10px] font-bold text-slate-300 uppercase leading-tight truncate">{(day.am || []).map(e=>e.type).join(', ') || 'Folga'}</div>
                                             </div>
-                                            <div className="bg-slate-950/40 p-3 rounded-2xl border border-white/5 relative">
-                                                <div className="text-[8px] font-black text-orange-500 uppercase mb-1">Tarde 🌤️</div>
-                                                {step === 3 ? (
-                                                    <div className="text-[10px] font-bold text-slate-300 uppercase truncate">{(day.pm || []).map(e => e.type).join(', ') || 'Folga'}</div>
+                                            <div className="bg-slate-950 p-3 rounded-2xl border border-white/5 relative overflow-hidden">
+                                                <div className="text-[8px] font-black text-orange-500 uppercase mb-1 tracking-widest">Tarde 🌤️</div>
+                                                {isResponded ? (
+                                                    <div className="text-[10px] font-bold text-slate-300 uppercase leading-tight truncate">{(day.pm || []).map(e=>e.type).join(', ') || 'Folga'}</div>
                                                 ) : (
-                                                    <div className="text-[9px] text-slate-600 italic">Responda o Wellness para liberar</div>
+                                                    <div className="text-[9px] text-slate-600 italic flex items-center gap-1 font-bold"><Icon name="clock" size={10}/> Responda o Wellness</div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                                {step < 3 && <div className="absolute inset-0 lock-overlay flex flex-col items-center justify-center p-10 text-center rounded-[40px] border border-white/10 mt-10 z-10">
-                                    <Icon name="brain" size={48} className="text-blue-500 mb-4 animate-pulse"/>
-                                    <h4 className="font-black text-white uppercase mb-2">Acesso Bloqueado</h4>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">Você precisa enviar o seu relatório de prontidão (Wellness) para liberar os detalhes do microciclo.</p>
-                                </div>}
-                            </div>
-                        )}
-                        
-                        {tab === 'ranking' && (
-                            <div className="space-y-6 animate-fade-in">
-                                <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
-                                    <div className="flex items-center gap-3 mb-6"><div className="bg-yellow-500/20 p-2 rounded-full"><Icon name="trophy" size={20} className="text-yellow-500"/></div><h3 className="font-black text-lg uppercase text-white">Artilharia</h3></div>
-                                    {ranking.artillery.map((player, i) => (
-                                        <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3 mb-3 last:border-0">
-                                            <span className="text-xl font-black w-6 text-slate-700">{i+1}</span>
-                                            <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700">{player.image && <img src={player.image} className="w-full h-full object-cover"/>}</div>
-                                            <div className="flex-1 font-bold text-sm uppercase">{player.name}</div>
-                                            <div className="bg-slate-800 px-3 py-1 rounded-full font-black text-yellow-500 text-xs">{player.goals} Gols</div>
-                                        </div>
-                                    ))}
-                                </div>
+                                )) : (
+                                    <div className="text-center p-20 bg-slate-900/20 rounded-[40px] border border-dashed border-slate-800 text-slate-700 font-bold uppercase text-[10px] tracking-widest">Aguardando agenda...</div>
+                                )}
                             </div>
                         )}
                     </div>
-
-                    {/* MENU INFERIOR TURBINADO 🚀 */}
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1 tracking-widest">Treino</span></div>
-                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='micro'?'text-orange-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1 tracking-widest">Microciclo</span></div>
-                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer hover:text-white"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1 tracking-widest">Diário</span></div>
-                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1 tracking-widest">Ranking</span></div>
-                    </div>
-
-                    {/* MODAL WELLNESS (SE NÃO FEITO) */}
-                    {step === 2 && (
-                        <div className="fixed inset-0 bg-slate-950 z-[200] flex flex-col animate-fade-in overflow-y-auto custom-scroll pb-10">
-                            <div className="bg-slate-800 p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 z-10">
-                                <div>
-                                    <h2 className="text-xl font-black text-white italic uppercase tracking-wider">Relatório de Prontidão</h2>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Obrigatório antes do primeiro treino</p>
-                                </div>
-                            </div>
-                            <div className="p-6 space-y-6">
-                                {[{id:'sleep',l:'😴 Qualidade do Sono'},{id:'stress',l:'🤯 Nível de Estresse'},{id:'fatigue',l:'🔋 Cansaço Geral'},{id:'soreness',l:'🦵 Dor Muscular'},{id:'mood',l:'🧠 Estado de Humor'}].map(m=>(<div key={m.id} className="bg-slate-900/50 p-5 rounded-3xl border border-slate-800"><div className="flex justify-between mb-4 font-bold text-white text-xs uppercase tracking-tighter"><span>{m.l}</span><span className="text-blue-400 bg-blue-400/10 px-3 rounded-lg">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
-                                <div className="bg-slate-900/80 p-5 rounded-3xl border border-red-500/30">
-                                    <h3 className="font-bold text-red-400 text-xs uppercase tracking-widest mb-4 flex gap-2"><Icon name="alert" size={16}/> Notar Alguma Dor?</h3>
-                                    <div className="flex gap-2 mb-4"><select className="flex-1 bg-slate-800 text-white text-xs p-3 rounded-xl border border-slate-700 shadow-sm" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local...</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Quadríceps","Posterior","Joelho","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><button onClick={addP} className="bg-red-600 text-white px-5 rounded-xl font-black shadow-lg shadow-red-900/50">+</button></div>
-                                    <div className="flex flex-wrap gap-2">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-[10px] font-bold px-3 py-1.5 rounded-full border border-red-800">{z} ×</span>)}</div>
-                                </div>
-                                <button onClick={subData} disabled={submitting} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] shadow-2xl shadow-blue-900/50 uppercase tracking-widest active:scale-95 transition-all text-sm mt-4">Enviar e Liberar Programação</button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AthletePortal />);
     </script>
