@@ -14,7 +14,7 @@
         .hooper-slider { -webkit-appearance: none; width: 100%; height: 12px; border-radius: 6px; background: #1e293b; outline: none; }
         .hooper-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #ffffff; cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
-        .tab-active { color: #3b82f6 !important; font-weight: 900; transform: scale(1.1); }
+        .tab-active { color: #3b82f6 !important; font-weight: 900; }
         .card-pro { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; }
         .nutri-card { background: linear-gradient(135deg, #065f46 0%, #064e3b 100%); border-left: 4px solid #10b981; }
         .gold-glow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); border: 2px solid #eab308; }
@@ -28,7 +28,22 @@
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
 
+        const getTodayStr = () => new Date().toISOString().split('T')[0];
         const getQuote = () => ["O suor de hoje é a vitória de amanhã!", "A disciplina vence o talento.", "Foco no processo!", "Sua única competição é você mesmo."][new Date().getDay() % 4];
+
+        // Componente Radar para Perfil
+        const RadarChart = ({ size = 180 }) => {
+            const center = size / 2; const radius = (size / 2) * 0.7;
+            const points = [ { label: 'FOR', val: 82 }, { label: 'VEL', val: 90 }, { label: 'POT', val: 75 }, { label: 'TEC', val: 85 }, { label: 'RES', val: 80 } ];
+            const poly = points.map((p, i) => { const a = (Math.PI * 2 * i) / points.length - Math.PI / 2; return `${center + (radius * (p.val / 100)) * Math.cos(a)},${center + (radius * (p.val / 100)) * Math.sin(a)}`; }).join(' ');
+            return (
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto mt-4">
+                    {[0.5, 1].map(s => <circle key={s} cx={center} cy={center} r={radius * s} fill="none" stroke="#334155" strokeDasharray="4" />)}
+                    <polygon points={poly} fill="rgba(59, 130, 246, 0.4)" stroke="#3b82f6" strokeWidth="2" />
+                    {points.map((p, i) => { const a = (Math.PI * 2 * i) / points.length - Math.PI / 2; return <text key={i} x={center + (radius + 18) * Math.cos(a)} y={center + (radius + 18) * Math.sin(a)} fill="#94a3b8" fontSize="10" textAnchor="middle" fontWeight="black">{p.label}</text> })}
+                </svg>
+            );
+        };
 
         const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, exercises:[], days:[], id:null, coachMsg:'' });
@@ -48,7 +63,7 @@
                         setData({ ...d, id: doc.id });
                         if(pIdx !== null && step === 1) { 
                             setIdx(parseInt(pIdx)); setStep(2); 
-                            const today = new Date().toISOString().split('T')[0];
+                            const today = getTodayStr();
                             setWater(Number(d.trainingLog?.[today]?.[parseInt(pIdx)]?.waterIntake) || 0);
                         }
                     }
@@ -61,24 +76,23 @@
                 return (data.exercises || []).filter(e => e.target?.toLowerCase().includes(name) || e.target?.toLowerCase().includes('geral'));
             }, [data.exercises, idx]);
 
-            const convocado = useMemo(() => {
+            const isConvocado = useMemo(() => {
                 if (idx === null) return false;
                 return (data.exercises || []).some(e => e.target?.toLowerCase().includes('convocado') && e.target?.toLowerCase().includes(data.players[idx].name.toLowerCase()));
             }, [data.exercises, idx]);
 
-            // LÓGICA DE NUTRIÇÃO BASEADA NO TREINO
+            // NUTRIÇÃO INTELIGENTE
             const nutriDica = useMemo(() => {
-                const hasAcademia = myWorkouts.some(ex => ex.title.toLowerCase().includes('academia') || ex.title.toLowerCase().includes('força'));
-                const hasTatico = myWorkouts.some(ex => ex.title.toLowerCase().includes('tático') || ex.title.toLowerCase().includes('jogo'));
-                if (hasTatico) return { t: "DIA DE JOGO / TÁTICO", d: "Foco em Carboidratos (Macarrão, Purê). Beba suco de uva integral para energia rápida." };
-                if (hasAcademia) return { t: "DIA DE FORÇA", d: "Aumente a Proteína (Frango, Ovos). Consuma ômega 3 para reduzir inflamação muscular." };
-                return { t: "RECUPERAÇÃO", d: "Hidratação máxima. Foque em frutas cítricas e repouso total das fibras." };
+                const train = myWorkouts.map(ex => ex.title.toLowerCase()).join(' ');
+                if (train.includes('academia') || train.includes('força')) return { t: "DIA DE FORÇA", d: "Aumente a ingestão de Proteína (Frango, Ovos, Peixe). Consuma magnésio antes de dormir para relaxamento muscular." };
+                if (train.includes('tático') || train.includes('campo')) return { t: "ALTO DESGASTE", d: "Priorize Carboidratos (Arroz, Batata, Massa) 3h antes. Suco de beterraba ajuda na oxigenação." };
+                return { t: "RECUPERAÇÃO", d: "Foque em alimentos anti-inflamatórios (Cúrcuma, Gengibre, Frutas Vermelhas). Hidratação em 3.5L." };
             }, [myWorkouts]);
 
             const handleAddWater = () => {
-                const today = new Date().toISOString().split('T')[0];
+                const today = getTodayStr();
                 const newVal = water + 0.25; setWater(newVal);
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${today}.${idx}.waterIntake`]: newVal });
+                db.collection('coachData').doc(data.id).set({ trainingLog: { [today]: { [idx]: { waterIntake: newVal } } } }, {merge:true});
             };
 
             if(step===1) return (
@@ -87,7 +101,7 @@
                     <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
                         {data.players.map((p, i) => (
                             <div key={i} onClick={()=>{setIdx(i); setStep(2);}} className="flex flex-col items-center gap-2 cursor-pointer active:scale-90">
-                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">
+                                <div className="w-20 h-20 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900 shadow-2xl">
                                     {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="flex h-full items-center justify-center text-2xl">👤</div>}
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase truncate w-full text-center">{p.name}</span>
@@ -100,16 +114,16 @@
             const p = data.players[idx];
             return (
                 <div className="flex flex-col min-h-screen pb-32">
-                    {/* CABEÇALHO */}
+                    {/* TOPO */}
                     <div className="p-6 rounded-b-[40px] shadow-2xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a8a, #020617)' }}>
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shrink-0">
+                                <div className="w-20 h-20 rounded-full border-2 border-white/20 overflow-hidden shrink-0">
                                     {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="p-4 text-center">👤</div>}
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-black text-white uppercase italic leading-tight">{p.name}</h2>
-                                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{p.position || 'ATLETA'}</p>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{p.position || 'ATLETA'}</p>
                                 </div>
                             </div>
                             <button onClick={()=>setStep(1)} className="bg-white/10 px-4 py-2 rounded-full text-[9px] font-black uppercase border border-white/10">Sair</button>
@@ -121,10 +135,10 @@
                         {tab === 'treino' && (
                             <div className="space-y-6 animate-fade-in">
                                 {/* NUTRIÇÃO DINÂMICA */}
-                                <div className="nutri-card p-5 rounded-[24px] space-y-2 shadow-lg">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">🍎 Sugestão Nutricional</h4>
-                                        <span className="text-[8px] bg-white/10 px-2 py-0.5 rounded text-white">{nutriDica.t}</span>
+                                <div className="nutri-card p-5 rounded-[24px] shadow-lg">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">🍎 Dieta Performance</h4>
+                                        <span className="text-[8px] bg-white/10 px-2 py-0.5 rounded text-white font-bold uppercase">{nutriDica.t}</span>
                                     </div>
                                     <p className="text-xs text-emerald-50 leading-relaxed font-bold uppercase italic">{nutriDica.d}</p>
                                 </div>
@@ -135,15 +149,21 @@
                                         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</span>
                                         <span className="text-[10px] font-bold text-slate-300">{water.toFixed(2)}L / 3.0L</span>
                                     </div>
-                                    <div className="w-full h-2 bg-slate-800 rounded-full mb-4 overflow-hidden">
-                                        <div className="h-full bg-blue-500 transition-all duration-500" style={{width: `${Math.min(100, (water/3)*100)}%`}}></div>
-                                    </div>
-                                    <button onClick={handleAddWater} className="w-full bg-blue-600 text-white font-black py-3 rounded-2xl text-xs uppercase">+ BEBI 250ML</button>
+                                    <div className="w-full h-1.5 bg-slate-800 rounded-full mb-4 overflow-hidden"><div className="h-full bg-blue-500 transition-all duration-500" style={{width: `${Math.min(100, (water/3)*100)}%`}}></div></div>
+                                    <button onClick={handleAddWater} className="w-full bg-blue-600 text-white font-black py-3 rounded-2xl text-xs uppercase shadow-lg shadow-blue-900/40 active:scale-95 transition-transform">+ BEBI 250ML</button>
                                 </div>
 
-                                {/* QUESTIONÁRIO COM ÍCONES */}
+                                {/* AVISO DO PROFESSOR */}
+                                {data.coachMsg && (
+                                    <div className="card-pro p-5 border-l-4 border-orange-500">
+                                        <h4 className="text-[10px] font-black text-orange-400 uppercase mb-2">📢 Recado da Comissão</h4>
+                                        <p className="text-sm text-slate-200 font-semibold italic">{data.coachMsg}</p>
+                                    </div>
+                                )}
+
+                                {/* WELLNESS COM ÍCONES */}
                                 <div className="space-y-5">
-                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Prontidão Diária</h3>
+                                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Status Fisiológico</h3>
                                     {[
                                         {id:'sleep',l:'Sono', ic:'😴'},
                                         {id:'stress',l:'Estresse', ic:'🤯'},
@@ -152,44 +172,44 @@
                                         {id:'mood',l:'Humor', ic:'🧠'}
                                     ].map(m=>(
                                         <div key={m.id} className="card-pro p-4">
-                                            <div className="flex justify-between mb-3 font-bold text-white text-[10px] uppercase">
-                                                <span>{m.ic} {m.l}</span>
+                                            <div className="flex justify-between mb-3 font-bold text-white text-[10px] uppercase tracking-tighter">
+                                                <span className="flex items-center gap-2">{m.ic} {m.l}</span>
                                                 <span className="text-blue-400 bg-blue-400/10 px-2 rounded-lg">{scores[m.id]}</span>
                                             </div>
                                             <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/>
                                         </div>
                                     ))}
                                     
-                                    {/* REGISTRO DE DOR LOCALIZADA */}
+                                    {/* DOR LOCALIZADA */}
                                     <div className="card-pro p-5 border-red-500/30">
-                                        <h3 className="text-red-400 text-[10px] font-black uppercase mb-3 tracking-widest">⚠️ Registro de Dores</h3>
+                                        <h3 className="text-red-400 text-[10px] font-black uppercase mb-3 tracking-widest">⚠️ Mapeamento de Dor</h3>
                                         <div className="flex gap-2 mb-3">
-                                            <select className="flex-1 bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-700" onChange={e=>setTp(e.target.value)} value={tp}>
-                                                <option value="">Local...</option>
-                                                {["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Coxa","Joelho","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}
+                                            <select className="flex-1 bg-slate-900 text-white text-[10px] p-3 rounded-xl border border-slate-700 outline-none" onChange={e=>setTp(e.target.value)} value={tp}>
+                                                <option value="">Localização...</option>
+                                                {["Tornozelo","Joelho","Coxa (Post)","Coxa (Ant)","Adutor","Quadril","Lombar","Pânturrilha","Pé"].map(x=><option key={x}>{x}</option>)}
                                             </select>
-                                            <select className="w-20 bg-slate-900 text-white text-xs p-3 rounded-xl border border-slate-700" onChange={e=>setTs(e.target.value)} value={ts}>
+                                            <select className="w-20 bg-slate-900 text-white text-[10px] p-3 rounded-xl border border-slate-700 outline-none" onChange={e=>setTs(e.target.value)} value={ts}>
                                                 <option value="">Lado</option><option>(Dir)</option><option>(Esq)</option>
                                             </select>
                                             <button onClick={()=>{if(tp){setPain([...pain,`${tp} ${ts}`]); setTp(''); setTs('');}}} className="bg-red-600 text-white px-4 rounded-xl font-black">+</button>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/40 text-red-300 text-[9px] font-bold px-2 py-1 rounded border border-red-800">{z} ×</span>)}</div>
+                                        <div className="flex flex-wrap gap-2">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/40 text-red-200 text-[9px] font-bold px-2 py-1.5 rounded border border-red-800">{z} ×</span>)}</div>
                                     </div>
 
-                                    <button onClick={handleSendWellness} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] shadow-2xl uppercase text-xs">Enviar Prontidão</button>
+                                    <button onClick={()=>{const today=getTodayStr(); db.collection('coachData').doc(data.id).set({trainingLog:{[today]:{[idx]:{wellness:scores,painZones:pain}}}},{merge:true}).then(()=>alert("PRONTIDÃO SALVA!"));}} className="w-full bg-blue-600 text-white font-black py-5 rounded-[28px] shadow-2xl uppercase tracking-widest text-sm">Enviar Prontidão</button>
                                 </div>
                             </div>
                         )}
 
                         {tab === 'micro' && (
                             <div className="space-y-4 animate-fade-in">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Calendário Semanal</h3>
+                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 text-center">Calendário da Semana</h3>
                                 {data.days?.map((day, di) => (
-                                    <div key={di} className="card-pro p-5 space-y-4">
-                                        <div className="flex justify-between items-center"><span className="text-lg font-black italic uppercase text-white">{day.name}</span><span className="text-[9px] font-bold bg-blue-600 px-2 py-1 rounded text-white">{day.md || 'Treino'}</span></div>
-                                        <div className="grid grid-cols-2 gap-3 text-[10px] font-bold uppercase">
-                                            <div className="bg-slate-950 p-3 rounded-xl"><div className="text-blue-500 mb-1">Manhã</div>{(day.am || []).map(e=>e.type).join(', ') || 'Folga'}</div>
-                                            <div className="bg-slate-950 p-3 rounded-xl"><div className="text-orange-500 mb-1">Tarde</div>{(day.pm || []).map(e=>e.type).join(', ') || 'Folga'}</div>
+                                    <div key={di} className="card-pro p-5 space-y-4 border border-white/5">
+                                        <div className="flex justify-between items-center"><span className="text-lg font-black italic uppercase text-white leading-none">{day.name}</span><span className="text-[9px] font-bold bg-blue-600 px-2 py-1 rounded text-white uppercase">{day.md || 'Treino'}</span></div>
+                                        <div className="grid grid-cols-2 gap-3 text-[10px] font-black uppercase">
+                                            <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-blue-500 mb-1 tracking-widest">Manhã ☀️</div>{(day.am || []).map(e=>e.type).join(', ') || 'Folga'}</div>
+                                            <div className="bg-slate-950 p-3 rounded-xl border border-white/5"><div className="text-orange-500 mb-1 tracking-widest">Tarde 🌤️</div>{(day.pm || []).map(e=>e.type).join(', ') || 'Folga'}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -197,17 +217,17 @@
                         )}
 
                         {tab === 'convoca' && (
-                            <div className="animate-fade-in text-center py-10 space-y-6">
-                                {convocado ? (
+                            <div className="animate-fade-in text-center py-10 space-y-8">
+                                {isConvocado ? (
                                     <div className="bg-yellow-500/10 border-2 border-yellow-500/50 p-10 rounded-[40px] gold-glow animate-bounce">
-                                        <div className="text-7xl mb-4">🏆</div>
-                                        <h2 className="text-3xl font-black text-white uppercase italic">CONVOCADO!</h2>
-                                        <p className="text-xs text-yellow-500 font-black uppercase tracking-widest mt-4">Sua vaga está garantida para o próximo compromisso.</p>
+                                        <div className="text-8xl mb-6">🏆</div>
+                                        <h2 className="text-4xl font-black text-white uppercase italic">CONVOCADO!</h2>
+                                        <p className="text-xs text-yellow-500 font-black uppercase tracking-[0.3em] mt-4">Você está na lista oficial para o jogo.</p>
                                     </div>
                                 ) : (
-                                    <div className="card-pro p-12 opacity-30 grayscale">
-                                        <div className="text-6xl mb-4">📋</div>
-                                        <p className="text-sm font-bold uppercase tracking-widest">Aguardando Lista Oficial...</p>
+                                    <div className="card-pro p-16 opacity-30 grayscale border-dashed border-2">
+                                        <div className="text-7xl mb-6">📋</div>
+                                        <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">Aguardando Convocação...</p>
                                     </div>
                                 )}
                             </div>
@@ -215,39 +235,38 @@
 
                         {tab === 'rank' && (
                             <div className="space-y-4 animate-fade-in">
-                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Artilharia</h3>
-                                {data.players.sort((a,b)=> (b.stats?.g||0) - (a.stats?.g||0)).map((pl, ri) => (
-                                    <div key={ri} className="card-pro p-4 flex justify-between items-center">
-                                        <div className="flex items-center gap-3"><span className="text-lg font-black text-slate-700">#{ri+1}</span><span className="text-xs font-bold uppercase">{pl.name}</span></div>
-                                        <div className="bg-yellow-500 text-slate-950 px-3 py-1 rounded-full font-black text-[10px]">{pl.stats?.g || 0} GOLS</div>
+                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Artilharia da Temporada</h3>
+                                {data.players.sort((a,b)=> (Number(b.stats?.g)||0) - (Number(a.stats?.g)||0)).map((pl, ri) => (
+                                    <div key={ri} className="card-pro p-4 flex justify-between items-center border border-white/5">
+                                        <div className="flex items-center gap-3"><span className="text-xl font-black text-slate-800">#{ri+1}</span><span className="text-xs font-bold uppercase">{pl.name}</span></div>
+                                        <div className="bg-yellow-500 text-slate-950 px-4 py-1.5 rounded-full font-black text-[10px] shadow-lg shadow-yellow-500/20">{pl.stats?.g || 0} GOLS</div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {tab === 'perfil' && (
-                            <div className="animate-fade-in text-center space-y-6">
-                                <div className="card-pro p-8">
-                                    <div className="w-32 h-32 rounded-full border-4 border-blue-500 overflow-hidden mx-auto mb-4">
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <div className="p-8 text-4xl">👤</div>}
-                                    </div>
-                                    <h2 className="text-2xl font-black uppercase italic">{p.name}</h2>
-                                    <div className="grid grid-cols-2 gap-3 mt-6">
-                                        <div className="bg-slate-950 p-4 rounded-2xl"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Geral</div><div className="text-2xl font-black text-white">88</div></div>
-                                        <div className="bg-slate-950 p-4 rounded-2xl"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Potencial</div><div className="text-2xl font-black text-blue-400">94</div></div>
+                            <div className="animate-fade-in space-y-6">
+                                <div className="card-pro p-8 text-center border border-blue-500/20">
+                                    <RadarChart />
+                                    <h2 className="text-3xl font-black mt-8 uppercase italic leading-none">{p.name}</h2>
+                                    <p className="text-[10px] text-blue-500 font-black uppercase tracking-[0.3em] mt-2">FIFA Performance Card</p>
+                                    <div className="grid grid-cols-2 gap-4 mt-10">
+                                        <div className="bg-slate-950 p-5 rounded-3xl border border-white/5 shadow-inner"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Nota Geral</div><div className="text-3xl font-black text-green-400">88</div></div>
+                                        <div className="bg-slate-950 p-5 rounded-3xl border border-white/5 shadow-inner"><div className="text-[9px] text-slate-500 font-black mb-1 uppercase tracking-widest">Potencial</div><div className="text-3xl font-black text-blue-500">94</div></div>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* MENU INFERIOR FIXO DE 5 ABAS ✨ */}
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 p-4 flex justify-around items-center z-[100] rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-                         <div onClick={()=>setTab('treino')} className={`flex flex-col items-center gap-1 cursor-pointer ${tab==='treino'?'tab-active':'text-slate-600'}`}><span className="text-xl">⚽</span><span className="text-[8px] font-black uppercase">Treino</span></div>
-                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center gap-1 cursor-pointer ${tab==='micro'?'tab-active':'text-slate-600'}`}><span className="text-xl">📅</span><span className="text-[8px] font-black uppercase">Micro</span></div>
-                         <div onClick={()=>setTab('convoca')} className={`flex flex-col items-center gap-1 cursor-pointer ${tab==='convoca'?'text-yellow-500 font-black scale-110':'text-slate-600'}`}><span className="text-xl">🏆</span><span className="text-[8px] font-black uppercase">Convocar</span></div>
-                         <div onClick={()=>setTab('rank')} className={`flex flex-col items-center gap-1 cursor-pointer ${tab==='rank'?'tab-active':'text-slate-600'}`}><span className="text-xl">📊</span><span className="text-[8px] font-black uppercase">Rank</span></div>
-                         <div onClick={()=>setTab('perfil')} className={`flex flex-col items-center gap-1 cursor-pointer ${tab==='perfil'?'tab-active':'text-slate-600'}`}><span className="text-xl">👤</span><span className="text-[8px] font-black uppercase">Perfil</span></div>
+                    {/* MENU INFERIOR DE 5 ABAS ✨ */}
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 p-4 flex justify-around items-center z-[110] rounded-t-[40px] shadow-[0_-15px_40px_rgba(0,0,0,0.7)]">
+                         <div onClick={()=>setTab('treino')} className={`flex flex-col items-center gap-1 transition-all ${tab==='treino'?'tab-active':'text-slate-600'}`}><span className="text-2xl">⚽</span><span className="text-[7px] font-black uppercase">Treino</span></div>
+                         <div onClick={()=>setTab('micro')} className={`flex flex-col items-center gap-1 transition-all ${tab==='micro'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📅</span><span className="text-[7px] font-black uppercase">Micro</span></div>
+                         <div onClick={()=>setTab('convoca')} className={`flex flex-col items-center gap-1 transition-all ${tab==='convoca'?'text-yellow-500 scale-125':'text-slate-600'}`}><span className="text-2xl">🏆</span><span className="text-[7px] font-black uppercase">Convocar</span></div>
+                         <div onClick={()=>setTab('rank')} className={`flex flex-col items-center gap-1 transition-all ${tab==='rank'?'tab-active':'text-slate-600'}`}><span className="text-2xl">📊</span><span className="text-[7px] font-black uppercase">Rank</span></div>
+                         <div onClick={()=>setTab('perfil')} className={`flex flex-col items-center gap-1 transition-all ${tab==='perfil'?'tab-active':'text-slate-600'}`}><span className="text-2xl">👤</span><span className="text-[7px] font-black uppercase">Perfil</span></div>
                     </div>
                 </div>
             );
