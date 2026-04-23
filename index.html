@@ -580,20 +580,27 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                 setMode('dashboard');
             };
 
-            const toggleConvocacao = async (pIdx) => {
+           const toggleConvocacao = async (pIdx) => {
                 try {
-                    const newData = { ...initialData };
-                    if (!newData.players[pIdx]) return;
+                    // Criamos uma cópia da lista de atletas atual
+                    const newPlayers = [...players];
                     
-                    // Inverte o status de convocação
-                    newData.players[pIdx].convocado = !newData.players[pIdx].convocado;
+                    if (!newPlayers[pIdx]) return;
                     
+                    // Inverte o status: se era true vira false, se era false vira true
+                    newPlayers[pIdx].convocado = !newPlayers[pIdx].convocado;
+                    
+                    // Atualiza o Firebase usando o ID do usuário logado
                     await db.collection('coachData').doc(user.uid).update({
-                        players: newData.players
+                        players: newPlayers
                     });
                     
-                    showToast(newData.players[pIdx].convocado ? "Atleta Convocado! 🏆" : "Convocação Removida!");
+                    // Atualiza a lista na tela do treinador na hora
+                    setPlayers(newPlayers);
+                    
+                    showToast(newPlayers[pIdx].convocado ? "Atleta Convocado! 🏆" : "Convocação Removida!");
                 } catch (error) {
+                    console.error(error);
                     showToast("Erro ao atualizar convocação", "#ef4444");
                 }
             };
