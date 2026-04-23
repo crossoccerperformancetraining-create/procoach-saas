@@ -580,9 +580,9 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                 setMode('dashboard');
             };
 
-           const toggleConvocacao = async (pIdx) => {
+         const toggleConvocacao = async (pIdx) => {
                 try {
-                    // Criamos uma cópia da lista de atletas atual
+                    // Usamos a lista 'players' que já existe no seu código
                     const newPlayers = [...players];
                     
                     if (!newPlayers[pIdx]) return;
@@ -590,12 +590,12 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                     // Inverte o status: se era true vira false, se era false vira true
                     newPlayers[pIdx].convocado = !newPlayers[pIdx].convocado;
                     
-                    // Atualiza o Firebase usando o ID do usuário logado
+                    // Atualiza o Firebase usando o ID do usuário (user.uid)
                     await db.collection('coachData').doc(user.uid).update({
                         players: newPlayers
                     });
                     
-                    // Atualiza a lista na tela do treinador na hora
+                    // Atualiza a tela (Estado do React) para o troféu mudar de cor na hora
                     setPlayers(newPlayers);
                     
                     showToast(newPlayers[pIdx].convocado ? "Atleta Convocado! 🏆" : "Convocação Removida!");
