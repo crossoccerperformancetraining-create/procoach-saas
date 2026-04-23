@@ -34,22 +34,43 @@
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
         const safeArray = (arr) => (Array.isArray(arr)) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
+        const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
+
+        const smartShare = async (blob, filename, title) => {
+            const file = new File([blob], filename, { type: blob.type });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: title }); return; } catch (err) {} }
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        };
 
         const Icon = ({ name, size=24, className="", onClick }) => {
             const p = { 
-                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>', ball: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
+                user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', check: '<polyline points="20 6 9 17 4 12"/>', x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>', alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>', activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', play: '<polygon points="5 3 19 12 5 21 5 3"/>', clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', trophy: '<path d="M8 21h8m-4-9v9"/><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M7 2v16"/><path d="M17 2v16"/>', refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 0 20.49 15"/>', calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>', bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>', share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>'
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill={name==='play'||name==='trophy'?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} onClick={onClick} dangerouslySetInnerHTML={{__html: p[name] || ''}} />;
         };
 
+        const RadarChart = ({ stats, size = 150 }) => {
+            const center = size / 2; const radius = (size / 2) * 0.7;
+            const points = [ { label: 'FOR', val: stats.force || 50 }, { label: 'VEL', val: stats.speed || 50 }, { label: 'POT', val: stats.power || 50 }, { label: 'PRE', val: stats.prev || 50 }, { label: 'TEC', val: stats.tech || 50 }, { label: 'RES', val: stats.endurance || 50 } ];
+            const polygonPoints = points.map((p, i) => { const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2; const x = center + (radius * (p.val / 100)) * Math.cos(angle); const y = center + (radius * (p.val / 100)) * Math.sin(angle); return `${x},${y}`; }).join(' ');
+            return (
+                <div className="flex flex-col items-center">
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+                        {[0.25, 0.5, 0.75, 1].map(scale => ( <circle key={scale} cx={center} cy={center} r={radius * scale} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="2,2" /> ))}
+                        <polygon points={polygonPoints} fill="rgba(59, 130, 246, 0.4)" stroke="#3b82f6" strokeWidth="2" />
+                        {points.map((p, i) => { const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2; const tx = center + (radius + 15) * Math.cos(angle); const ty = center + (radius + 15) * Math.sin(angle); return <text key={i} x={tx} y={ty} textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold" className="uppercase">{p.label}</text> })}
+                    </svg>
+                </div>
+            );
+        };
+
         const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, exercises:[], color:'#1e3a8a', id:null, coachMsg:'', days: [] });
+            const [data, setData] = useState({ players:[], log:{}, exercises:[], themeColor:'#1e3a8a', id:null, coachMsg:'', days: [], assessments:{}, matchMinutes:{} });
             const [idx, setIdx] = useState(null);
             const [step, setStep] = useState(1);
             const [tab, setTab] = useState('workout');
             const [loading, setLoading] = useState(true);
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1});
-            const [pain, setPain] = useState([]);
             const [submitting, setSubmitting] = useState(false);
             const [water, setWater] = useState(0);
 
@@ -62,18 +83,11 @@
                 const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        setData({ ...d, id: doc.id, players: d.players || [], log: d.trainingLog || {}, days: d.days || [], exercises: d.exercises || [] });
-                        
+                        setData({ ...d, id: doc.id });
                         if(pIdx !== null && d.players?.[parseInt(pIdx)]) {
-                            const pI = parseInt(pIdx);
-                            setIdx(pI);
-                            // Se já preencheu wellness hoje, vai para o painel principal (step 3)
-                            if(d.trainingLog?.[getTodayStr()]?.[pI]?.wellness?.sleep) {
-                                setStep(3);
-                            } else {
-                                setStep(2);
-                            }
-                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[pI]?.waterIntake) || 0);
+                            setIdx(parseInt(pIdx));
+                            if(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.wellness?.sleep) setStep(3); else setStep(2);
+                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.waterIntake) || 0);
                         }
                     }
                     setLoading(false);
@@ -81,49 +95,31 @@
                 return () => unsubscribe();
             }, []);
 
+            const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500' }; };
+            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p }; }); };
+            const getPlayerSkills = (pIdx) => { const pAss = (data.assessments && data.assessments[pIdx] && data.assessments[pIdx][0]) ? data.assessments[pIdx][0] : {}; return { force: Math.min(99, (Number(pAss.squat_rm)||50)), speed: Math.max(30, 100 - ((Number(pAss.speed30)||4.5) * 10)), power: Number(pAss.sj)||50, prev: Math.min(99, (Number(pAss.fms_total)||10)*4.7), tech: 75, endurance: 70 }; };
+
             const subData = async () => {
-                if(submitting) return;
                 setSubmitting(true);
                 try {
                     const td = getTodayStr();
-                    const nl = { ...data.log };
-                    if(!nl[td]) nl[td] = {};
-                    if(!nl[td][idx]) nl[td][idx] = {};
-                    
-                    nl[td][idx] = { ...nl[td][idx], wellness: scores, painZones: pain };
-                    
+                    const nl = { ...data.log }; if(!nl[td]) nl[td] = {}; if(!nl[td][idx]) nl[td][idx] = {};
+                    nl[td][idx] = { ...nl[td][idx], wellness: scores };
                     await db.collection('coachData').doc(data.id).update({ trainingLog: nl });
                     setStep(3);
-                    showToast("Prontidão enviada!");
-                } catch (e) {
-                    console.error(e);
-                    alert("Erro ao enviar. Tente novamente.");
-                } finally {
-                    setSubmitting(false);
-                }
+                } catch (e) { alert("Erro ao enviar."); } finally { setSubmitting(false); }
             };
 
-            const handleAddWater = async () => {
-                const td = getTodayStr();
-                const newWater = water + 0.25;
-                setWater(newWater);
-                const path = `trainingLog.${td}.${idx}.waterIntake`;
-                await db.collection('coachData').doc(data.id).update({ [path]: newWater });
-                showToast("+250ml 💧", "💧");
-            };
+            const shareToInsta = async () => { const el = document.getElementById('share-card'); if(!el) return; showToast("A gerar o seu Card...", "📸"); try { el.style.display = 'flex'; const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#0f172a' }); el.style.display = 'none'; canvas.toBlob(blob => { smartShare(blob, 'meutreino.png', 'Treino Concluído'); }); } catch(e) { el.style.display = 'none'; } };
 
-            if(loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-black italic">PROCOACH...</div>;
-
-            // STEP 1: SELEÇÃO DE ATLETA
+            if(loading) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Sincronizando...</div>;
             if(step === 1) return (
                 <div className="p-6 h-screen flex flex-col items-center justify-center bg-slate-950 overflow-y-auto">
                     <h1 className="text-3xl font-black italic mb-8" style={{color:data.themeColor}}><span className="text-white">PRO</span>COACH</h1>
                     <div className="grid grid-cols-3 gap-6 w-full max-w-md">
                         {data.players.map((p, i) => (
                             <div key={i} onClick={() => { setIdx(i); setStep(2); }} className="flex flex-col items-center gap-2 cursor-pointer">
-                                <div className="w-16 h-16 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" className="m-4 text-slate-700"/>}
-                                </div>
+                                <div className="w-16 h-16 rounded-full border-2 border-slate-800 overflow-hidden bg-slate-900">{p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" className="m-4 text-slate-700"/>}</div>
                                 <span className="text-[10px] font-bold uppercase truncate w-full text-center">{p.name?.split(' ')[0]}</span>
                             </div>
                         ))}
@@ -131,118 +127,80 @@
                 </div>
             );
 
-            // STEP 2: FORMULÁRIO WELLNESS
             if(step === 2) return (
-                <div className="h-full flex flex-col bg-slate-900 animate-fade-in">
-                    <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-                        <h2 className="text-lg font-black uppercase italic text-white">Prontidão</h2>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">{getGreeting()}</span>
-                    </div>
+                <div className="h-full flex flex-col bg-slate-900">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center"><h2 className="text-lg font-black uppercase text-white italic">Prontidão</h2></div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {[{id:'sleep',l:'😴 Sono'},{id:'stress',l:'🤯 Estresse'},{id:'fatigue',l:'🔋 Energia'},{id:'soreness',l:'🦵 Dor'},{id:'mood',l:'🧠 Humor'}].map(m=>(
                             <div key={m.id} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
-                                <div className="flex justify-between mb-2 font-bold text-xs uppercase tracking-widest text-slate-400"><span>{m.l}</span><span className="text-white bg-slate-900 px-2 rounded">{scores[m.id]}</span></div>
+                                <div className="flex justify-between mb-2 font-bold text-xs text-slate-400"><span>{m.l}</span><span className="text-white bg-slate-900 px-2 rounded">{scores[m.id]}</span></div>
                                 <input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/>
                             </div>
                         ))}
                     </div>
-                    <div className="p-4 bg-slate-900 border-t border-slate-800">
-                        <button onClick={subData} disabled={submitting} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl">{submitting ? 'Salvando...' : 'ENVIAR PARA O PROFESSOR'}</button>
-                    </div>
+                    <div className="p-4"><button onClick={subData} disabled={submitting} className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl">{submitting ? 'Salvando...' : 'ENVIAR PRONTIDÃO'}</button></div>
                 </div>
             );
 
-            // STEP 3: DASHBOARD PRINCIPAL
             const p = data.players[idx];
             return (
-                <div className="flex-1 flex flex-col h-full bg-slate-950">
-                    {/* TOPO PERFIL */}
+                <div className="flex-1 flex flex-col h-full bg-slate-950 relative">
                     <div className="p-6 rounded-b-[40px] bg-slate-900 border-b border-slate-800">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full border-2 border-blue-500 overflow-hidden bg-slate-800">
-                                {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" className="m-4 text-slate-700"/>}
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-black uppercase text-white">{p.name}</h1>
+                            <div className="w-16 h-16 rounded-full border-2 border-blue-500 overflow-hidden bg-slate-800">{p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" className="m-4 text-slate-700"/>}</div>
+                            <div className="flex-1">
+                                <h1 className="text-xl font-black uppercase text-white truncate">{p.name}</h1>
                                 <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded uppercase">{p.position || 'Atleta'}</span>
                                     {p.highlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> CONVOCADO</span>}
                                 </div>
                             </div>
+                            <button onClick={shareToInsta} className="bg-slate-800 p-2.5 rounded-full text-slate-400"><Icon name="share" size={20}/></button>
                         </div>
                     </div>
 
-                    {/* CONTEÚDO DAS ABAS */}
                     <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24 custom-scroll">
-                        
-                        {/* ABA TREINO */}
                         {tab === 'workout' && (
                             <div className="animate-fade-in space-y-4">
-                                <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3 shadow-inner">
-                                    <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</h3><span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{water.toFixed(2)}L / 3.0L</span></div>
+                                {data.coachMsg && <div className="bg-blue-600 p-4 rounded-3xl text-white shadow-lg border border-blue-400"><p className="text-sm font-bold italic">"{data.coachMsg}"</p></div>}
+                                <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3">
+                                    <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</h3><span className="text-[10px] font-bold text-blue-300">{water.toFixed(2)}L</span></div>
                                     <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${Math.min(100, (water/3)*100)}%`}}></div></div>
-                                    <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs active:scale-95 transition-transform">+ BEBI 250ML</button>
+                                    <button onClick={async() => { const td=getTodayStr(); const nw=water+0.25; setWater(nw); await db.collection('coachData').doc(data.id).update({[`trainingLog.${td}.${idx}.waterIntake`]:nw}); showToast("+250ml"); }} className="w-full bg-blue-600 text-white font-black py-3 rounded-2xl text-xs active:scale-95 transition-transform">+ BEBI 250ML</button>
                                 </div>
-
                                 {safeArray(data.exercises).map((ex, i) => (
                                     <div key={i} className="bg-slate-900/50 border border-slate-800 p-4 rounded-[32px] flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-slate-800 rounded-2xl overflow-hidden shrink-0">
-                                            {ex.gifUrl && <img src={ex.gifUrl} className="w-full h-full object-cover"/>}
-                                        </div>
-                                        <div>
-                                            <div className="text-[10px] font-black text-blue-500 uppercase">{ex.target}</div>
-                                            <div className="text-white font-bold uppercase text-sm">{ex.title}</div>
-                                            <div className="text-[10px] text-slate-400 font-bold mt-1">{ex.sets} séries x {ex.reps}</div>
-                                        </div>
+                                        <div className="w-16 h-16 bg-slate-800 rounded-2xl overflow-hidden shrink-0">{ex.gifUrl && <img src={ex.gifUrl} className="w-full h-full object-cover"/>}</div>
+                                        <div><div className="text-[10px] font-black text-blue-500 uppercase">{ex.target}</div><div className="text-white font-bold uppercase text-sm">{ex.title}</div><div className="text-[10px] text-slate-400 font-bold mt-1">{ex.sets} séries x {ex.reps}</div></div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        {/* ABA AGENDA (CONVOCAÇÃO E LOGÍSTICA) */}
                         {tab === 'agenda' && (
                             <div className="animate-fade-in space-y-6">
                                 {p.highlight ? (
                                     <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase">Relacionado</div>
-                                        
-                                        <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2">
-                                            <Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL
-                                        </h3>
-
+                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase shadow-md">Relacionado</div>
+                                        <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL</h3>
                                         <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30 mb-4">
-                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">
-                                                {p.number || "!"}
-                                            </div>
-                                            <div>
-                                                <div className="text-[14px] font-black text-white uppercase tracking-tight italic">VOCÊ VAI PRO JOGO!</div>
-                                                <div className="text-[10px] font-bold text-blue-400 uppercase mt-0.5 leading-tight">Prepare seu equipamento e foque no objetivo.</div>
-                                            </div>
+                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{p.number || "!"}</div>
+                                            <div><div className="text-[14px] font-black text-white uppercase tracking-tight italic">VOCÊ VAI PRO JOGO!</div><div className="text-[10px] font-bold text-blue-400 uppercase mt-0.5 leading-tight">Prepare seu equipamento e foque no objetivo.</div></div>
                                         </div>
-
                                         <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
                                             <span className="text-[8px] font-black text-blue-500 uppercase block mb-2 tracking-[0.2em]">Logística Operacional</span>
-                                            <div className="text-white text-xs font-medium leading-relaxed whitespace-pre-line">
-                                                {data.coachMsg || "Aguardando informações da comissão técnica."}
-                                            </div>
+                                            <div className="text-white text-xs font-medium leading-relaxed whitespace-pre-line">{data.coachMsg || "Aguardando informações da comissão técnica."}</div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[32px] text-center">
-                                        <Icon name="clock" size={32} className="mx-auto text-slate-700 mb-2"/>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Aguardando lista de relacionados...</p>
-                                    </div>
+                                    <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[32px] text-center"><Icon name="clock" size={32} className="mx-auto text-slate-700 mb-2"/><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Aguardando lista de relacionados...</p></div>
                                 )}
-
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px]">
                                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="calendar" size={16} className="text-emerald-500"/> Programação Semanal</h3>
                                     <div className="space-y-2.5">
                                         {safeArray(data.days).map((day, i) => (
                                             <div key={i} className="flex items-center justify-between bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black text-slate-500 uppercase">{day.name}</span>
-                                                    <span className="text-[11px] font-black text-white uppercase">{day.md}</span>
-                                                </div>
+                                                <div className="flex flex-col"><span className="text-[8px] font-black text-slate-500 uppercase">{day.name}</span><span className="text-[11px] font-black text-white uppercase">{day.md}</span></div>
                                                 <div className="flex flex-col gap-1 items-end">
                                                     {safeArray(day.am).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-blue-600'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase`}>{ev.type}</span>)}
                                                     {safeArray(day.pm).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-slate-700'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase`}>{ev.type}</span>)}
@@ -253,13 +211,68 @@
                                 </div>
                             </div>
                         )}
+
+                        {tab === 'stats' && (
+                            <div className="animate-fade-in space-y-6 pb-20">
+                                <h2 className="text-2xl font-black text-white uppercase text-center mt-4">Meus Números</h2>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-slate-900 border border-slate-700 p-4 rounded-3xl flex flex-col items-center">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Mins Totais</span>
+                                        <span className="text-2xl font-black text-blue-400">{Object.values(data.matchMinutes).reduce((acc, curr) => acc + (Number(curr[idx]) || 0), 0)}</span>
+                                    </div>
+                                    <div className="bg-slate-900 border border-slate-700 p-4 rounded-3xl flex flex-col items-center">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Treinos Realizados</span>
+                                        <span className="text-2xl font-black text-green-500">{Object.values(data.log).filter(l => l[idx]?.wellness?.sleep).length}</span>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] space-y-2">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Últimos 7 dias</h3>
+                                    {getHistory().map((h, i) => (
+                                        <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex justify-between items-center shadow-inner">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase w-12">{formatDateBR(h.date)}</span>
+                                            <div className="flex-1 mx-3 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={`h-full ${h.bat<40?'bg-red-500':h.bat<75?'bg-yellow-500':'bg-green-500'}`} style={{width: `${h.bat}%`}}></div></div>
+                                            <span className={`text-[10px] font-black w-8 text-right ${h.bat<40?'text-red-500':h.bat<75?'text-yellow-500':'text-green-500'}`}>{h.hasW ? h.bat+'%' : '-'}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {tab === 'profile' && (
+                            <div className="animate-fade-in flex flex-col items-center pb-20">
+                                <div className="w-full bg-slate-900 rounded-[40px] p-6 border border-slate-800 mt-4">
+                                    <h3 className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-8">Radar de Performance FIFA</h3>
+                                    <RadarChart stats={getPlayerSkills(idx)} />
+                                    <div className="grid grid-cols-2 gap-4 mt-10">
+                                        <div className="bg-slate-950 p-4 rounded-[24px] border border-slate-800 text-center"><div className="text-[9px] font-bold text-slate-600 uppercase mb-1">Nota Geral</div><div className="text-3xl font-black text-green-400">84</div></div>
+                                        <div className="bg-slate-950 p-4 rounded-[24px] border border-slate-800 text-center"><div className="text-[9px] font-bold text-slate-600 uppercase mb-1">FMS Recente</div><div className="text-3xl font-black text-blue-400">{(data.assessments[idx]?.[0]?.fms_total) || '-'}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* MENU INFERIOR */}
                     <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
                          <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
-                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
+                         <div onClick={()=>setTab('stats')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='stats'?'text-blue-500':'text-slate-500'}`}><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
+                         <div onClick={()=>setTab('profile')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='profile'?'text-blue-500':'text-slate-500'}`}><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
+                    </div>
+
+                    {/* CARD OCULTO PARA COMPARTILHAMENTO */}
+                    <div id="share-card" className="fixed z-[-1]" style={{left: '-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
+                        <div className="p-8 border-4 border-slate-800 rounded-[40px] flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
+                            <div className="absolute top-0 left-0 w-full h-40 opacity-40" style={{background: `linear-gradient(to bottom, ${data.themeColor}, transparent)`}}></div>
+                            <div className="w-32 h-32 rounded-full border-4 overflow-hidden bg-slate-800 shadow-2xl mb-4 z-10 relative" style={{borderColor: data.themeColor}}>
+                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={60} className="m-10 text-white/20"/>}
+                            </div>
+                            <h2 className="text-3xl font-black uppercase text-white mb-1 z-10 text-center">{p.name}</h2>
+                            <div className="w-full bg-slate-900 rounded-2xl p-4 border border-slate-700 flex justify-between items-center shadow-lg z-10 mb-6">
+                                <div className="text-center w-1/2"><span className="block text-[10px] font-black text-slate-500 uppercase">Status</span><span className="text-xl font-black text-green-500 uppercase">TREINO CONCLUÍDO</span></div>
+                                <div className="text-center w-1/2"><span className="block text-[10px] font-black text-slate-500 uppercase">Data</span><span className="text-xl font-black text-white">{formatDateBR(getTodayStr())}</span></div>
+                            </div>
+                            <div className="text-[10px] font-black text-slate-600 tracking-widest uppercase z-10">POWERED BY PROCOACH MAX</div>
+                        </div>
                     </div>
                 </div>
             );
