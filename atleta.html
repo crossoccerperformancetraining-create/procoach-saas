@@ -33,7 +33,7 @@
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
-        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        const safeArray = (arr) => (Array.isArray(arr)) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
@@ -68,18 +68,6 @@
             );
         };
 
-        const getMotivationalQuote = () => {
-            const quotes = [ "O suor de hoje é a vitória de amanhã. Vá com tudo!", "A disciplina é a ponte entre a meta e a realização.", "Trabalhe em silêncio e deixe o sucesso fazer barulho.", "A dedicação supera o talento quando o talento não se dedica.", "Onde a vontade não falha, o caminho se abre.", "Não pare quando estiver cansado, pare quando tiver terminado." ];
-            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24); return quotes[dayOfYear % quotes.length];
-        };
-
-        const getStreakTitle = (streak) => {
-            if (streak >= 15) return "LENDA INTOCÁVEL 👑";
-            if (streak >= 7) return "MOTOR DA EQUIPE ⚙️";
-            if (streak >= 3) return "FOCADO 🎯";
-            return "EM EVOLUÇÃO 🌱";
-        };
-
         const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [] });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
@@ -105,8 +93,8 @@
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [] });
                         if(pIdx !== null && d.players && d.players[parseInt(pIdx)]) {
                             setIsPriv(true); setIdx(parseInt(pIdx));
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness.sleep) setStep(3); else setStep(2);
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].agendaAck) setAgendaAck(true);
+                            if(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.wellness?.sleep) setStep(3); else setStep(2);
+                            if(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.agendaAck) setAgendaAck(true);
                             setWater(Number(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.waterIntake) || 0);
                         }
                     }
@@ -140,7 +128,7 @@
             const initAudio = () => { if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} } if(audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); try { const osc = audioCtxRef.current.createOscillator(); const gain = audioCtxRef.current.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtxRef.current.destination); osc.start(); osc.stop(audioCtxRef.current.currentTime + 0.1); } catch(e) {} };
             const playBeep = () => { try { const ctx = audioCtxRef.current; if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(1, ctx.currentTime); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => { const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime); gain2.gain.setValueAtTime(1, ctx.currentTime); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(); osc2.stop(ctx.currentTime + 0.3); }, 400); } catch(e) {} };
 
-            const selectP = (i) => { setIdx(i); initAudio(); if(data.log && data.log[getTodayStr()] && data.log[getTodayStr()][i] && data.log[getTodayStr()][i].wellness && data.log[getTodayStr()][i].wellness.sleep) { setStep(3); if(data.log[getTodayStr()][i].agendaAck) setAgendaAck(true); setWater(Number(data.log[getTodayStr()][i].waterIntake) || 0); } else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
+            const selectP = (i) => { setIdx(i); initAudio(); if(data.log?.[getTodayStr()]?.[i]?.wellness?.sleep) { setStep(3); if(data.log[getTodayStr()][i].agendaAck) setAgendaAck(true); setWater(Number(data.log[getTodayStr()][i].waterIntake) || 0); } else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
             const subData = () => {
@@ -176,53 +164,30 @@
             const getPlayerStats = () => { let wCompleted = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = data.log[dateStr]?.[idx]; if(l?.rpeSubmitted) wCompleted++; }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]) || 0); }); } let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset()); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
 
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: l.rpe_am, dur: l.duration, rpeSub: l.rpeSubmitted, exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
-            
-            const getRankingData = () => { const validPlayers = safeArray(data.players).filter(p => p); const players = validPlayers.map((p, i) => { let streak = 0; let checkDate = new Date(); for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); } const g = p.stats ? Number(p.stats.g) : 0; const a = p.stats ? Number(p.stats.a) : 0; return { ...p, streak, goals: g || 0, assists: a || 0 }; }); return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) }; };
-
+            const getRankingData = () => { const validPlayers = safeArray(data.players).filter(p => p); const players = validPlayers.map((p, i) => { let streak = 0; let checkDate = new Date(); for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); } return { ...p, streak, goals: Number(p.stats?.g || 0), assists: Number(p.stats?.a || 0) }; }); return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) }; };
             const getPlayerSkills = (pIdx) => { const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {}; const fms = (Number(pAss.fms_total)||0) * 4.7; const force = (Number(pAss.squat_rm)||0); const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: 75, endurance: 70 }; };
-
-            const getNutritionAdvice = (rpeVal) => { if(rpeVal >= 8) return { t: "Desgaste Extremo Detectado!", d: "Reponha carboidratos rápidos (ex: fruta, suco) e beba muita água nas próximas 2h para restaurar o glicogênio.", ic: "🍎" }; if(rpeVal >= 5) return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos nas próximas horas para reconstruir a fibra muscular.", ic: "🍗" }; return { t: "Treino Moderado/Regenerativo", d: "Esforço bem controlado. Mantenha sua hidratação e alimentação equilibrada de costume.", ic: "🥗" }; };
+            const getNutritionAdvice = (rpeVal) => { if(rpeVal >= 8) return { t: "Desgaste Extremo Detectado!", d: "Reponha carboidratos rápidos e beba muita água nas próximas 2h.", ic: "🍎" }; if(rpeVal >= 5) return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos.", ic: "🍗" }; return { t: "Treino Moderado/Regenerativo", d: "Esforço controlado. Mantenha hidratação equilibrada.", ic: "🥗" }; };
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
-            if(loading) return (
-                <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
-                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/20"></div>
-                    <div className="text-2xl font-black italic tracking-wider animate-pulse"><span style={{color: data.color || '#3b82f6'}}>PRO</span>COACH</div>
-                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Sincronizando Atleta...</div>
-                </div>
-            );
-            
-            if(!data.id || (idx !== null && !data.players[idx])) return (
-                <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
-                    <div className="text-red-500 mb-4 animate-pulse"><Icon name="alert" size={48} /></div>
-                    <h2 className="text-xl font-black uppercase mb-2">Atleta Não Encontrado</h2>
-                    <p className="text-xs text-slate-400 font-bold max-w-xs mb-8">O perfil que tentaste acessar não existe ou foi removido do sistema.</p>
-                    {!isPriv && (
-                        <button onClick={()=>{setIdx(null); setStep(1);}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center gap-2 transition-colors">
-                            <Icon name="arrowLeft" size={14}/> VOLTAR AO ELENCO
-                        </button>
-                    )}
-                </div>
-            );
+            if(loading) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white">Sincronizando...</div>;
+            if(!data.id || (idx !== null && !data.players[idx])) return <div className="h-screen bg-slate-950 flex items-center justify-center text-white text-center p-10"><Icon name="alert" size={48} className="text-red-500 mb-4 mx-auto"/><h2 className="text-xl font-bold">Atleta não encontrado</h2></div>;
 
             if(step===1) return (
                 <div className="p-6 h-screen flex flex-col items-center justify-center animate-fade-in bg-slate-950 overflow-y-auto">
                     <h1 className="text-3xl font-black italic mb-8 text-white"><span style={{color:data.color}}>PRO</span>COACH</h1>
                     <div className="text-sm text-slate-400 font-bold mb-6 uppercase tracking-wider">Selecione seu perfil</div>
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl pb-10">
-                        {data.players.map((p, i) => {
-                            if(!p) return null;
-                            const isCheck = !!(data.log && data.log[getTodayStr()] && data.log[getTodayStr()][i] && data.log[getTodayStr()][i].wellness && data.log[getTodayStr()][i].wellness.sleep);
-                            return (
-                                <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform relative">
+                        {data.players.map((p, i) => (
+                            p && (
+                                <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform relative text-center">
                                     <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-lg ${p.highlight ? 'border-yellow-400 gold-glow' : 'border-slate-800'}`}>
                                         {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={32} className="m-6 text-slate-700"/>}
                                     </div>
-                                    {isCheck && <div className="absolute top-0 right-2 bg-green-500 text-white rounded-full p-0.5 border-2 border-slate-950 shadow-md"><Icon name="check" size={12}/></div>}
-                                    <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-300">{(p.name || 'Atleta').split(' ')[0]}</span>
+                                    {data.log?.[getTodayStr()]?.[i]?.wellness?.sleep && <div className="absolute top-0 right-2 bg-green-500 text-white rounded-full p-0.5 border-2 border-slate-950 shadow-md"><Icon name="check" size={12}/></div>}
+                                    <span className="text-[10px] font-bold uppercase truncate w-full">{p.name?.split(' ')[0]}</span>
                                 </div>
                             )
-                        })}
+                        ))}
                     </div>
                 </div>
             );
@@ -234,43 +199,29 @@
                         <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between shadow-lg shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div>
-                                <div>
-                                    <div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div>
-                                    <h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2>
-                                </div>
+                                <div><div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div><h2 className="text-lg font-black text-white">{getGreeting()}, {p.name?.split(' ')[0]}!</h2></div>
                             </div>
-                            {!isPriv && (
-                                <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm">
-                                    <Icon name="arrowLeft" size={12}/> VOLTAR
-                                </button>
-                            )}
-                        </div>
-                        <div className="p-4 bg-blue-900/20 border-b border-blue-800/50 text-center">
-                            <span className="text-xs font-bold text-blue-300">Pronto para o treino de <span className="text-white uppercase">{getDayOfWeek()}</span>?</span>
+                            {!isPriv && <button onClick={()=>{setIdx(null); setStep(1);}} className="bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 text-[9px] font-bold uppercase">VOLTAR</button>}
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
                             {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                             <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Quadríceps","Posterior Coxa","Joelho","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
                         </div>
-                        <div className="fixed bottom-0 left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md z-50 border-t border-slate-800"><button onClick={subData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl" style={{backgroundColor:data.color}}>{submitting ? <Icon name="refresh" className="animate-spin"/> : <><Icon name="send"/> ENVIAR PRONTIDÃO</>}</button></div>
+                        <div className="fixed bottom-0 left-0 w-full p-4 bg-slate-900/95 z-50 border-t border-slate-800"><button onClick={subData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl" style={{backgroundColor:data.color}}>{submitting ? 'Enviando...' : 'ENVIAR PRONTIDÃO'}</button></div>
                     </div>
                 );
             }
 
-            const p = data.players[idx]; 
-            const isSuspended = p.suspended === true; const isHighlight = p.highlight === true;
+            const pActual = data.players[idx]; 
+            const isHighlight = pActual.highlight === true;
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
-            
+            const isFinished = data.log?.[getTodayStr()]?.[idx]?.rpeSubmitted === true;
+
             const blocks = exData.gen.reduce((acc, ex) => {
                 const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TREINO PRINCIPAL';
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
             }, {});
-
-            const tEx = exData.flat.length; 
-            const pct = tEx > 0 ? Math.round(((completed.length + Object.keys(skippedExs).length) / tEx) * 100) : 0;
-            const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
-            const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
 
             const activeDm = safeArray(data.dm).find(r => r && r.playerId == idx && r.status === 'Active');
             let daysInDm = 0;
@@ -296,7 +247,7 @@
                             </div>
                             <div className="flex flex-col gap-2">
                                 <button onClick={()=>tog(ex)} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-700 text-slate-600 hover:text-green-500'}`}><Icon name="check" size={20}/></button>
-                                <button onClick={(e)=>{e.stopPropagation(); setSkipModal(ex.id);}} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center cursor-pointer hover:bg-slate-800 text-slate-500" title="Pular"><Icon name="fastForward" size={16}/></button>
+                                <button onClick={(e)=>{e.stopPropagation(); setSkipModal(ex.id);}} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center cursor-pointer hover:bg-slate-800 text-slate-500"><Icon name="fastForward" size={16}/></button>
                             </div>
                         </div>
                     </div>
@@ -309,50 +260,52 @@
                         <div className="flex items-start justify-between gap-4 mt-2">
                             <div className="flex items-center gap-4 flex-1">
                                 <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer shrink-0 ${isHighlight ? 'gold-glow' : ''}`}>
-                                    {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
+                                    {pActual.image ? <img src={pActual.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                        <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
-                                        {stats.streak > 2 && <div className="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 shadow-sm border border-orange-500/30"><Icon name="fire" size={10}/> {stats.streak}d</div>}
+                                        <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{pActual.name}</h1>
+                                        {stats.streak > 2 && <div className="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1"><Icon name="fire" size={10}/> {stats.streak}d</div>}
                                     </div>
                                     <div className="text-[10px] font-black text-blue-400 uppercase mt-1 tracking-widest">{streakTitle}</div>
-                                    <div className="text-[9px] text-slate-300 font-medium italic mt-1.5 opacity-90 leading-tight">"{getMotivationalQuote()}"</div>
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                        <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
-                                        {isHighlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> CONVOCADO</span>}
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{pActual.position || 'Atleta'} {pActual.number ? `#${pActual.number}` : ''}</span>
+                                        {isHighlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
                                     </div>
                                 </div>
                             </div>
-                            {!isPriv && (
-                                <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm shrink-0">
-                                    <Icon name="arrowLeft" size={12}/> VOLTAR
-                                </button>
-                            )}
+                            {!isPriv && <button onClick={()=>{setIdx(null); setStep(1);}} className="bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 text-[9px] font-bold uppercase">VOLTAR</button>}
                         </div>
-                        {isSuspended && <div className="mt-4 bg-red-600 text-white p-3 rounded-2xl flex items-center gap-3 animate-pulse border border-red-400 shadow-lg"><Icon name="alert" size={24}/><div className="text-[10px] font-black uppercase">Você está Suspenso!</div></div>}
-                        {activeDm && <div className="mt-3 bg-red-900/50 text-white p-3 rounded-2xl flex items-center gap-3 border border-red-500 shadow-lg"><Icon name="medkit" size={24} className="text-red-400"/><div><div className="text-[10px] font-black uppercase text-red-200">Departamento Médico</div><div className="text-[10px] font-bold text-white">Em tratamento ({activeDm.location}).</div></div></div>}
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-28">
                         {tab === 'workout' && (
-                            <div className="space-y-4 animate-fade-in">
+                            <div className="animate-fade-in space-y-4">
+                                {data.coachMsg && (
+                                    <div className="bg-blue-600 p-4 rounded-[24px] text-white shadow-lg border border-blue-400">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Icon name="bell" size={16} className="text-blue-200"/>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Recado do Professor</span>
+                                        </div>
+                                        <p className="text-sm font-bold leading-tight">{data.coachMsg}</p>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
+                                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center">
                                         <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Gols</span>
-                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.g) || 0}</span>
+                                        <span className="text-3xl font-black text-white">{pActual.stats?.g || 0}</span>
                                     </div>
-                                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
+                                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center">
                                         <Icon name="target" className="text-blue-500 mb-1" size={20}/>
                                         <span className="text-[10px] font-bold text-slate-500 uppercase">Assists</span>
-                                        <span className="text-3xl font-black text-white">{(p.stats && p.stats.a) || 0}</span>
+                                        <span className="text-3xl font-black text-white">{pActual.stats?.a || 0}</span>
                                     </div>
                                 </div>
-                                <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3 relative shadow-inner">
-                                    <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">💧 Hidratação</h3><span className="text-[10px] font-bold text-blue-300">{water.toFixed(2)}L / 3.0L</span></div>
+                                <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3 shadow-inner">
+                                    <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">💧 Hidratação</h3><span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{water.toFixed(2)}L / 3.0L</span></div>
                                     <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${Math.min(100, (water/3)*100)}%`}}></div></div>
-                                    <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
+                                    <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs active:scale-95 transition-transform">+ BEBI 250ML</button>
                                 </div>
                                 <div className="space-y-4">
                                     {exData.flat.map(ex => renderExerciseCard(ex, "text-blue-400", "activity", "border-slate-800"))}
@@ -362,22 +315,17 @@
 
                         {tab === 'agenda' && (
                             <div className="animate-fade-in space-y-6">
-                                {p.highlight ? (
+                                {pActual.highlight ? (
                                     <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase shadow-md">Relacionado</div>
+                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase">Relacionado</div>
                                         <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL</h3>
                                         <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30 mb-4">
-                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{p.number || "!"}</div>
-                                            <div>
-                                                <div className="text-[14px] font-black text-white uppercase tracking-tight italic">VOCÊ VAI PRO JOGO!</div>
-                                                <div className="text-[10px] font-bold text-blue-400 uppercase mt-0.5 leading-tight">Prepare seu equipamento e foque no objetivo.</div>
-                                            </div>
+                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{pActual.number || "!"}</div>
+                                            <div><div className="text-[14px] font-black text-white uppercase tracking-tight italic">VOCÊ VAI PRO JOGO!</div><div className="text-[10px] font-bold text-blue-400 uppercase mt-0.5 leading-tight">Prepare seu equipamento e foque no objetivo.</div></div>
                                         </div>
                                         <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
                                             <span className="text-[8px] font-black text-blue-500 uppercase block mb-2 tracking-[0.2em]">Logística Operacional</span>
-                                            <div className="text-white text-xs font-medium leading-relaxed whitespace-pre-line">
-                                                {data.coachMsg || "Aguardando informações da comissão técnica."}
-                                            </div>
+                                            <div className="text-white text-xs font-medium leading-relaxed whitespace-pre-line">{data.coachMsg || "Aguardando informações da comissão técnica."}</div>
                                         </div>
                                     </div>
                                 ) : (
@@ -393,8 +341,8 @@
                                             <div key={i} className="flex items-center justify-between bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
                                                 <div className="flex flex-col"><span className="text-[8px] font-black text-slate-500 uppercase">{day.name}</span><span className="text-[11px] font-black text-white uppercase">{day.md}</span></div>
                                                 <div className="flex flex-col gap-1 items-end">
-                                                    {safeArray(day.am).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-blue-600'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase shadow-sm`}>{ev.type}</span>)}
-                                                    {safeArray(day.pm).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-slate-700'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase shadow-sm`}>{ev.type}</span>)}
+                                                    {safeArray(day.am).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-blue-600'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase`}>{ev.type}</span>)}
+                                                    {safeArray(day.pm).map((ev, idx) => <span key={idx} className={`${ev.colorClass || 'bg-slate-700'} text-white text-[8px] font-black px-2.5 py-1 rounded-lg uppercase`}>{ev.type}</span>)}
                                                 </div>
                                             </div>
                                         ))}
@@ -406,12 +354,12 @@
                         {tab === 'ranking' && (
                             <div className="space-y-6 animate-fade-in">
                                 <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
-                                    <div className="flex items-center gap-3 mb-6"><div className="bg-yellow-500/20 p-2 rounded-full"><Icon name="ball" size={20} className="text-yellow-500"/></div><h3 className="font-black text-lg uppercase text-white">Artilharia</h3></div>
+                                    <div className="flex items-center gap-3 mb-6"><Icon name="ball" size={20} className="text-yellow-500"/><h3 className="font-black text-lg uppercase">Artilharia</h3></div>
                                     <div className="space-y-3">
                                         {ranking.artillery.map((player, i) => (
                                             <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3">
                                                 <span className={`text-xl font-black w-6 ${i===0?'text-yellow-500':i===1?'text-slate-400':i===2?'text-amber-700':'text-slate-700'}`}>{i+1}</span>
-                                                <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700">{player.image && <img src={player.image} className="w-full h-full object-cover"/>}</div>
+                                                <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden">{player.image && <img src={player.image} className="w-full h-full object-cover"/>}</div>
                                                 <div className="flex-1 font-bold text-sm uppercase">{player.name}</div>
                                                 <div className="bg-slate-800 px-3 py-1 rounded-full font-black text-yellow-500 text-xs">{player.goals} Gols</div>
                                             </div>
@@ -422,24 +370,16 @@
                         )}
                     </div>
 
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
-                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
-                         <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
-                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
-                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
-                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
-                    </div>
-
                     {showProfile && (
-                        <div className="fixed inset-0 bg-slate-950 z-[400] p-6 flex flex-col items-center animate-fade-in custom-scroll overflow-y-auto text-center">
+                        <div className="fixed inset-0 bg-slate-950 z-[400] p-6 flex flex-col items-center animate-fade-in overflow-y-auto custom-scroll">
                             <button onClick={()=>setShowProfile(false)} className="absolute top-6 right-6 text-white/50"><Icon name="x" size={32}/></button>
-                            <div className="w-32 h-32 rounded-full border-4 border-blue-500 overflow-hidden bg-slate-800 shadow-2xl mb-4 mt-10 mx-auto">
-                                {p.image ? <img src={p.image} className="w-full h-full object-cover"/> : <Icon name="user" size={60} className="m-8 text-white/20"/>}
+                            <div className="w-32 h-32 rounded-full border-4 border-blue-500 overflow-hidden bg-slate-800 shadow-2xl mb-4 mt-10">
+                                {pActual.image ? <img src={pActual.image} className="w-full h-full object-cover"/> : <Icon name="user" size={60} className="m-8 text-white/20"/>}
                             </div>
-                            <h2 className="text-3xl font-black uppercase text-white mb-1">{p.name}</h2>
-                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-4">{p.pos || 'Atleta'}</p>
+                            <h2 className="text-3xl font-black uppercase text-white mb-1 text-center">{pActual.name}</h2>
+                            <p className="text-blue-400 font-black uppercase text-xs tracking-widest mb-4">{pActual.position || 'Atleta'}</p>
                             <div className="w-full bg-slate-900 rounded-[40px] p-6 border border-slate-800 mb-6">
-                                <h3 className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Radar de Habilidades</h3>
+                                <h3 className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Performance</h3>
                                 <RadarChart stats={getPlayerSkills(idx)} />
                             </div>
                             <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl border border-slate-700">FECHAR PERFIL</button>
@@ -447,24 +387,81 @@
                     )}
 
                     {showStats && (
-                        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg z-[110] flex flex-col items-center justify-start pt-12 p-6 animate-fade-in font-sans overflow-y-auto custom-scroll">
-                            <button onClick={()=>setShowStats(false)} className="absolute top-4 right-6 text-slate-400"><Icon name="x" size={32}/></button>
+                        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg z-[110] flex flex-col pt-12 p-6 animate-fade-in overflow-y-auto custom-scroll">
+                            <button onClick={()=>setShowStats(false)} className="absolute top-4 right-4 text-slate-400"><Icon name="x" size={24}/></button>
                             <h2 className="text-2xl font-black text-white uppercase text-center mb-8">Seus Números</h2>
-                            <div className="w-full space-y-3 mb-8">
-                                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex justify-between items-center shadow-inner"><div className="flex items-center gap-2 text-slate-300"><Icon name="clock" size={16} className="text-blue-400"/><span className="text-xs font-bold uppercase">Minutos Jogados</span></div><span className="text-lg font-black text-white">{stats.mins}</span></div>
-                                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex justify-between items-center shadow-inner"><div className="flex items-center gap-2 text-slate-300"><Icon name="check" size={16} className="text-green-400"/><span className="text-xs font-bold uppercase">Treinos Realizados</span></div><span className="text-lg font-black text-white">{stats.workouts}</span></div>
+                            <div className="space-y-3 mb-8">
+                                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex justify-between items-center shadow-inner"><div className="flex items-center gap-2 text-slate-300"><Icon name="clock" size={16}/><span className="text-xs font-bold uppercase">Minutos Jogados</span></div><span className="text-lg font-black text-white">{stats.mins}</span></div>
+                                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex justify-between items-center shadow-inner"><div className="flex items-center gap-2 text-slate-300"><Icon name="check" size={16}/><span className="text-xs font-bold uppercase">Treinos Realizados</span></div><span className="text-lg font-black text-white">{stats.workouts}</span></div>
                             </div>
                             <div className="w-full space-y-2">
                                 {getHistory().map((h, i) => (
                                     <div key={i} className="bg-slate-900 border border-slate-700 rounded-lg p-3 flex justify-between items-center">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase w-16">{formatDateBR(h.date)}</span>
-                                        <div className="flex-1 ml-2 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={`h-full ${h.bat<40?'bg-red-500':h.bat<75?'bg-yellow-500':'bg-green-500'}`} style={{width: `${h.bat}%`}}></div></div>
-                                        <span className={`text-[10px] font-black w-8 text-right ${h.bat<40?'text-red-500':h.bat<75?'text-yellow-500':'text-green-500'}`}>{h.hasW ? h.bat+'%' : '-'}</span>
+                                        <div className="flex-1 ml-2 flex flex-col gap-1.5">
+                                            {h.hasW ? (
+                                                <div className="flex items-center gap-2"><div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div className={`h-full ${h.bat<40?'bg-red-500':h.bat<75?'bg-yellow-500':'bg-green-500'}`} style={{width: `${h.bat}%`}}></div></div><span className="text-[8px] font-black w-6">{h.bat}%</span></div>
+                                            ) : <span className="text-[10px] text-slate-600 italic">Sem Registro</span>}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
+
+                    {rpeMod && (
+                        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-fade-in">
+                            <div className="bg-slate-800 rounded-[32px] border border-slate-700 w-full max-w-sm p-6 shadow-2xl flex flex-col items-center relative">
+                                <button onClick={()=>setRpeMod(false)} className="absolute top-4 right-4 text-slate-400"><Icon name="x" size={20}/></button>
+                                <div className="w-16 h-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3"><Icon name="check" size={32}/></div>
+                                <h2 className="text-2xl font-black text-white uppercase text-center mb-6">Finalizar Treino</h2>
+                                <div className="w-full mb-6">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase flex justify-between mb-2"><span>Esforço (PSE)</span><span className="text-blue-400 font-black text-sm">{rpe}/10 {getRpeEmoji(rpe)}</span></label>
+                                    <input type="range" min="0" max="10" step="1" value={rpe} onChange={e=>setRpe(parseInt(e.target.value))} className="hooper-slider w-full h-3 mb-2" style={{background:'linear-gradient(to right,#3b82f6,#ef4444)'}}/>
+                                </div>
+                                <div className="w-full mb-4"><label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Duração (Minutos)</label><input type="number" min="0" value={dur} onChange={e=>setDur(parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-600 text-white text-center font-black text-3xl py-3 rounded-xl outline-none"/></div>
+                                <button onClick={saveRPE} disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2">{submitting ? 'Salvando...' : 'ENVIAR DADOS'}</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {tab === 'workout' && !isFinished && (
+                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 border-t border-slate-800 z-40">
+                            <button onClick={()=>setRpeMod(true)} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
+                                <Icon name="check"/> FINALIZAR TREINO
+                            </button>
+                        </div>
+                    )}
+
+                    {gif && (
+                        <div className="absolute inset-0 bg-slate-950 z-[250] flex flex-col animate-fade-in">
+                            <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10"><button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button></div>
+                            <div className="flex-1 flex justify-center items-center bg-black relative">
+                                {gif.gifUrl?<img src={gif.gifUrl} className="w-full h-full object-cover opacity-80"/>:<Icon name="image" size={80} className="text-slate-700"/>}
+                                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-950 to-transparent p-6 pt-20">
+                                    <h2 className="text-3xl font-black text-white uppercase mb-4 leading-tight">{gif.title}</h2>
+                                    <div className="flex gap-4 mb-8">
+                                        <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-2xl font-black text-blue-400">{gif.sets}</div></div>
+                                        <div className="bg-slate-800/80 p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-2xl font-black text-green-400">{gif.reps}</div></div>
+                                    </div>
+                                    <button onClick={() => {
+                                        const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
+                                        activeExRef.current = id; goToNextEx(id);
+                                    }} className="w-full bg-green-500 text-white font-black py-5 rounded-[20px] shadow-xl flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform">
+                                        <Icon name="check" size={24}/> CONCLUIR EXERCÍCIO
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
+                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
+                         <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
+                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
+                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
+                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
+                    </div>
                 </div>
             );
         };
