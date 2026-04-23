@@ -580,6 +580,23 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                 setMode('dashboard');
             };
 
+            const toggleConvocacao = async (pIdx) => {
+                try {
+                    const newData = { ...initialData };
+                    if (!newData.players[pIdx]) return;
+                    
+                    // Inverte o status de convocação
+                    newData.players[pIdx].convocado = !newData.players[pIdx].convocado;
+                    
+                    await db.collection('coachData').doc(user.uid).update({
+                        players: newData.players
+                    });
+                    
+                    showToast(newData.players[pIdx].convocado ? "Atleta Convocado! 🏆" : "Convocação Removida!");
+                } catch (error) {
+                    showToast("Erro ao atualizar convocação", "#ef4444");
+                }
+            };
             if (mode === 'dashboard') {
                 const safePlayers = safeArray(players);
                 const filledCount = safePlayers.filter((p,i) => safeObj(trainingLog[wellnessDate]?.[i]?.wellness).sleep).length;
@@ -642,7 +659,16 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                                                 <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
                                                     {p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={20} className="m-2 text-slate-400"/>}
                                                 </div>
-                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{p.name}</span>
+                                               <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{p.name}</span>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); toggleConvocacao(i); }} 
+                                                        className={`p-1 rounded-lg border transition-all ${p.convocado ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-400'}`}
+                                                        title="Convocar Atleta"
+                                                    >
+                                                        <Icon name="trophy" size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="col-span-3 flex justify-start lg:justify-center w-full">
                                                 {isFilled ? renderStatusBadge(log, pain) : (
