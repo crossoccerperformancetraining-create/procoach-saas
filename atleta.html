@@ -482,13 +482,14 @@
                             </div>
                         )}
 
-                        {/* --- NOVA ABA AGENDA (CONVOCAÇÃO E MICROCICLO) --- */}
+                        {/* --- ABA AGENDA: CONVOCAÇÃO PELO DESTAQUE --- */}
                         {tab === 'agenda' && (
                             <div className="animate-fade-in space-y-6">
-                                {p.convocado ? (
+                                {/* Lógica: Se o atleta for "Destaque" no painel, aparece como Convocado */}
+                                {p.highlight ? (
                                     <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase tracking-widest">Status</div>
-                                        <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO</h3>
+                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase tracking-widest shadow-md">Status</div>
+                                        <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL</h3>
                                         <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
                                             <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{p.number || "!"}</div>
                                             <div>
@@ -498,9 +499,9 @@
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] text-center">
-                                        <Icon name="alert" size={32} className="mx-auto text-slate-600 mb-2"/>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aguardando lista de convocados</p>
+                                    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px] text-center">
+                                        <Icon name="clock" size={32} className="mx-auto text-slate-600 mb-2"/>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aguardando lista de relacionados</p>
                                     </div>
                                 )}
 
