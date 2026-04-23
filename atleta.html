@@ -95,6 +95,24 @@
             const [showProfile, setShowProfile] = useState(false);
             const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
+const [isEditingLogistics, setIsEditingLogistics] = useState(false);
+            const [logisticsText, setLogisticsText] = useState("");
+
+            const saveLogistics = () => {
+                if(!logisticsText.trim()) return;
+                setSubmitting(true);
+                db.collection('coachData').doc(data.id).set({
+                    nextGame: { ...data.nextG, logistics: logisticsText }
+                }, { merge: true }).then(() => {
+                    setIsEditingLogistics(false);
+                    setSubmitting(false);
+                    showToast("Roteiro atualizado com sucesso! 🚀");
+                }).catch(() => {
+                    setSubmitting(false);
+                    alert("Erro ao salvar logística.");
+                });
+            };
+            
 
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
