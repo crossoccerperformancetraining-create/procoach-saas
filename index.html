@@ -1919,36 +1919,31 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
         };
         const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
             const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
-            // 🔥 NOVO: Adicionado 'period' (Turno) no controle do formulário
-            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '', period: 'am' });
+            const fieldTargets = ['TÉCNICO', 'JOGUINHO', 'ORG. OFENSIVA', 'ORG. DEFENSIVA', 'TRANS. OFENSIVA', 'TRANS. DEFENSIVA', 'ABP OFENSIVA', 'ABP DEFENSIVA', 'TÁTICO GERAL', 'PDI', 'AQUECIMENTO'];
+            
+            // 🔥 NOVO: Controle de Tipo (Academia ou Campo) e campo de Descrição
+            const [trainingType, setTrainingType] = useState('academia');
+            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '', period: 'am', description: '', type: 'academia' });
+            
             const [editId, setEditId] = useState(null);
             const [importDate, setImportDate] = useState('');
 
             useEffect(() => {
                 if(user && targetOptions.length > 0) {
-                    db.collection('coachData').doc(user.uid).update({ 
-                        customTargets: targetOptions 
-                    }).catch(err => {
-                        if(err.code === 'not-found') {
-                            db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
-                        }
+                    db.collection('coachData').doc(user.uid).update({ customTargets: targetOptions }).catch(err => {
+                        if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
                     });
                 }
             }, [targetOptions, user]);
 
             const getAiSuggestion = () => {
                 const today = getTodayStr(); 
-                let totalFatigue = 0;
-                let count = 0;
+                let totalFatigue = 0, count = 0;
                 const safePs = Array.isArray(players) ? players : [];
-                
                 safePs.forEach((p, i) => {
                     const logForPlayer = trainingLog?.[today]?.[i];
                     const stats = safeObj(logForPlayer?.wellness);
-                    if(stats.sleep) {
-                        totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1);
-                        count++;
-                    }
+                    if(stats.sleep) { totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1); count++; }
                 });
                 const avg = count > 0 ? totalFatigue / count : 0;
                 if (avg >= 10) return "🚨 IA: CRIOTERAPIA OBRIGATÓRIA (FADIGA CRÍTICA)";
@@ -1957,10 +1952,10 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
             };
 
             const addTarget = () => {
-                const name = prompt("Nome do novo Público ou Bloco (ex: Tático Campo, Goleiros):");
+                const name = prompt("Nome do novo Público ou Bloco de Academia (ex: Goleiros):");
                 if (name && !targetOptions.includes(name)) {
                     setTargetOptions([...targetOptions, name]);
-                    setForm({...form, target: name});
+                    if(trainingType === 'academia') setForm({...form, target: name});
                 }
             };
 
@@ -1969,35 +1964,42 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                 db.collection('coachData').doc(user.uid).get().then(doc => {
                     if(doc.exists){
                         const pastWorkout = doc.data().exerciseHistory?.[importDate];
-                        if(pastWorkout && pastWorkout.length > 0){
-                            setExercises(pastWorkout);
-                            showToast("Treino importado com sucesso!");
-                        } else {
-                            showToast("Nenhum treino encontrado nesta data.");
-                        }
+                        if(pastWorkout && pastWorkout.length > 0){ setExercises(pastWorkout); showToast("Treino importado com sucesso!"); } 
+                        else { showToast("Nenhum treino encontrado nesta data."); }
                     }
                 });
             };
 
             const fixWorkoutForToday = () => {
                 const today = getTodayStr();
-                db.collection('coachData').doc(user.uid).set({
-                    exerciseHistory: { [today]: exercises }
-                }, { merge: true }).then(() => {
+                db.collection('coachData').doc(user.uid).set({ exerciseHistory: { [today]: exercises } }, { merge: true }).then(() => {
                     showToast("Sessão salva no histórico!");
                 });
             };
 
             const saveExercise = () => {
                 if(!form.title) return showToast("Digite o nome da Atividade/Exercício!");
+                
+                const finalForm = { ...form, type: trainingType };
+                if (trainingType === 'campo' && !fieldTargets.includes(form.target)) {
+                    finalForm.target = fieldTargets[0];
+                }
+
                 if (editId) {
-                    setExercises(exercises.map(ex => ex.id === editId ? { ...ex, ...form } : ex));
+                    setExercises(exercises.map(ex => ex.id === editId ? { ...ex, ...finalForm } : ex));
                     setEditId(null);
                 } else {
-                    setExercises([{ id: Date.now(), ...form }, ...exercises]);
+                    setExercises([{ id: Date.now(), ...finalForm }, ...exercises]);
                 }
-                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: form.target, order: '', period: form.period });
+                
+                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: trainingType === 'academia' ? targetOptions[0] : fieldTargets[0], order: '', period: form.period, description: '', type: trainingType });
                 showToast("Lista atualizada!");
+            };
+
+            const handleEdit = (ex) => {
+                setTrainingType(ex.type || 'academia');
+                setForm({ ...ex, description: ex.description || '', type: ex.type || 'academia' });
+                setEditId(ex.id);
             };
 
             return (
@@ -2039,29 +2041,35 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                            <div className="md:col-span-12 mb-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
-                                <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1 mb-1">
-                                    <Icon name="folder" size={12}/> Buscar Exercício na sua Biblioteca de GIFs
-                                </label>
-                                <select 
-                                    className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer border-purple-200 dark:border-purple-700"
-                                    onChange={(e) => {
-                                        const selected = library.find(l => l.id === parseInt(e.target.value));
-                                        if(selected) {
-                                            setForm({ ...form, title: selected.title, gifUrl: selected.gifUrl });
-                                            showToast("Exercício carregado!");
-                                        }
-                                    }}
-                                >
-                                    <option value="">Selecione para preencher automaticamente...</option>
-                                    {library.map(l => (
-                                        <option key={l.id} value={l.id}>{l.category} | {l.title}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        {/* 🔥 SELETOR DE TIPO DE TREINO */}
+                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl mb-6 border dark:border-slate-700 max-w-sm">
+                            <button onClick={()=>setTrainingType('academia')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'academia' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500'}`}>🏋️ ACADEMIA</button>
+                            <button onClick={()=>setTrainingType('campo')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'campo' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500'}`}>⚽ CAMPO / TÁTICO</button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
                             
-                            {/* 🔥 NOVO: SELETOR DE TURNO E GRID ATUALIZADO */}
+                            {trainingType === 'academia' && (
+                                <div className="md:col-span-12 mb-2 bg-purple-50 dark:bg-purple-900/10 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
+                                    <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1 mb-1">
+                                        <Icon name="folder" size={12}/> Buscar Exercício na sua Biblioteca de GIFs
+                                    </label>
+                                    <select 
+                                        className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer border-purple-200 dark:border-purple-700"
+                                        onChange={(e) => {
+                                            const selected = library.find(l => l.id === parseInt(e.target.value));
+                                            if(selected) {
+                                                setForm({ ...form, title: selected.title, gifUrl: selected.gifUrl });
+                                                showToast("Exercício carregado!");
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Selecione para preencher automaticamente...</option>
+                                        {library.map(l => <option key={l.id} value={l.id}>{l.category} | {l.title}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            
                             <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Ordem</label><input type="text" placeholder="1º" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.order} onChange={e=>setForm({...form, order: e.target.value})} /></div>
                             
                             <div className="md:col-span-2">
@@ -2072,11 +2080,41 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                                 </select>
                             </div>
 
-                            <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Atividade / Exercício</label><input type="text" placeholder="Ex: Rondo, Supino..." className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                            <div className="md:col-span-6"><label className="text-[10px] font-bold text-slate-400 uppercase">{trainingType === 'academia' ? 'Nome do Exercício' : 'Nome da Atividade / Bloco'}</label><input type="text" placeholder={trainingType === 'academia' ? "Ex: Supino Reto" : "Ex: Rondo 4v4+3"} className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
                             
-                            <div className="md:col-span-3"><div className="flex justify-between items-center mb-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Bloco / Foco</label><button onClick={addTarget} className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-0.5"><Icon name="plus" size={8}/> NOVO</button></div><select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>{targetOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            
-                            <div className="md:col-span-3"><button onClick={saveExercise} className={`w-full text-white font-black py-2.5 rounded-lg shadow-md transition-all ${editId ? 'bg-orange-500' : 'bg-blue-600'}`}>{editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À LISTA'}</button></div>
+                            <div className="md:col-span-3">
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Foco / Categoria</label>
+                                    {trainingType === 'academia' && <button onClick={addTarget} className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-0.5"><Icon name="plus" size={8}/> NOVO</button>}
+                                </div>
+                                <select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
+                                    {trainingType === 'academia' 
+                                        ? targetOptions.map(t => <option key={t} value={t}>{t}</option>)
+                                        : fieldTargets.map(t => <option key={t} value={t}>{t}</option>)
+                                    }
+                                </select>
+                            </div>
+
+                            {/* 🔥 CAMPOS DINÂMICOS CONFORME O TIPO */}
+                            {trainingType === 'academia' ? (
+                                <>
+                                    <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="number" placeholder="Ex: 3" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
+                                    <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Reps</label><input type="text" placeholder="Ex: 10-12" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
+                                    <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Desc (s)</label><input type="number" placeholder="Ex: 60" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                                </>
+                            ) : (
+                                <div className="md:col-span-6">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Regras e Descrição do Treino (Opcional)</label>
+                                    <textarea placeholder="Ex: Máximo 2 toques, foco em transição rápida ao perder a bola..." className="w-full border rounded p-2 text-xs dark:bg-slate-700 dark:text-white outline-none custom-scroll h-10" value={form.description} onChange={e=>setForm({...form, description: e.target.value})}></textarea>
+                                </div>
+                            )}
+
+                            <div className="md:col-span-6">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Icon name={trainingType === 'academia' ? 'play' : 'image'} size={12} className={trainingType === 'academia' ? 'text-blue-500' : 'text-emerald-500'}/> {trainingType === 'academia' ? 'URL do GIF Animado' : 'URL da Prancheta (Imagem) ou Vídeo'}</label>
+                                <input type="text" placeholder="https://..." className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} />
+                            </div>
+
+                            <div className="md:col-span-12 mt-2"><button onClick={saveExercise} className={`w-full text-white font-black py-3 rounded-xl shadow-md transition-all uppercase tracking-widest ${editId ? 'bg-orange-500' : trainingType === 'academia' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>{editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À SESSÃO'}</button></div>
                         </div>
                     </div>
 
@@ -2084,17 +2122,22 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                         {exercises.map((ex, idx) => (
                             <div key={ex.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between group shadow-sm">
                                 <div className="flex items-center gap-4">
-                                    <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-blue-600 shrink-0">{ex.order || idx + 1}</div>
+                                    <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-slate-500 shrink-0">{ex.order || idx + 1}</div>
                                     <div>
-                                        {/* 🔥 NOVO: Exibe visualmente se é Manhã ou Tarde */}
-                                        <div className={`text-[10px] font-black uppercase mb-0.5 ${ex.period === 'pm' ? 'text-orange-500' : 'text-blue-500'}`}>
-                                            {ex.period === 'pm' ? '⛅ TARDE' : '☀️ MANHÃ'} | <span className="text-slate-500">{ex.target}</span>
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${ex.period === 'pm' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                                {ex.period === 'pm' ? '⛅ TARDE' : '☀️ MANHÃ'}
+                                            </span>
+                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${ex.type === 'campo' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'}`}>
+                                                {ex.type === 'campo' ? '⚽ CAMPO' : '🏋️ ACADEMIA'}
+                                            </span>
                                         </div>
-                                        <div className="font-bold text-slate-800 dark:text-white uppercase leading-tight">{ex.title}</div>
+                                        <div className="font-bold text-slate-800 dark:text-white uppercase leading-tight">{ex.title} <span className="text-[10px] text-slate-400 font-normal ml-1">({ex.target})</span></div>
+                                        {ex.type === 'campo' && ex.description && <div className="text-[10px] text-slate-500 truncate max-w-xs mt-1">{ex.description}</div>}
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => {setForm(ex); setEditId(ex.id);}} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button>
+                                    <button onClick={() => handleEdit(ex)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button>
                                     <button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button>
                                 </div>
                             </div>
