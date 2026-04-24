@@ -191,7 +191,6 @@
                 const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
 
                 const updateData = {};
-                // Salva a nota no turno correto
                 if(rpePeriod === 'am') {
                     updateData[`trainingLog.${td}.${idx}.rpe_am`] = rpe;
                 } else {
@@ -202,14 +201,13 @@
                 updateData[`trainingLog.${td}.${idx}.feedback`] = feedbackMsg;
                 updateData[`trainingLog.${td}.${idx}.exercisesDone`] = doneExsNames;
                 updateData[`trainingLog.${td}.${idx}.exercisesSkipped`] = skippedInfo;
-                updateData[`trainingLog.${td}.${idx}.rpeSubmitted`] = true; // Garante que a tela verde apareça!
+                updateData[`trainingLog.${td}.${idx}.rpeSubmitted`] = true;
 
                 db.collection('coachData').doc(data.id).update(updateData).then(()=>{
                     setSubmitting(false); setRpeMod(false); showToast(`Registro da ${rpePeriod === 'am'?'Manhã':'Tarde'} Concluído! 🚀`, "🔥"); 
                     if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 }); vibrate([100, 50, 100]);
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; 
                     
-                    // Atualiza localmente
                     if(rpePeriod === 'am') { nl[td][idx].rpe_am = rpe; }
                     else { nl[td][idx].rpe_pm = rpe; }
                     
@@ -309,15 +307,20 @@
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
             
-            const blocks = exData.gen.reduce((acc, ex) => {
+            // 🔥 LÓGICA NOVA: Separando os blocos da Manhã e da Tarde
+            const blocksAM = exData.gen.filter(e => e.period !== 'pm').reduce((acc, ex) => {
                 const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TREINO PRINCIPAL';
+                if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
+            }, {});
+
+            const blocksPM = exData.gen.filter(e => e.period === 'pm').reduce((acc, ex) => {
+                const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TRABALHO DE CAMPO';
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
             }, {});
 
             const tEx = exData.flat.length; 
             const pct = tEx > 0 ? Math.round(((completed.length + Object.keys(skippedExs).length) / tEx) * 100) : 0;
             
-            // Controle de Exibição (Se já enviou a PSE do dia, a tela verde é ativada)
             const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; const bat = calcBat(wl);
             const isFinished = data.log[getTodayStr()]?.[idx]?.rpeSubmitted === true;
 
@@ -505,10 +508,10 @@
                                         {isFinished && viewMode === 'review' && tEx > 0 && <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 text-white text-xs font-bold p-3 rounded-xl flex items-center justify-center gap-2 mb-4 border border-slate-700"><Icon name="arrowUp"/> VOLTAR PARA O RESUMO</button>}
 
                                         {exData.act.length > 0 && (
-                                            <div className="bg-orange-900/20 border border-orange-800/50 p-4 rounded-3xl relative overflow-hidden mb-4">
-                                                <div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div>
-                                                <h3 className="text-xs font-black text-orange-500 uppercase flex items-center gap-2 mb-3"><Icon name="fire" size={16}/> Ativação Pré-Treino</h3>
-                                                <div className="space-y-3">{exData.act.map(ex => renderExerciseCard(ex, "text-orange-400", "fire", "border-orange-800/50"))}</div>
+                                            <div className="bg-emerald-900/20 border border-emerald-800/50 p-4 rounded-3xl relative overflow-hidden mb-4">
+                                                <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500"></div>
+                                                <h3 className="text-xs font-black text-emerald-500 uppercase flex items-center gap-2 mb-3"><span className="text-lg">🔥</span> Ativação Pré-Treino</h3>
+                                                <div className="space-y-3">{exData.act.map(ex => renderExerciseCard(ex, "text-emerald-400", "activity", "border-emerald-800/50"))}</div>
                                             </div>
                                         )}
                                         
@@ -520,18 +523,49 @@
                                             </div>
                                         )}
 
-                                        {Object.keys(blocks).map(blockName => (
-                                            <div key={blockName} className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden mb-4 relative">
-                                                <div className="absolute top-0 right-0 w-2 h-full bg-blue-500"></div>
-                                                <div className="bg-slate-800/50 p-4 border-b border-slate-800 flex items-center gap-2">
-                                                    <Icon name="activity" size={18} className="text-blue-500"/>
-                                                    <h3 className="font-black text-xs uppercase text-white tracking-wider">{blockName}</h3>
+                                        {/* 🔥 BLOCOS DA MANHÃ */}
+                                        {Object.keys(blocksAM).length > 0 && (
+                                            <div className="mb-6 bg-slate-900/30 p-3 rounded-[32px] border border-slate-800">
+                                                <div className="flex items-center gap-2 mb-3 px-2">
+                                                    <span className="text-lg">☀️</span>
+                                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Treino da Manhã</h3>
                                                 </div>
-                                                <div className="p-4 space-y-3">
-                                                    {blocks[blockName].map(ex => renderExerciseCard(ex, "text-blue-400", "activity", "border-slate-700"))}
-                                                </div>
+                                                {Object.keys(blocksAM).map(blockName => (
+                                                    <div key={`am-${blockName}`} className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden mb-3 relative">
+                                                        <div className="absolute top-0 right-0 w-2 h-full bg-blue-500"></div>
+                                                        <div className="bg-slate-800/50 p-4 border-b border-slate-800 flex items-center gap-2">
+                                                            <Icon name="activity" size={16} className="text-blue-500"/>
+                                                            <h3 className="font-black text-xs uppercase text-white tracking-wider">{blockName}</h3>
+                                                        </div>
+                                                        <div className="p-3 space-y-3">
+                                                            {blocksAM[blockName].map(ex => renderExerciseCard(ex, "text-blue-400", "activity", "border-slate-700"))}
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
+
+                                        {/* 🔥 BLOCOS DA TARDE */}
+                                        {Object.keys(blocksPM).length > 0 && (
+                                            <div className="mb-6 bg-slate-900/30 p-3 rounded-[32px] border border-slate-800">
+                                                <div className="flex items-center gap-2 mb-3 px-2">
+                                                    <span className="text-lg">⛅</span>
+                                                    <h3 className="text-xs font-black text-orange-500 uppercase tracking-widest">Treino da Tarde</h3>
+                                                </div>
+                                                {Object.keys(blocksPM).map(blockName => (
+                                                    <div key={`pm-${blockName}`} className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden mb-3 relative">
+                                                        <div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div>
+                                                        <div className="bg-slate-800/50 p-4 border-b border-slate-800 flex items-center gap-2">
+                                                            <Icon name="activity" size={16} className="text-orange-500"/>
+                                                            <h3 className="font-black text-xs uppercase text-white tracking-wider">{blockName}</h3>
+                                                        </div>
+                                                        <div className="p-3 space-y-3">
+                                                            {blocksPM[blockName].map(ex => renderExerciseCard(ex, "text-orange-400", "activity", "border-slate-700"))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
 
                                         {tEx > 0 && (
                                             <div className="bg-blue-900/20 border border-blue-800/50 p-5 rounded-3xl flex flex-col gap-2 mt-4">
@@ -787,46 +821,6 @@
                             </button>
                         </div>
                     )}
-                    {tab === 'workout' && isFinished && viewMode === 'review' && tEx > 0 && (
-                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
-                            <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform uppercase tracking-widest">
-                                <Icon name="arrowUp"/> VOLTAR AO RESUMO DO TREINO
-                            </button>
-                        </div>
-                    )}
-
-                    {gif && (
-                        <div className="absolute inset-0 bg-slate-950 z-[250] flex flex-col animate-fade-in">
-                            <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10"><button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button></div>
-                            {focusMode === 'exercise' ? (
-                                <div className="flex-1 flex justify-center items-center bg-black relative">
-                                    {gif.gifUrl?<img src={gif.gifUrl} className="w-full h-full object-cover opacity-80"/>:<Icon name="image" size={80} className="text-slate-700"/>}
-                                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-6 pt-20">
-                                        <h2 className="text-3xl font-black text-white uppercase mb-4 leading-tight">{gif.title}</h2>
-                                        <div className="flex gap-4 mb-8">
-                                            <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-2xl font-black text-blue-400">{gif.sets}</div></div>
-                                            <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-2xl font-black text-green-400">{gif.reps}</div></div>
-                                            {gif.rest && <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Descanso</span><div className="text-2xl font-black text-yellow-400">{gif.rest}s</div></div>}
-                                        </div>
-                                        <button onClick={() => {
-                                            const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
-                                            activeExRef.current = id;
-                                            if(gif.rest && parseInt(gif.rest) > 0) { setRestTimer(parseInt(gif.rest)); setFocusMode('rest'); } else { goToNextEx(id); }
-                                        }} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-5 rounded-[20px] shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform">
-                                            <Icon name="check" size={24}/> CONCLUIR {gif.rest ? 'E DESCANSAR' : 'SÉRIE'}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex-1 flex flex-col justify-center items-center bg-slate-900 p-6 relative">
-                                     <h2 className="text-xl font-bold text-slate-400 uppercase mb-2 tracking-widest">Descanso Ativo</h2>
-                                     <div className="text-8xl font-black text-yellow-400 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{restTimer}</div>
-                                     <div className="text-slate-500 mt-4 text-xs font-bold uppercase tracking-widest">O celular vai apitar...</div>
-                                     <button onClick={()=>{setRestTimer(0);}} className="mt-10 bg-slate-800 text-white border border-slate-700 px-8 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform">Pular Descanso ⏭️</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
@@ -873,7 +867,6 @@
                 </div>
             );
         };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AthletePortal />);
     </script>
