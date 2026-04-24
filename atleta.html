@@ -89,7 +89,7 @@
             const [water, setWater] = useState(0); const [agendaAck, setAgendaAck] = useState(false);
             const [gif, setGif] = useState(null); const [completed, setCompleted] = useState([]);
             const [skippedExs, setSkippedExs] = useState({}); const [exLoads, setExLoads] = useState({}); const [skipModal, setSkipModal] = useState(null);
-            const [rpeMod, setRpeMod] = useState(false); const [rpe, setRpe] = useState(5); const [dur, setDur] = useState(60);
+            const [rpeMod, setRpeMod] = useState(false); const [rpe, setRpe] = useState(5); const [rpePm, setRpePm] = useState(0); const [dur, setDur] = useState(60); const [rpePeriod, setRpePeriod] = useState('am');
             const [feedbackMsg, setFeedbackMsg] = useState(""); const [showStats, setShowStats] = useState(false);
             const [expandedDay, setExpandedDay] = useState(null); const [viewMode, setViewMode] = useState('finished');
             const [showProfile, setShowProfile] = useState(false);
@@ -177,15 +177,35 @@ const [isEditingLogistics, setIsEditingLogistics] = useState(false);
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada: ${reason}`, '⚠️'); };
             const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
 
-            const saveRPE = () => {
-                if(submitting) return; setSubmitting(true); const td = getTodayStr(); const allExs = getOrderedExs().flat;
+            const saveRPE = (period) => {
+                if(submitting) return; 
+                setSubmitting(true); 
+                const td = getTodayStr(); 
+                const allExs = getOrderedExs().flat;
                 const doneExsNames = completed.map(id => { const x = allExs.find(e => e.id === id); return x ? `${x.title} ${exLoads[id] ? `(${exLoads[id]}kg)` : ''}` : null; }).filter(Boolean);
                 const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
 
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.rpe_am`]: rpe, [`trainingLog.${td}.${idx}.duration`]: dur, [`trainingLog.${td}.${idx}.feedback`]: feedbackMsg, [`trainingLog.${td}.${idx}.exercisesDone`]: doneExsNames, [`trainingLog.${td}.${idx}.exercisesSkipped`]: skippedInfo, [`trainingLog.${td}.${idx}.rpeSubmitted`]: true }).then(()=>{
-                    setSubmitting(false); setRpeMod(false); showToast("Registro Concluído! 🚀", "🔥"); 
+                const updateData = {};
+                if (period === 'am') {
+                    updateData[`trainingLog.${td}.${idx}.rpe_am`] = rpe;
+                    updateData[`trainingLog.${td}.${idx}.rpe_am_submitted`] = true;
+                } else {
+                    updateData[`trainingLog.${td}.${idx}.rpe_pm`] = rpePm;
+                    updateData[`trainingLog.${td}.${idx}.rpe_pm_submitted`] = true;
+                }
+                updateData[`trainingLog.${td}.${idx}.duration`] = dur;
+                updateData[`trainingLog.${td}.${idx}.feedback`] = feedbackMsg;
+                updateData[`trainingLog.${td}.${idx}.exercisesDone`] = doneExsNames;
+                updateData[`trainingLog.${td}.${idx}.exercisesSkipped`] = skippedInfo;
+
+                db.collection('coachData').doc(data.id).update(updateData).then(()=>{
+                    setSubmitting(false); setRpeMod(false); showToast(`PSE da ${period === 'am' ? 'Manhã' : 'Tarde'} enviada! 🚀`, "🔥"); 
                     if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 }); vibrate([100, 50, 100]);
-                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].rpe_am = rpe; nl[td][idx].duration = dur; nl[td][idx].rpeSubmitted = true; nl[td][idx].exercisesDone = doneExsNames; nl[td][idx].exercisesSkipped = skippedInfo; setData({...data, log:nl}); window.scrollTo(0,0);
+                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; 
+                    if(period === 'am') { nl[td][idx].rpe_am = rpe; nl[td][idx].rpe_am_submitted = true; }
+                    else { nl[td][idx].rpe_pm = rpePm; nl[td][idx].rpe_pm_submitted = true; }
+                    nl[td][idx].duration = dur; nl[td][idx].exercisesDone = doneExsNames; nl[td][idx].exercisesSkipped = skippedInfo; 
+                    setData({...data, log:nl}); window.scrollTo(0,0);
                 }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
             };
 
@@ -696,21 +716,21 @@ const [isEditingLogistics, setIsEditingLogistics] = useState(false);
                         </div>
                     )}
 
-                    {rpeMod && (
+                   {rpeMod && (
                         <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 animate-fade-in font-sans">
                             <div className="bg-slate-800 rounded-[32px] border border-slate-700 w-full max-w-sm p-6 shadow-2xl flex flex-col items-center relative">
                                 <button onClick={()=>setRpeMod(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><Icon name="x" size={20}/></button>
                                 <div className="w-16 h-16 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3"><Icon name="check" size={32}/></div>
-                                <h2 className="text-2xl font-black text-white uppercase text-center mb-2">Muito Bem!</h2>
+                                <h2 className="text-2xl font-black text-white uppercase text-center mb-2">TURNO DA {rpePeriod === 'am' ? 'MANHÃ' : 'TARDE'}</h2>
                                 <p className="text-xs text-slate-400 text-center mb-6">Registre seu esforço para finalizar.</p>
                                 
                                 <div className="w-full mb-6">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase flex justify-between mb-2"><span>Nível de Esforço (PSE)</span><span className="text-blue-400 font-black text-sm">{rpe}/10 {getRpeEmoji(rpe)}</span></label>
-                                    <input type="range" min="0" max="10" step="1" value={rpe} onChange={e=>setRpe(parseInt(e.target.value))} className="hooper-slider w-full h-3 mb-2" style={{background:'linear-gradient(to right,#3b82f6,#ef4444)'}}/>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase flex justify-between mb-2"><span>Nível de Esforço (PSE)</span><span className={rpePeriod === 'am' ? "text-blue-400 font-black text-sm" : "text-orange-400 font-black text-sm"}>{rpePeriod === 'am' ? rpe : rpePm}/10 {getRpeEmoji(rpePeriod === 'am' ? rpe : rpePm)}</span></label>
+                                    <input type="range" min="0" max="10" step="1" value={rpePeriod === 'am' ? rpe : rpePm} onChange={e => rpePeriod === 'am' ? setRpe(parseInt(e.target.value)) : setRpePm(parseInt(e.target.value))} className="hooper-slider w-full h-3 mb-2" style={{background: rpePeriod === 'am' ? 'linear-gradient(to right,#3b82f6,#ef4444)' : 'linear-gradient(to right,#f97316,#ef4444)'}}/>
                                     <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase mt-1"><span>Muito Leve</span><span>Exaustivo</span></div>
                                 </div>
                                 <div className="w-full mb-4">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Duração Total do Treino (Minutos)</label>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Duração do Treino (Minutos)</label>
                                     <input type="number" min="0" value={dur} onChange={e=>setDur(parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-600 text-white text-center font-black text-3xl py-3 rounded-xl outline-none focus:border-blue-500 transition-colors"/>
                                 </div>
                                 <div className="w-full mb-6">
@@ -722,28 +742,34 @@ const [isEditingLogistics, setIsEditingLogistics] = useState(false);
                                     </div>
                                     <textarea className="w-full bg-slate-900 border border-slate-600 text-white text-xs p-3 rounded-xl outline-none h-16 custom-scroll" placeholder="Mais detalhes (Opcional)..." value={feedbackMsg} onChange={e=>setFeedbackMsg(e.target.value)}></textarea>
                                 </div>
-                                <button onClick={saveRPE} disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 transition-transform active:scale-95">
+                                <button onClick={() => saveRPE(rpePeriod)} disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg flex justify-center items-center gap-2 transition-transform active:scale-95">
                                     {submitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><Icon name="send"/> ENVIAR DADOS</>}
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {tab === 'workout' && !isFinished && (
-                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
-                            <button onClick={()=>setRpeMod(true)} className={`w-full text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest ${tEx > 0 ? 'bg-green-500 hover:bg-green-600 shadow-green-900/50' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/50'}`}>
-                                <Icon name="check"/> {tEx > 0 ? 'FINALIZAR TREINO' : 'REGISTRAR DESCANSO'}
-                            </button>
-                        </div>
-                    )}
-                    {tab === 'workout' && isFinished && viewMode === 'review' && tEx > 0 && (
-                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
-                            <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform uppercase tracking-widest">
-                                <Icon name="arrowUp"/> VOLTAR AO RESUMO DO TREINO
-                            </button>
-                        </div>
-                    )}
+                    {tab === 'workout' && (
+                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40 flex gap-2">
+                            {!data.log[getTodayStr()]?.[idx]?.rpe_am_submitted && (
+                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('am'); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
+                                    <Icon name="check" size={16}/> PSE MANHÃ
+                                </button>
+                            )}
+                            
+                            {!data.log[getTodayStr()]?.[idx]?.rpe_pm_submitted && (
+                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('pm'); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
+                                    <Icon name="check" size={16}/> PSE TARDE
+                                </button>
+                            )}
 
+                            {data.log[getTodayStr()]?.[idx]?.rpe_am_submitted && data.log[getTodayStr()]?.[idx]?.rpe_pm_submitted && viewMode === 'review' && tEx > 0 && (
+                                <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform uppercase tracking-widest">
+                                    <Icon name="arrowUp"/> VOLTAR AO RESUMO
+                                </button>
+                            )}
+                        </div>
+                    )}
                     {gif && (
                         <div className="absolute inset-0 bg-slate-950 z-[250] flex flex-col animate-fade-in">
                             <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10"><button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button></div>
