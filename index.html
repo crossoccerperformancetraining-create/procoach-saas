@@ -1919,7 +1919,8 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
         };
         const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
             const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
-            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '' });
+            // 🔥 NOVO: Adicionado 'period' (Turno) no controle do formulário
+            const [form, setForm] = useState({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '', period: 'am' });
             const [editId, setEditId] = useState(null);
             const [importDate, setImportDate] = useState('');
 
@@ -1956,7 +1957,7 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
             };
 
             const addTarget = () => {
-                const name = prompt("Nome do novo Público ou Bloco (ex: Goleiros, Grupo B):");
+                const name = prompt("Nome do novo Público ou Bloco (ex: Tático Campo, Goleiros):");
                 if (name && !targetOptions.includes(name)) {
                     setTargetOptions([...targetOptions, name]);
                     setForm({...form, target: name});
@@ -1966,7 +1967,7 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
             const importFromDate = () => {
                 if(!importDate) return showToast("Selecione uma data no calendário!");
                 db.collection('coachData').doc(user.uid).get().then(doc => {
-                    if(doc.exists()){
+                    if(doc.exists){
                         const pastWorkout = doc.data().exerciseHistory?.[importDate];
                         if(pastWorkout && pastWorkout.length > 0){
                             setExercises(pastWorkout);
@@ -1988,14 +1989,14 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
             };
 
             const saveExercise = () => {
-                if(!form.title) return showToast("Digite o nome do exercício!");
+                if(!form.title) return showToast("Digite o nome da Atividade/Exercício!");
                 if (editId) {
                     setExercises(exercises.map(ex => ex.id === editId ? { ...ex, ...form } : ex));
                     setEditId(null);
                 } else {
                     setExercises([{ id: Date.now(), ...form }, ...exercises]);
                 }
-                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: form.target, order: '' });
+                setForm({ title: '', gifUrl: '', sets: '', reps: '', rest: '', target: form.target, order: '', period: form.period });
                 showToast("Lista atualizada!");
             };
 
@@ -2059,18 +2060,43 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                                     ))}
                                 </select>
                             </div>
+                            
+                            {/* 🔥 NOVO: SELETOR DE TURNO E GRID ATUALIZADO */}
                             <div className="md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Ordem</label><input type="text" placeholder="1º" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none text-center" value={form.order} onChange={e=>setForm({...form, order: e.target.value})} /></div>
-                            <div className="md:col-span-4"><label className="text-[10px] font-bold text-slate-400 uppercase">Nome do Exercício</label><input type="text" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
-                            <div className="md:col-span-3"><div className="flex justify-between items-center mb-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Público / Bloco</label><button onClick={addTarget} className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-0.5"><Icon name="plus" size={8}/> NOVO</button></div><select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>{targetOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            <div className="md:col-span-4"><button onClick={saveExercise} className={`w-full text-white font-black py-2.5 rounded-lg shadow-md transition-all ${editId ? 'bg-orange-500' : 'bg-blue-600'}`}>{editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À LISTA'}</button></div>
+                            
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Turno</label>
+                                <select className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.period} onChange={e=>setForm({...form, period: e.target.value})}>
+                                    <option value="am">☀️ Manhã</option>
+                                    <option value="pm">⛅ Tarde</option>
+                                </select>
+                            </div>
+
+                            <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400 uppercase">Atividade / Exercício</label><input type="text" placeholder="Ex: Rondo, Supino..." className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
+                            
+                            <div className="md:col-span-3"><div className="flex justify-between items-center mb-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Bloco / Foco</label><button onClick={addTarget} className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-0.5"><Icon name="plus" size={8}/> NOVO</button></div><select className="w-full border rounded p-2 text-sm dark:bg-slate-700 dark:text-white font-bold outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>{targetOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            
+                            <div className="md:col-span-3"><button onClick={saveExercise} className={`w-full text-white font-black py-2.5 rounded-lg shadow-md transition-all ${editId ? 'bg-orange-500' : 'bg-blue-600'}`}>{editId ? 'ATUALIZAR ITEM' : 'ADICIONAR À LISTA'}</button></div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">
                         {exercises.map((ex, idx) => (
                             <div key={ex.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between group shadow-sm">
-                                <div className="flex items-center gap-4"><div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-blue-600">{ex.order || idx + 1}</div><div><div className="text-[10px] font-black text-purple-500 uppercase">{ex.target}</div><div className="font-bold text-slate-800 dark:text-white uppercase">{ex.title}</div></div></div>
-                                <div className="flex gap-2"><button onClick={() => {setForm(ex); setEditId(ex.id);}} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button><button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button></div>
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-slate-100 dark:bg-slate-700 w-10 h-10 rounded-full flex items-center justify-center font-black text-blue-600 shrink-0">{ex.order || idx + 1}</div>
+                                    <div>
+                                        {/* 🔥 NOVO: Exibe visualmente se é Manhã ou Tarde */}
+                                        <div className={`text-[10px] font-black uppercase mb-0.5 ${ex.period === 'pm' ? 'text-orange-500' : 'text-blue-500'}`}>
+                                            {ex.period === 'pm' ? '⛅ TARDE' : '☀️ MANHÃ'} | <span className="text-slate-500">{ex.target}</span>
+                                        </div>
+                                        <div className="font-bold text-slate-800 dark:text-white uppercase leading-tight">{ex.title}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => {setForm(ex); setEditId(ex.id);}} className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Icon name="edit" size={18}/></button>
+                                    <button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button>
+                                </div>
                             </div>
                         ))}
                     </div>
