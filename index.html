@@ -1922,10 +1922,7 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
                 </div>
             );
         }; // <--- PARE A SELEÇÃO EXATAMENTE AQUI NESTE PONTO E VÍRGULA
-
-        const MainApp = ({ user, initialData }) => {
-            const [tab, setTab] = useState('squad');
-
+        
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
