@@ -90,10 +90,9 @@
             const [gif, setGif] = useState(null); const [completed, setCompleted] = useState([]);
             const [skippedExs, setSkippedExs] = useState({}); const [exLoads, setExLoads] = useState({}); const [skipModal, setSkipModal] = useState(null);
             
-            // Controle de PSE e Turnos
             const [rpeMod, setRpeMod] = useState(false); 
             const [rpe, setRpe] = useState(5); 
-            const [rpePeriod, setRpePeriod] = useState('am'); // Controla se é Manhã ou Tarde
+            const [rpePeriod, setRpePeriod] = useState('am');
             const [dur, setDur] = useState(60);
             
             const [feedbackMsg, setFeedbackMsg] = useState(""); const [showStats, setShowStats] = useState(false);
@@ -101,7 +100,6 @@
             const [showProfile, setShowProfile] = useState(false);
             const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
             
-            // Controle da Logística Editável
             const [isEditingLogistics, setIsEditingLogistics] = useState(false);
             const [logisticsText, setLogisticsText] = useState("");
 
@@ -191,11 +189,8 @@
                 const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
 
                 const updateData = {};
-                if(rpePeriod === 'am') {
-                    updateData[`trainingLog.${td}.${idx}.rpe_am`] = rpe;
-                } else {
-                    updateData[`trainingLog.${td}.${idx}.rpe_pm`] = rpe;
-                }
+                if(rpePeriod === 'am') { updateData[`trainingLog.${td}.${idx}.rpe_am`] = rpe; } 
+                else { updateData[`trainingLog.${td}.${idx}.rpe_pm`] = rpe; }
                 
                 updateData[`trainingLog.${td}.${idx}.duration`] = dur;
                 updateData[`trainingLog.${td}.${idx}.feedback`] = feedbackMsg;
@@ -307,7 +302,6 @@
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
             
-            // 🔥 LÓGICA NOVA: Separando os blocos da Manhã e da Tarde
             const blocksAM = exData.gen.filter(e => e.period !== 'pm').reduce((acc, ex) => {
                 const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TREINO PRINCIPAL';
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
@@ -328,10 +322,6 @@
             let daysInDm = 0;
             if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(getTodayStr()); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
 
-            const lastAss = data.ass[idx] && data.ass[idx][0] ? data.ass[idx][0] : {};
-            const bf = parseFloat(lastAss.bf) || 0;
-            const isOverweight = bf > 12;
-
             let pw = data.postW; let ai = "";
             if(pw==='IA') { if(wl.fatigue>=5||wl.soreness>=5){pw='Crioterapia + Massagem'; ai="Fadiga alta. Foco na Crio imediata.";} else if(wl.fatigue>=3||wl.soreness>=3){pw='Bota Pneumática'; ai="Cansaço moderado detectado.";} else pw='Piscina/Passiva'; }
             else if(wl.fatigue>=5||wl.soreness>=5) ai="⚠️ Fadiga crítica. Aumente o tempo de recuperação em 10 min.";
@@ -341,23 +331,32 @@
                 if(!completed.includes(id)) { setCompleted([...completed, id]); vibrate(50); const newSkips = {...skippedExs}; delete newSkips[id]; setSkippedExs(newSkips); } else { setCompleted(completed.filter(x=>x!==id)); vibrate(20); }
             };
 
+            // 🔥 RENDERIZAÇÃO INTELIGENTE: Academia x Campo
             const renderExerciseCard = (ex, typeClass, iconName, borderClassColor) => {
                 const isDone = completed.includes(ex.id); const isSkipped = skippedExs[ex.id] !== undefined;
                 const bColor = isDone ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : isSkipped ? 'border-yellow-500 opacity-60' : borderClassColor;
+                const isField = ex.type === 'campo';
+
                 return (
                     <div key={ex.id} className={`bg-slate-900/80 p-4 rounded-2xl border ${bColor} flex flex-col gap-3 relative transition-colors`}>
                         {isSkipped && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[8px] font-black px-2 py-0.5 rounded-bl-lg z-10 uppercase">PULOU: {skippedExs[ex.id]}</div>}
                         <div className="flex gap-4 items-center">
-                            <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
-                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90" onError={(e)=>e.target.style.display='none'}/> : <Icon name={iconName} className="m-5 text-slate-500"/>}
+                            <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group flex justify-center items-center" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
+                                {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90" onError={(e)=>e.target.style.display='none'}/> : <span className="text-3xl opacity-50">{isField ? '⚽' : '🏋️'}</span>}
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                             </div>
                             <div className="flex-1">
                                 <div className="font-black text-white text-sm uppercase leading-tight">{ex.title}</div>
-                                <div className={`text-[10px] font-bold uppercase mt-1 ${typeClass}`}>{ex.sets}x {ex.reps} {ex.rest && `| ${ex.rest}s Desc.`}</div>
-                                <div className="mt-2 flex items-center gap-1 w-24">
-                                    <input type="number" placeholder="Carga (kg)" className="w-full bg-slate-950 border border-slate-700 text-[10px] text-white rounded px-2 py-1.5 outline-none focus:border-blue-500" value={exLoads[ex.id] || ''} onChange={e=>setExLoads({...exLoads, [ex.id]: e.target.value})} onClick={e=>e.stopPropagation()}/>
-                                </div>
+                                {isField ? (
+                                    <div className="text-[10px] text-slate-400 mt-1 leading-snug line-clamp-2">{ex.description || 'Dinâmica tática / Campo.'}</div>
+                                ) : (
+                                    <>
+                                        <div className={`text-[10px] font-bold uppercase mt-1 ${typeClass}`}>{ex.sets}x {ex.reps} {ex.rest && `| ${ex.rest}s Desc.`}</div>
+                                        <div className="mt-2 flex items-center gap-1 w-24">
+                                            <input type="number" placeholder="Carga (kg)" className="w-full bg-slate-950 border border-slate-700 text-[10px] text-white rounded px-2 py-1.5 outline-none focus:border-blue-500" value={exLoads[ex.id] || ''} onChange={e=>setExLoads({...exLoads, [ex.id]: e.target.value})} onClick={e=>e.stopPropagation()}/>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             <div className="flex flex-col gap-2">
                                 <button onClick={()=>tog(ex)} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-700 text-slate-600 hover:text-green-500'}`}><Icon name="check" size={20}/></button>
@@ -458,7 +457,7 @@
                                     <div className="bg-slate-900/80 border border-slate-700 p-8 rounded-[32px] flex flex-col items-center text-center mt-6 shadow-inner">
                                         <div className="text-6xl mb-4 animate-bounce">🔋</div>
                                         <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">Dia de Recuperação</h3>
-                                        <p className="text-sm text-slate-400 font-bold">Nenhum treino físico prescrito para hoje. Lembre-se de registrar as atividades de campo e seu descanso!</p>
+                                        <p className="text-sm text-slate-400 font-bold">Nenhum treino prescrito para hoje. Lembre-se de registrar sua Percepção de Esforço se fizer atividade extra!</p>
                                     </div>
                                 )}
 
@@ -528,7 +527,7 @@
                                             <div className="mb-6 bg-slate-900/30 p-3 rounded-[32px] border border-slate-800">
                                                 <div className="flex items-center gap-2 mb-3 px-2">
                                                     <span className="text-lg">☀️</span>
-                                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Treino da Manhã</h3>
+                                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Sessão da Manhã</h3>
                                                 </div>
                                                 {Object.keys(blocksAM).map(blockName => (
                                                     <div key={`am-${blockName}`} className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden mb-3 relative">
@@ -550,13 +549,13 @@
                                             <div className="mb-6 bg-slate-900/30 p-3 rounded-[32px] border border-slate-800">
                                                 <div className="flex items-center gap-2 mb-3 px-2">
                                                     <span className="text-lg">⛅</span>
-                                                    <h3 className="text-xs font-black text-orange-500 uppercase tracking-widest">Treino da Tarde</h3>
+                                                    <h3 className="text-xs font-black text-orange-500 uppercase tracking-widest">Sessão da Tarde</h3>
                                                 </div>
                                                 {Object.keys(blocksPM).map(blockName => (
                                                     <div key={`pm-${blockName}`} className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden mb-3 relative">
                                                         <div className="absolute top-0 right-0 w-2 h-full bg-orange-500"></div>
                                                         <div className="bg-slate-800/50 p-4 border-b border-slate-800 flex items-center gap-2">
-                                                            <Icon name="activity" size={16} className="text-orange-500"/>
+                                                            <span className="text-orange-500 text-lg leading-none">⚽</span>
                                                             <h3 className="font-black text-xs uppercase text-white tracking-wider">{blockName}</h3>
                                                         </div>
                                                         <div className="p-3 space-y-3">
@@ -584,7 +583,7 @@
                             </div>
                         )}
 
-                        {/* --- ABA AGENDA: CONVOCAÇÃO PELO DESTAQUE --- */}
+                        {/* --- ABA AGENDA --- */}
                         {tab === 'agenda' && (
                             <div className="animate-fade-in space-y-6">
                                 {p.highlight ? (
@@ -601,7 +600,6 @@
                                             </div>
                                         </div>
 
-                                        {/* NOVO BLOCO DE LOGÍSTICA EDITÁVEL */}
                                         <div className="mt-4 bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-inner">
                                             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
                                                 <div className="flex items-center gap-2">
@@ -815,10 +813,78 @@
                     )}
 
                     {tab === 'workout' && !isFinished && (
-                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40">
-                            <button onClick={()=>setRpeMod(true)} className={`w-full text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest ${tEx > 0 ? 'bg-green-500 hover:bg-green-600 shadow-green-900/50' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/50'}`}>
-                                <Icon name="check"/> {tEx > 0 ? 'FINALIZAR TREINO' : 'REGISTRAR DESCANSO'}
-                            </button>
+                        <div className="fixed bottom-[72px] left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40 flex gap-2">
+                            {!data.log[getTodayStr()]?.[idx]?.rpe_am_submitted && (
+                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('am'); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
+                                    <Icon name="check" size={16}/> PSE MANHÃ
+                                </button>
+                            )}
+                            
+                            {!data.log[getTodayStr()]?.[idx]?.rpe_pm_submitted && (
+                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('pm'); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
+                                    <Icon name="check" size={16}/> PSE TARDE
+                                </button>
+                            )}
+
+                            {data.log[getTodayStr()]?.[idx]?.rpe_am_submitted && data.log[getTodayStr()]?.[idx]?.rpe_pm_submitted && viewMode === 'review' && tEx > 0 && (
+                                <button onClick={()=>setViewMode('finished')} className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm active:scale-95 transition-transform uppercase tracking-widest">
+                                    <Icon name="arrowUp"/> VOLTAR AO RESUMO
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 🔥 MODAL INTELIGENTE (Prancheta vs Academia) */}
+                    {gif && (
+                        <div className="absolute inset-0 bg-slate-950 z-[250] flex flex-col animate-fade-in">
+                            <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10">
+                                <button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button>
+                            </div>
+                            {focusMode === 'exercise' ? (
+                                <div className="flex-1 flex justify-center items-center bg-black relative">
+                                    {gif.gifUrl ? (
+                                        <img src={gif.gifUrl} className="w-full h-full object-contain opacity-95 pb-32"/>
+                                    ) : (
+                                        <span className="text-8xl opacity-30">{gif.type === 'campo' ? '⚽' : '🏋️'}</span>
+                                    )}
+                                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent p-6 pt-32">
+                                        <h2 className="text-3xl font-black text-white uppercase mb-4 leading-tight">{gif.title}</h2>
+                                        
+                                        {gif.type === 'campo' ? (
+                                            <div className="bg-slate-800/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-700 mb-8 max-h-32 overflow-y-auto custom-scroll">
+                                                <span className="text-[10px] text-emerald-400 uppercase font-bold mb-1 block">Regras / Dinâmica do Bloco</span>
+                                                <p className="text-sm text-slate-200 font-medium leading-relaxed">{gif.description || 'Treino tático de campo.'}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-4 mb-8">
+                                                <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Séries</span><div className="text-2xl font-black text-blue-400">{gif.sets}</div></div>
+                                                <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Reps</span><div className="text-2xl font-black text-green-400">{gif.reps}</div></div>
+                                                {gif.rest && <div className="bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-slate-700 text-center flex-1"><span className="text-[10px] text-slate-400 uppercase font-bold">Descanso</span><div className="text-2xl font-black text-yellow-400">{gif.rest}s</div></div>}
+                                            </div>
+                                        )}
+
+                                        <button onClick={() => {
+                                            const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
+                                            activeExRef.current = id;
+                                            if(gif.rest && parseInt(gif.rest) > 0 && gif.type !== 'campo') { 
+                                                setRestTimer(parseInt(gif.rest)); 
+                                                setFocusMode('rest'); 
+                                            } else { 
+                                                goToNextEx(id); 
+                                            }
+                                        }} className="w-full bg-green-500 hover:bg-green-600 text-white font-black py-5 rounded-[20px] shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
+                                            <Icon name="check" size={24}/> {gif.type === 'campo' ? 'CONCLUIR BLOCO TÁTICO' : (gif.rest ? 'CONCLUIR E DESCANSAR' : 'CONCLUIR SÉRIE')}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col justify-center items-center bg-slate-900 p-6 relative">
+                                     <h2 className="text-xl font-bold text-slate-400 uppercase mb-2 tracking-widest">Descanso Ativo</h2>
+                                     <div className="text-8xl font-black text-yellow-400 animate-pulse drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{restTimer}</div>
+                                     <div className="text-slate-500 mt-4 text-xs font-bold uppercase tracking-widest">O celular vai apitar...</div>
+                                     <button onClick={()=>{setRestTimer(0);}} className="mt-10 bg-slate-800 text-white border border-slate-700 px-8 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-transform">Pular Descanso ⏭️</button>
+                                </div>
+                            )}
                         </div>
                     )}
 
