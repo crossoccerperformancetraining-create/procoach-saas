@@ -80,24 +80,29 @@
             return "EM EVOLUÇÃO 🌱";
         };
 
-        const renderVideoElement = (url) => {
+        // 🔥 SUPER COMPONENTE DE VÍDEO (BLINDADO CONTRA ERROS)
+        const VideoPlayer = ({ url }) => {
             if(!url) return null;
-            const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-            if(ytMatch && ytMatch[2].length === 11) {
-                return <iframe src={`https://www.youtube.com/embed/${ytMatch[2]}`} frameBorder="0" allowFullScreen className="w-full h-full"></iframe>;
+            let ytId = null;
+            const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i;
+            const match = url.match(ytRegex);
+            if(match && match[1]) ytId = match[1];
+
+            if(ytId) {
+                return <iframe src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full pointer-events-auto"></iframe>;
             }
-            if(url.toLowerCase().includes('.mp4')) {
-                return <video src={url} controls className="w-full h-full object-cover"></video>;
+            if(url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.mov')) {
+                return <video src={url} controls className="w-full h-full object-cover pointer-events-auto" playsInline></video>;
             }
             return (
-                <div className="flex flex-col items-center justify-center h-full bg-slate-900 gap-2 p-4 text-center">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Este vídeo abre em outra janela</span>
-                    <a href={url} target="_blank" className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-black flex gap-2 items-center transition-colors shadow-lg"><Icon name="play" size={16}/> ABRIR VÍDEO</a>
+                <div className="flex flex-col items-center justify-center h-full bg-slate-900 gap-2 p-4 text-center pointer-events-auto">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Este vídeo abre no seu navegador</span>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-black flex gap-2 items-center transition-colors shadow-lg"><Icon name="play" size={16}/> ABRIR VÍDEO</a>
                 </div>
             );
         };
 
-        const AthletePortal = () => {
+       const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [] });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
@@ -154,7 +159,7 @@
                 return { act: safeArray(data.act), prev: prevExs, gen: genExs, flat: [...safeArray(data.act), ...prevExs, ...genExs] };
             };
 
-            const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Série finalizada! 🎉"); } };
+            const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Bloco finalizado! 🎉"); } };
 
             useEffect(() => {
                 let interval = null;
@@ -204,7 +209,7 @@
                 });
             };
 
-            const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
+            const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada: ${reason}`, '⚠️'); };
             const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
 
             const saveRPE = () => {
@@ -376,7 +381,7 @@
                 if(!completed.includes(id)) { setCompleted([...completed, id]); vibrate(50); const newSkips = {...skippedExs}; delete newSkips[id]; setSkippedExs(newSkips); } else { setCompleted(completed.filter(x=>x!==id)); vibrate(20); }
             };
 
-            // 🔥 CARDS DE EXERCÍCIO COM PROTEÇÃO DE TOUCH
+            // 🔥 CARD DE EXERCÍCIO (INTEIRO CLICÁVEL) COM STOP PROPAGATION NOS BOTÕES
             const renderExerciseCard = (ex, typeClass, iconName, borderClassColor) => {
                 const isDone = completed.includes(ex.id); const isSkipped = skippedExs[ex.id] !== undefined;
                 const bColor = isDone ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : isSkipped ? 'border-yellow-500 opacity-60' : borderClassColor;
@@ -384,10 +389,10 @@
                 const vid = ex.videoUrl || ex.video;
 
                 return (
-                    <div key={ex.id} className={`bg-slate-900/80 p-4 rounded-2xl border ${bColor} flex flex-col gap-3 relative transition-colors`}>
+                    <div key={ex.id} onClick={() => {setGif(ex); setFocusMode('exercise');}} className={`bg-slate-900/80 p-4 rounded-2xl border ${bColor} flex flex-col gap-3 relative transition-colors cursor-pointer`}>
                         {isSkipped && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[8px] font-black px-2 py-0.5 rounded-bl-lg z-10 uppercase">PULOU: {skippedExs[ex.id]}</div>}
                         <div className="flex gap-4 items-center">
-                            <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group flex justify-center items-center" onClick={() => {setGif(ex); setFocusMode('exercise');}}>
+                            <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden shrink-0 relative group flex justify-center items-center">
                                 {ex.gifUrl ? <img src={ex.gifUrl} className="w-full h-full object-cover opacity-90" onError={(e)=>e.target.style.display='none'}/> : (vid ? <Icon name="play" size={32} className="text-red-500"/> : <span className="text-3xl opacity-50">{isField ? '⚽' : '🏋️'}</span>)}
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100"><Icon name="play" size={20} className="text-white"/></div>
                             </div>
@@ -407,9 +412,9 @@
                             
                             {/* 🔥 BOTOES BLINDADOS (O "Pular" só aparece na Academia) */}
                             <div className="flex flex-col gap-2 relative z-50">
-                                <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all pointer-events-auto ${isDone ? 'bg-green-500 border-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-700 text-slate-500 hover:text-green-500 hover:border-green-500'}`}><Icon name="check" size={20}/></button>
+                                <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all pointer-events-auto ${isDone ? 'bg-green-500 border-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-700 text-slate-500 hover:text-green-500 hover:border-green-500'}`}><Icon name="check" size={20}/></button>
                                 {!isField && (
-                                    <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); setSkipModal(ex.id); }} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center cursor-pointer hover:bg-slate-700 hover:border-slate-600 text-slate-500 pointer-events-auto" title="Pular"><Icon name="fastForward" size={16}/></button>
+                                    <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); setSkipModal(ex.id); }} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center hover:bg-slate-700 hover:border-slate-600 text-slate-500 pointer-events-auto" title="Pular"><Icon name="fastForward" size={16}/></button>
                                 )}
                             </div>
                         </div>
@@ -438,6 +443,7 @@
                                     </div>
                                 </div>
                             </div>
+                            
                             {!isPriv && (
                                 <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm shrink-0">
                                     <Icon name="arrowLeft" size={12}/> VOLTAR
@@ -446,6 +452,7 @@
                         </div>
 
                         {isSuspended && <div className="mt-4 bg-red-600 text-white p-3 rounded-2xl flex items-center gap-3 animate-pulse border border-red-400 shadow-lg"><Icon name="alert" size={24}/><div className="text-[10px] font-black uppercase">Você está Suspenso para o próximo jogo oficial!</div></div>}
+                        
                         {activeDm && (
                             <div className="mt-3 bg-red-900/50 text-white p-3 rounded-2xl flex items-center gap-3 border border-red-500 shadow-lg">
                                 <Icon name="medkit" size={24} className="text-red-400"/>
@@ -457,7 +464,8 @@
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-32">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-28">
+                        
                         {tab === 'workout' && (
                             <div className="space-y-4 animate-fade-in">
                                 <div className="grid grid-cols-2 gap-3">
@@ -489,7 +497,7 @@
                                     <div className="bg-indigo-900/30 border border-indigo-800/50 p-4 rounded-3xl flex flex-col gap-3 shadow-lg relative overflow-hidden">
                                         <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
                                         <div className="flex items-center gap-2 mb-1"><Icon name="play" size={18} className="text-indigo-400"/><h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Vídeo Análise Tática</h3></div>
-                                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-indigo-500/30">
+                                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-indigo-500/30 relative z-50">
                                             {renderVideoElement(data.videoUrl)}
                                         </div>
                                     </div>
@@ -501,6 +509,7 @@
                                     <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
                                 </div>
 
+                                {/* 🔥 BATERIA CONDICIONAL (Só mostra se for FOLGA TOTAL ou MANHÃ LIVRE) */}
                                 {!hasAM && !hasPM && !isFinished && viewMode !== 'review' && (
                                     <div className="bg-slate-900/80 border border-slate-700 p-8 rounded-[32px] flex flex-col items-center text-center mt-6 shadow-inner">
                                         <div className="text-6xl mb-4 animate-bounce">🔋</div>
@@ -723,32 +732,16 @@
                         )}
                     </div>
 
-                    {/* 🔥 BARRA INFERIOR DE PSE MOVIDA PARA CIMA DAS TABS (BOTTOM-20) */}
-                    {tab === 'workout' && !isFinished && (
-                        <div className="fixed bottom-20 left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40 flex gap-2 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-                            
-                            {!hasAM && !hasPM && !isRestDayDone && (
-                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('rest'); setDur(0); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm uppercase tracking-widest active:scale-95 transition-transform border border-slate-700">
-                                    <Icon name="check" size={18}/> REGISTRAR DESCANSO
-                                </button>
-                            )}
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
+                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
+                         <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
+                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
+                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
+                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
+                    </div>
 
-                            {hasAM && !isAmDone && (
-                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('am'); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
-                                    <Icon name="check" size={16}/> PSE MANHÃ
-                                </button>
-                            )}
-                            
-                            {hasPM && !isPmDone && (
-                                <button onClick={()=>{ setRpeMod(true); setRpePeriod('pm'); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest active:scale-95 transition-transform">
-                                    <Icon name="check" size={16}/> PSE TARDE
-                                </button>
-                            )}
-
-                        </div>
-                    )}
-
-                    {/* MODAIS Z-INDEX MÁXIMO E POINTER-EVENTS */}
+                    {/* 🔥 MODAIS FORÇADOS PARA Z-INDEX 9999 PARA NUNCA TRAVAR OU FICAR ESCONDIDOS */}
+                    
                     {skipModal && (
                         <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex items-center justify-center p-6 animate-fade-in pointer-events-auto">
                             <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl relative">
@@ -805,6 +798,7 @@
                         </div>
                     )}
 
+                    {/* 🔥 MODAL INTELIGENTE DE EXERCÍCIO / PRANCHETA */}
                     {gif && (
                         <div className="fixed inset-0 bg-slate-950 z-[9999] flex flex-col animate-fade-in pointer-events-auto">
                             <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10">
@@ -828,7 +822,7 @@
                                                 {(gif.videoUrl || gif.video) && (
                                                     <div className="mt-4 pt-4 border-t border-slate-700 pointer-events-auto">
                                                         <span className="text-[10px] text-red-400 uppercase font-bold mb-2 flex items-center gap-1"><Icon name="play" size={12}/> Vídeo (Drone / Análise)</span>
-                                                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-slate-600 shadow-inner">
+                                                        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-slate-600 shadow-inner relative z-50">
                                                             {renderVideoElement(gif.videoUrl || gif.video)}
                                                         </div>
                                                     </div>
@@ -854,26 +848,35 @@
                                         )}
 
                                         <div className="flex gap-2 w-full mt-4">
-                                            {/* 🔥 PULAR SÓ PARA ACADEMIA */}
-                                            {gif.type !== 'campo' && (
-                                                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSkipModal(gif.id); setGif(null); }} className="w-20 bg-slate-800 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-[20px] shadow-xl flex justify-center items-center text-sm active:scale-95 transition-transform border border-slate-700">
-                                                    <Icon name="fastForward" size={20}/>
+                                            {/* 🔥 NOVO BOTÃO DE PULAR E CONCLUIR - APENAS ACADEMIA */}
+                                            {gif.type !== 'campo' ? (
+                                                <>
+                                                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSkipModal(gif.id); setGif(null); }} className="w-20 bg-slate-800 hover:bg-slate-700 text-slate-400 font-black py-4 rounded-[20px] shadow-xl flex justify-center items-center text-sm active:scale-95 transition-transform border border-slate-700">
+                                                        <Icon name="fastForward" size={20}/>
+                                                    </button>
+                                                    <button onClick={(e) => {
+                                                        e.preventDefault();
+                                                        const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
+                                                        activeExRef.current = id;
+                                                        if(gif.rest && parseInt(gif.rest) > 0) { 
+                                                            setRestTimer(parseInt(gif.rest)); 
+                                                            setFocusMode('rest'); 
+                                                        } else { 
+                                                            goToNextEx(id); 
+                                                        }
+                                                    }} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-[20px] shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
+                                                        <Icon name="check" size={24}/> CONCLUIR SÉRIE
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button onClick={(e) => {
+                                                    e.preventDefault();
+                                                    const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
+                                                    goToNextEx(id);
+                                                }} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-5 rounded-[20px] shadow-xl flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest border border-green-600">
+                                                    <Icon name="check" size={24}/> CONCLUIR BLOCO TÁTICO
                                                 </button>
                                             )}
-                                            
-                                            <button onClick={(e) => {
-                                                e.preventDefault();
-                                                const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
-                                                activeExRef.current = id;
-                                                if(gif.rest && parseInt(gif.rest) > 0 && gif.type !== 'campo') { 
-                                                    setRestTimer(parseInt(gif.rest)); 
-                                                    setFocusMode('rest'); 
-                                                } else { 
-                                                    goToNextEx(id); 
-                                                }
-                                            }} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-[20px] shadow-xl shadow-green-900/50 flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest">
-                                                <Icon name="check" size={24}/> {gif.type === 'campo' ? 'FECHAR PRANCHETA' : 'CONCLUIR SÉRIE'}
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -896,6 +899,7 @@
                          <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
                     </div>
 
+                    {/* Modais de Perfil, Stats e Share continuam idênticos */}
                     {showProfile && (
                         <div className="fixed inset-0 bg-slate-950 z-[400] p-6 flex flex-col items-center animate-fade-in custom-scroll overflow-y-auto">
                             <button onClick={()=>setShowProfile(false)} className="absolute top-6 right-6 text-white/50"><Icon name="x" size={32}/></button>
@@ -920,7 +924,7 @@
                     {showStats && (() => {
                         const historyData = getHistory();
                         return (
-                            <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-[400] flex flex-col items-center justify-start pt-12 p-6 animate-fade-in font-sans overflow-y-auto custom-scroll">
+                            <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-lg z-[400] flex flex-col items-center justify-start pt-12 p-6 animate-fade-in font-sans overflow-y-auto custom-scroll">
                                 <div className="w-full max-w-sm flex flex-col items-center relative pb-10">
                                     <button onClick={()=>setShowStats(false)} className="absolute -top-4 right-0 text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"><Icon name="x" size={20}/></button>
                                     <div className="w-20 h-20 bg-blue-500/20 text-blue-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20"><Icon name="activity" size={40}/></div>
