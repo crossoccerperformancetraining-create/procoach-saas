@@ -1921,6 +1921,10 @@ const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => 
 // WORKOUT BUILDER VIEW (TREINADOR)
 // ONDE O TREINADOR CRIA O TREINO
 // ==========================================
+// ==========================================
+// WORKOUT BUILDER VIEW (TREINADOR)
+// ONDE O TREINADOR CRIA O TREINO
+// ==========================================
 const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
     const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
     const fieldTargets = ['TÉCNICO', 'JOGUINHO', 'ORG. OFENSIVA', 'ORG. DEFENSIVA', 'TRANS. OFENSIVA', 'TRANS. DEFENSIVA', 'ABP OFENSIVA', 'ABP DEFENSIVA', 'TÁTICO GERAL', 'PDI', 'AQUECIMENTO'];
@@ -1929,9 +1933,31 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
     const [form, setForm] = useState({ title: '', gifUrl: '', videoUrl: '', sets: '', reps: '', rest: '', target: targetOptions[0], order: '', period: 'am', description: '', type: 'academia' });
     
     const [editId, setEditId] = useState(null);
+    const [importDate, setImportDate] = useState('');
+
+    // 🔥 FUNÇÃO DE BUSCAR DA BIBLIOTECA
+    const handleLibrarySelect = (e) => {
+        const libId = e.target.value;
+        if (!libId) return;
+        const item = library.find(x => x.libId.toString() === libId);
+        if (item) {
+            const isField = ['Tático', 'Técnico', 'Coletivo', 'Bola Parada', 'Mini Jogo'].includes(item.method);
+            setTrainingType(isField ? 'campo' : 'academia');
+            setForm({
+                ...form,
+                title: item.name || '',
+                gifUrl: item.image || '',
+                videoUrl: item.video || '',
+                description: item.desc || '',
+                sets: item.time ? item.time.toString() : '',
+                type: isField ? 'campo' : 'academia',
+                target: isField ? fieldTargets[0] : targetOptions[0]
+            });
+        }
+    };
 
     const saveExercise = () => {
-        if(!form.title) return showToast("Digite o nome da Atividade!", "#ef4444");
+        if(!form.title) { alert("Digite o nome da Atividade!"); return; }
         
         const finalForm = { ...form, type: trainingType };
         if (trainingType === 'campo' && !fieldTargets.includes(form.target)) {
@@ -1946,58 +1972,93 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
         }
         
         setForm({ title: '', gifUrl: '', videoUrl: '', sets: '', reps: '', rest: '', target: trainingType === 'academia' ? targetOptions[0] : fieldTargets[0], order: '', period: form.period, description: '', type: trainingType });
-        showToast("Sessão Atualizada!", "#10b981");
+    };
+
+    // 🔥 FUNÇÃO DE EDITAR EXERCÍCIO
+    const editExercise = (ex) => {
+        setTrainingType(ex.type || 'academia');
+        setForm(ex);
+        setEditId(ex.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     return (
         <div className="p-6 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6">
+            
+            {/* 🔥 CABEÇALHO COM PÓS-TREINO E IMPORTAÇÃO DE VOLTA */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-xl no-print">
                 <div className="flex items-center gap-3">
                     <div className="text-white">
-                        <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Criador de Treinos</div>
+                        <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Importar Sessão Anterior</div>
+                        <div className="flex gap-2">
+                            <input type="date" className="bg-slate-700 text-white text-xs p-2 rounded-lg outline-none border border-slate-600" value={importDate} onChange={e=>setImportDate(e.target.value)} />
+                            <button onClick={() => alert("Em breve: Integração de Histórico")} className="bg-blue-600 hover:bg-blue-500 text-[10px] font-black px-4 py-2 rounded-lg transition-colors">IMPORTAR</button>
+                        </div>
                     </div>
+                </div>
+                <div className="text-white flex flex-col items-end">
+                    <div className="text-[10px] font-black uppercase text-slate-400 mb-1">Pós-Treino Sugerido (App Atleta)</div>
+                    <select className="bg-slate-700 text-white text-xs p-2 rounded-lg outline-none border border-slate-600 font-bold" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
+                        <option value="IA">Automático (Inteligência Artificial)</option>
+                        <option value="Crioterapia + Massagem">Crioterapia + Massagem</option>
+                        <option value="Bota Pneumática">Bota Pneumática</option>
+                        <option value="Piscina/Passiva">Piscina/Passiva</option>
+                        <option value="Livre">Livre</option>
+                    </select>
                 </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl mb-6 border dark:border-slate-700 max-w-sm">
-                    <button onClick={()=>setTrainingType('academia')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'academia' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>🏋️ ACADEMIA</button>
-                    <button onClick={()=>setTrainingType('campo')} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'campo' ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>⚽ CAMPO / TÁTICO</button>
+                <div className="flex justify-between items-start mb-6 gap-4 flex-col md:flex-row">
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border dark:border-slate-700 w-full max-w-sm">
+                        <button onClick={()=>{setTrainingType('academia'); setForm({...form, target: targetOptions[0]});}} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'academia' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>🏋️ ACADEMIA</button>
+                        <button onClick={()=>{setTrainingType('campo'); setForm({...form, target: fieldTargets[0]});}} className={`flex-1 py-2 text-xs font-black uppercase rounded-lg transition-colors ${trainingType === 'campo' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>⚽ CAMPO / TÁTICO</button>
+                    </div>
+                    
+                    {/* 🔥 BUSCA NA BIBLIOTECA DE VOLTA */}
+                    {library && library.length > 0 && (
+                        <div className="w-full md:w-1/3">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">📖 Puxar da Biblioteca</label>
+                            <select className="w-full border rounded p-2 text-xs font-bold dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500 cursor-pointer" onChange={handleLibrarySelect}>
+                                <option value="">Selecione um exercício salvo...</option>
+                                {library.map(l => <option key={l.libId} value={l.libId}>{l.name} ({l.method})</option>)}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                     <div className="md:col-span-2"><label className="text-[10px] font-bold text-slate-400">Ordem</label><input type="text" className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.order} onChange={e=>setForm({...form, order: e.target.value})} /></div>
-                    <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400">Turno</label><select className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.period} onChange={e=>setForm({...form, period: e.target.value})}><option value="am">Manhã</option><option value="pm">Tarde</option></select></div>
+                    <div className="md:col-span-3"><label className="text-[10px] font-bold text-slate-400">Turno</label><select className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.period} onChange={e=>setForm({...form, period: e.target.value})}><option value="am">Manhã</option><option value="pm">Tarde</option></select></div>
                     <div className="md:col-span-7"><label className="text-[10px] font-bold text-slate-400">Categoria</label>
-                        <select className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
+                        <select className="w-full border rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none cursor-pointer" value={form.target} onChange={e=>setForm({...form, target: e.target.value})}>
                             {trainingType === 'academia' ? targetOptions.map(t => <option key={t} value={t}>{t}</option>) : fieldTargets.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
 
                     <div className="md:col-span-12"><label className="text-[10px] font-bold text-slate-400">Nome da Atividade</label><input type="text" className="w-full border rounded p-3 text-sm font-black dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} /></div>
 
-                    {/* 🔥 CAMPOS DE VÍDEO E IMAGEM COM NOVO PADRÃO DE ÍCONES */}
                     <div className="md:col-span-6">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1"><Icon name="image" size={12}/> {trainingType === 'academia' ? 'URL do GIF / Imagem' : 'Prancheta (Imagem)'}</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1">🖼️ {trainingType === 'academia' ? 'URL do GIF / Imagem' : 'Prancheta (Imagem)'}</label>
                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm">
-                            <Icon name="link" size={20} className="text-blue-500 ml-2 shrink-0"/>
+                            <span className="text-blue-500 ml-2 font-black shrink-0">URL</span>
                             <input type="text" placeholder="https://..." className="w-full bg-transparent text-slate-800 dark:text-white p-2 text-xs outline-none font-bold" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})} />
                         </div>
                     </div>
                     
                     <div className="md:col-span-6">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1"><Icon name="play" size={12}/> Vídeo (YouTube / Drone)</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1 mb-1">▶️ Vídeo (YouTube / Drone)</label>
                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm">
-                            <Icon name="play" size={20} className="text-red-500 ml-2 shrink-0"/>
+                            <span className="text-red-500 ml-2 font-black shrink-0">YT</span>
                             <input type="text" placeholder="Cole o link do YouTube aqui..." className="w-full bg-transparent text-slate-800 dark:text-white p-2 text-xs outline-none font-bold" value={form.videoUrl} onChange={e=>setForm({...form, videoUrl: e.target.value})} />
                         </div>
                     </div>
 
                     {trainingType === 'academia' ? (
                         <div className="md:col-span-12 grid grid-cols-3 gap-3 mt-2">
-                            <div><label className="text-[10px] font-bold text-slate-400">Séries</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
-                            <div><label className="text-[10px] font-bold text-slate-400">Reps</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                            <div><label className="text-[10px] font-bold text-slate-400">Desc(s)</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg text-yellow-500 dark:bg-slate-700 outline-none" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                            <div><label className="text-[10px] font-bold text-slate-400">Séries</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
+                            <div><label className="text-[10px] font-bold text-slate-400">Reps</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
+                            <div><label className="text-[10px] font-bold text-slate-400">Desc(s)</label><input type="text" className="w-full border rounded p-3 text-center font-black text-lg text-yellow-500 dark:bg-slate-700 outline-none focus:border-yellow-500" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
                         </div>
                     ) : (
                         <div className="md:col-span-12 mt-2">
@@ -2006,7 +2067,14 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
                         </div>
                     )}
 
-                    <div className="md:col-span-12 mt-4"><button onClick={saveExercise} className={`w-full text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${trainingType === 'academia' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}><Icon name="plus" size={20}/> Adicionar à Sessão</button></div>
+                    <div className="md:col-span-12 mt-4 flex gap-2">
+                        {editId && (
+                            <button onClick={()=>{setEditId(null); setForm({ title: '', gifUrl: '', videoUrl: '', sets: '', reps: '', rest: '', target: trainingType === 'academia' ? targetOptions[0] : fieldTargets[0], order: '', period: form.period, description: '', type: trainingType });}} className="bg-slate-500 hover:bg-slate-400 text-white font-black py-4 px-6 rounded-xl uppercase tracking-widest shadow-lg transition-transform active:scale-95">CANCELAR</button>
+                        )}
+                        <button onClick={saveExercise} className={`flex-1 text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${editId ? 'bg-yellow-500 hover:bg-yellow-400' : (trainingType === 'academia' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-emerald-600 hover:bg-emerald-500')}`}>
+                            {editId ? 'ATUALIZAR EXERCÍCIO' : 'ADICIONAR À SESSÃO'}
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -2023,21 +2091,31 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
                                     <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${ex.type === 'campo' ? 'bg-emerald-100 text-emerald-600' : 'bg-purple-100 text-purple-600'}`}>
                                         {ex.type === 'campo' ? '⚽ CAMPO' : '🏋️ ACADEMIA'}
                                     </span>
-                                    {ex.videoUrl && <Icon name="play" size={12} className="text-red-500"/>}
+                                    {ex.videoUrl && <span className="text-[10px] ml-1">▶️</span>}
                                 </div>
                                 <div className="font-bold text-slate-800 dark:text-white uppercase leading-tight">{ex.title} <span className="text-[10px] text-slate-400 font-normal ml-1">({ex.target})</span></div>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setExercises(exercises.filter(x => x.id !== ex.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Icon name="trash" size={18}/></button>
+                        <div className="flex gap-2 items-center">
+                            {/* 🔥 BOTÃO DE EDITAR DE VOLTA */}
+                            <button onClick={() => editExercise(ex)} className="p-2 text-slate-400 hover:text-yellow-500 transition-colors bg-slate-50 dark:bg-slate-900 rounded-lg border dark:border-slate-700" title="Editar">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button onClick={() => {if(confirm('Excluir atividade?')) setExercises(exercises.filter(x => x.id !== ex.id))}} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/50" title="Apagar">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
                         </div>
                     </div>
                 ))}
+                {exercises.length === 0 && (
+                    <div className="text-center p-8 text-slate-400 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl font-bold mt-2">
+                        Nenhum exercício adicionado na sessão.
+                    </div>
+                )}
             </div>
         </div>
     );
 };
-
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
