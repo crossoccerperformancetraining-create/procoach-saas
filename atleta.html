@@ -103,6 +103,28 @@
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
 
+            // 🔥 SUPER EXTRATOR DE VÍDEOS MUDOU DE LUGAR PARA NÃO DAR ERRO DE REFERÊNCIA
+            const renderVideoElement = (url) => {
+                if(!url) return null;
+                let ytId = null;
+                const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i;
+                const match = url.match(ytRegex);
+                if(match && match[1]) ytId = match[1];
+
+                if(ytId) {
+                    return <iframe src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full pointer-events-auto rounded-xl"></iframe>;
+                }
+                if(url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.mov')) {
+                    return <video src={url} controls className="w-full h-full object-cover pointer-events-auto rounded-xl" playsInline></video>;
+                }
+                return (
+                    <div className="flex flex-col items-center justify-center h-full bg-slate-900 gap-2 p-4 text-center pointer-events-auto rounded-xl border border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Este vídeo abre no seu navegador</span>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-black flex gap-2 items-center transition-colors shadow-lg mt-2"><Icon name="play" size={16}/> ABRIR VÍDEO</a>
+                    </div>
+                );
+            };
+
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
                 if(!uId) { setLoading(false); return; }
@@ -135,7 +157,7 @@
                 return { act: safeArray(data.act), prev: prevExs, gen: genExs, flat: [...safeArray(data.act), ...prevExs, ...genExs] };
             };
 
-            const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Bloco Finalizado! 🎉"); } };
+            const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Treino finalizado! 🎉"); } };
 
             useEffect(() => {
                 let interval = null;
@@ -357,7 +379,7 @@
                 if(!completed.includes(id)) { setCompleted([...completed, id]); vibrate(50); const newSkips = {...skippedExs}; delete newSkips[id]; setSkippedExs(newSkips); } else { setCompleted(completed.filter(x=>x!==id)); vibrate(20); }
             };
 
-            // 🔥 CARDS DE EXERCÍCIO COM PROTEÇÃO DE TOUCH
+            // 🔥 CARD DE EXERCÍCIO COM BOTÕES BLINDADOS
             const renderExerciseCard = (ex, typeClass, iconName, borderClassColor) => {
                 const isDone = completed.includes(ex.id); const isSkipped = skippedExs[ex.id] !== undefined;
                 const bColor = isDone ? 'border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : isSkipped ? 'border-yellow-500 opacity-60' : borderClassColor;
@@ -386,13 +408,13 @@
                                 )}
                             </div>
                             
-                            {/* 🔥 BOTOES BLINDADOS (O "Pular" só aparece na Academia) */}
-                            <div className="flex flex-col gap-2 relative z-50">
-                                <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all pointer-events-auto ${isDone ? 'bg-green-500 border-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-700 text-slate-500 hover:text-green-500 hover:border-green-500'}`}><Icon name="check" size={20}/></button>
-                                {!isField && (
+                            {/* 🔥 BOTOES SÓ NA ACADEMIA */}
+                            {!isField && (
+                                <div className="flex flex-col gap-2 relative z-50">
+                                    <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all pointer-events-auto ${isDone ? 'bg-green-500 border-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-slate-700 text-slate-500 hover:text-green-500 hover:border-green-500'}`}><Icon name="check" size={20}/></button>
                                     <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); setSkipModal(ex.id); }} className="w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center hover:bg-slate-700 hover:border-slate-600 text-slate-500 pointer-events-auto" title="Pular"><Icon name="fastForward" size={16}/></button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )
@@ -440,7 +462,7 @@
                         )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-28">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-40">
                         {tab === 'workout' && (
                             <div className="space-y-4 animate-fade-in">
                                 <div className="grid grid-cols-2 gap-3">
@@ -484,7 +506,6 @@
                                     <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
                                 </div>
 
-                                {/* 🔥 BATERIA CONDICIONAL */}
                                 {!hasAM && !hasPM && !isFinished && viewMode !== 'review' && (
                                     <div className="bg-slate-900/80 border border-slate-700 p-8 rounded-[32px] flex flex-col items-center text-center mt-6 shadow-inner">
                                         <div className="text-6xl mb-4 animate-bounce">🔋</div>
@@ -615,35 +636,32 @@
                                             </div>
                                         )}
 
-                                        {/* 🔥 BOTÕES DE PSE NO FINAL DO CONTEÚDO (NÃO SOME MAIS NO MOBILE) */}
+                                        {/* 🔥 BOTÕES DE PSE NO FINAL DO CONTEÚDO (COM MARGEM EXTRA PARA NÃO SUMIR NO MOBILE) */}
                                         {!isFinished && viewMode !== 'review' && (
-                                            <div className="mt-8 mb-6 flex flex-col gap-2 w-full px-2">
+                                            <div className="mt-8 mb-10 flex flex-col gap-2 w-full px-2">
                                                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">Finalização do Turno</h3>
                                                 
                                                 {!hasAM && !hasPM && !isRestDayDone && (
-                                                    <button onClick={()=>{ setRpeMod(true); setRpePeriod('rest'); setDur(0); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm uppercase tracking-widest active:scale-95 transition-transform border border-slate-700">
-                                                        <Icon name="check" size={18}/> REGISTRAR DESCANSO
+                                                    <button onClick={()=>{ setRpeMod(true); setRpePeriod('rest'); setDur(0); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm uppercase tracking-widest active:scale-95 transition-transform border border-slate-700">
+                                                        <Icon name="check" size={20}/> REGISTRAR DESCANSO
                                                     </button>
                                                 )}
 
                                                 <div className="flex gap-2 w-full">
                                                     {hasAM && !isAmDone && (
-                                                        <button onClick={()=>{ setRpeMod(true); setRpePeriod('am'); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-95 transition-transform border-b-4 border-blue-800">
+                                                        <button onClick={()=>{ setRpeMod(true); setRpePeriod('am'); }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-95 transition-transform border-b-4 border-blue-800">
                                                             <Icon name="check" size={16}/> PSE MANHÃ
                                                         </button>
                                                     )}
                                                     
                                                     {hasPM && !isPmDone && (
-                                                        <button onClick={()=>{ setRpeMod(true); setRpePeriod('pm'); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-95 transition-transform border-b-4 border-orange-800">
+                                                        <button onClick={()=>{ setRpeMod(true); setRpePeriod('pm'); }} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black py-5 rounded-2xl shadow-xl flex items-center justify-center gap-2 text-xs uppercase tracking-widest active:scale-95 transition-transform border-b-4 border-orange-800">
                                                             <Icon name="check" size={16}/> PSE TARDE
                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
                                         )}
-                                        
-                                        {/* Espaçador de segurança para o rodapé */}
-                                        <div className="w-full h-12 shrink-0"></div>
                                     </>
                                 )}
                             </div>
@@ -736,7 +754,7 @@
                         )}
                     </div>
 
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl">
+                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
                          <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
                          <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
                          <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
@@ -745,7 +763,6 @@
                     </div>
 
                     {/* 🔥 MODAIS FORÇADOS PARA Z-INDEX 9999 PARA NUNCA TRAVAR OU FICAR ESCONDIDOS */}
-                    
                     {skipModal && (
                         <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex items-center justify-center p-6 animate-fade-in pointer-events-auto">
                             <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl relative">
@@ -814,7 +831,7 @@
                                     
                                     {gif.type === 'campo' ? (
                                         <>
-                                            {/* PRANCHETA / VIDEO DO CAMPO (Fica no topo, ajustado bonito) */}
+                                            {/* PRANCHETA / VIDEO DO CAMPO */}
                                             <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden border border-slate-700 shadow-2xl mb-6 relative">
                                                 {(() => {
                                                     const m1 = gif.videoUrl || gif.video;
@@ -892,14 +909,6 @@
                             )}
                         </div>
                     )}
-
-                    <div className="fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-2xl border-t border-slate-800 p-4 flex justify-around items-center z-50 rounded-t-3xl shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-                         <div onClick={()=>setTab('workout')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></div>
-                         <div onClick={()=>setTab('agenda')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></div>
-                         <div onClick={()=>setShowStats(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></div>
-                         <div onClick={()=>setTab('ranking')} className={`flex flex-col items-center cursor-pointer transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></div>
-                         <div onClick={()=>setShowProfile(true)} className="flex flex-col items-center text-slate-500 cursor-pointer"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil FIFA</span></div>
-                    </div>
 
                     {/* Modais de Perfil, Stats e Share continuam idênticos */}
                     {showProfile && (
