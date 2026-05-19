@@ -915,7 +915,8 @@
                 </React.Fragment>
             );
         };
-                class ErrorBoundary extends React.Component {
+        
+        class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, errorMsg: '' }; }
             static getDerivedStateFromError(error) { return { hasError: true, errorMsg: error.toString() }; }
             render() {
