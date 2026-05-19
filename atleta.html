@@ -192,25 +192,12 @@
                     [`trainingLog.${td}.${idx}.wellness`]: scores,
                     [`trainingLog.${td}.${idx}.painZones`]: pain
                 };
-                // Substitua o trecho de leitura no atleta.html por este:
-const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
-    if (doc.exists) {
-        const d = doc.data();
-        // O console abaixo vai te ajudar a ver se os dados estão chegando
-        console.log("Dados carregados:", d); 
-        setData({ 
-            players: d.players || [], 
-            log: d.trainingLog || {}, 
-            ex: d.exercises || [], 
-            // ... (mantenha os outros campos conforme o seu código)
-            id: doc.id 
-        });
-        if(pIdx !== null) setIdx(parseInt(pIdx));
-    } else {
-        console.error("Documento não encontrado na coleção coachData");
-    }
-    setLoading(false);
-});
+                db.collection('coachData').doc(data.id).update(updateObj).then(()=>{
+                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
+                    nl[td][idx].wellness = scores; nl[td][idx].painZones = pain;
+                    setData({...data, log:nl}); setStep(3); setSubmitting(false); window.scrollTo(0,0);
+                }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
+            };
 
             const ackAgenda = () => {
                 const td = getTodayStr();
