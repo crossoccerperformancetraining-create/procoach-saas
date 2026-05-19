@@ -142,7 +142,7 @@
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
                 if(!uId) { setLoading(false); return; }
-                const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
+                const unsubscribe = db.collection('users').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [] });
@@ -192,7 +192,7 @@
                     [`trainingLog.${td}.${idx}.wellness`]: scores,
                     [`trainingLog.${td}.${idx}.painZones`]: pain
                 };
-                db.collection('coachData').doc(data.id).update(updateObj).then(()=>{
+                db.collection('users').doc(data.id).update(updateObj).then(()=>{
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
                     nl[td][idx].wellness = scores; nl[td][idx].painZones = pain;
                     setData({...data, log:nl}); setStep(3); setSubmitting(false); window.scrollTo(0,0);
@@ -201,7 +201,7 @@
 
             const ackAgenda = () => {
                 const td = getTodayStr();
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.agendaAck`]: true }).then(()=>{ 
+                db.collection('users').doc(data.id).update({ [`trainingLog.${td}.${idx}.agendaAck`]: true }).then(()=>{
                     setAgendaAck(true); const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].agendaAck = true; setData({...data, log: nl});
                 }).catch(()=>{ alert("Erro ao confirmar."); });
             };
@@ -222,8 +222,7 @@
             };
 
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
-            const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
-
+            const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('users').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater });
             // 🔥 SALVAMENTO BLINDADO DE PSE COM TRY CATCH
             const saveRPE = async () => {
                 try {
@@ -253,7 +252,7 @@
                     updateData[`trainingLog.${td}.${idx}.exercisesDone`] = doneExsNames;
                     updateData[`trainingLog.${td}.${idx}.exercisesSkipped`] = skippedInfo;
 
-                    await db.collection('coachData').doc(data.id).update(updateData);
+                    await db.collection('users').doc(data.id).update(updateData);
                     
                     setSubmitting(false); 
                     setRpeMod(false); 
