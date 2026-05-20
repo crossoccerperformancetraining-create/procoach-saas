@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Portal do Atleta - ProCoach MAX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -99,11 +100,10 @@
             return "EM EVOLUÇÃO 🌱";
         };
 
-        // 🔥 NOVO: NUTRICIONISTA VIRTUAL INTELIGENTE (Considera a PSE máxima do dia inteiro)
         const getNutritionAdvice = (logObj) => {
             const rpeAm = Number(logObj?.rpe_am) || 0;
             const rpePm = Number(logObj?.rpe_pm) || 0;
-            const rpeVal = Math.max(rpeAm, rpePm); // Avalia a atividade mais intensa do dia
+            const rpeVal = Math.max(rpeAm, rpePm);
 
             if(rpeVal >= 9) return { t: "Desgaste Máximo!", d: "Atenção à janela anabólica! Reponha carboidratos rápidos (ex: suco, frutas) imediatamente e hidrate-se bem.", ic: "🆘" };
             if(rpeVal >= 7) return { t: "Desgaste Alto", d: "Níveis de glicogênio baixos. Priorize carboidratos e eletrólitos nas próximas 2 horas.", ic: "🍎" };
@@ -146,11 +146,16 @@
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [] });
-                        if(pIdx !== null && d.players && d.players[parseInt(pIdx)]) {
-                            setIsPriv(true); setIdx(parseInt(pIdx));
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness && d.trainingLog[getTodayStr()][parseInt(pIdx)].wellness.sleep) setStep(3); else setStep(2);
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parseInt(pIdx)] && d.trainingLog[getTodayStr()][parseInt(pIdx)].agendaAck) setAgendaAck(true);
-                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[parseInt(pIdx)]?.waterIntake) || 0);
+                        
+                        // 🔥 GARANTE QUE SE O MÊS/INDEX NÃO FOR PASSADO, ELE NÃO QUEBRE E BUSQUE NA URL HTTPS
+                        const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
+                        setIdx(parsedIdx);
+                        if (pIdx !== null) setIsPriv(true);
+
+                        if(d.players && d.players[parsedIdx]) {
+                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parsedIdx] && d.trainingLog[getTodayStr()][parsedIdx].wellness && d.trainingLog[getTodayStr()][parsedIdx].wellness.sleep) setStep(3); else setStep(2);
+                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parsedIdx] && d.trainingLog[getTodayStr()][parsedIdx].agendaAck) setAgendaAck(true);
+                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[parsedIdx]?.waterIntake) || 0);
                         }
                     }
                     setLoading(false);
@@ -172,6 +177,8 @@
             };
 
             const goToNextEx = (currentId) => { const all = getOrderedExs().flat; const currentIndex = all.findIndex(e => e.id === currentId); let nextEx = all.slice(currentIndex + 1).find(e => !completed.includes(e.id) && !skippedExs[e.id]); if(nextEx) { setGif(nextEx); setFocusMode('exercise'); } else { setGif(null); showToast("Bloco Finalizado! 🎉"); } };
+
+            const tog = (ex) => { const id = ex.id; if(completed.includes(id)) { setCompleted(completed.filter(x => x !== id)); } else { setCompleted([...completed, id]); setSkippedExs(Object.fromEntries(Object.entries(skippedExs).filter(([k]) => k !== id.toString()))); vibrate(100); } };
 
             useEffect(() => {
                 let interval = null;
@@ -224,7 +231,6 @@
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
             const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
 
-            // 🔥 SALVAMENTO BLINDADO DE PSE COM TRY CATCH
             const saveRPE = async () => {
                 try {
                     if(submitting) return; 
@@ -704,7 +710,6 @@
                                                 </div>
                                             )}
 
-                                            {/* 🔥 BOTÕES DE PSE NO FINAL DA PÁGINA COM SEPARAÇÃO DE TURNOS */}
                                             {!isFinished && viewMode !== 'review' && (
                                                 <div className="mt-8 flex flex-col gap-2 w-full px-2">
                                                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">Finalização do Dia</h3>
@@ -830,8 +835,6 @@
                             <button onClick={()=>setShowProfile(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil</span></button>
                         </div>
                     </div>
-
-                    {/* 🔥 MODAIS ISOLADOS DO FLUXO PRINCIPAL (Z-INDEX INFINITO E CLICK PROTEGIDO) */}
                     
                     {skipModal && (
                         <div className="fixed inset-0 bg-slate-950/90 z-[99999] flex items-center justify-center p-6 animate-fade-in pointer-events-auto">
@@ -917,6 +920,7 @@
 
                                             <button onClick={(e) => {
                                                 e.preventDefault();
+                                                e.stopPropagation();
                                                 const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
                                                 goToNextEx(id);
                                             }} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-5 rounded-[20px] shadow-xl flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest border-b-4 border-emerald-800 mt-auto">
@@ -951,6 +955,7 @@
                                                 
                                                 <button onClick={(e) => {
                                                     e.preventDefault();
+                                                    e.stopPropagation();
                                                     const id = gif.id; if(!completed.includes(id)) setCompleted([...completed, id]);
                                                     activeExRef.current = id;
                                                     if(gif.rest && parseInt(gif.rest) > 0) { 
