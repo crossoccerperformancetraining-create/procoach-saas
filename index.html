@@ -2373,14 +2373,20 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
             <div className="mt-2">
                 <label className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase">Logística de Viagem/Jogo</label>
                 <textarea 
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2 rounded-lg text-xs outline-none h-20"
-                    placeholder="Cole aqui a logística..."
-                    value={data.nextGame?.logistics || ''}
-                    onChange={(e) => {
-                        const newData = {...data, nextGame: {...data.nextGame, logistics: e.target.value}};
-                        setData(newData);
-                    }}
-                />
+    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white p-3 rounded-lg text-xs outline-none h-32 custom-scroll font-bold" 
+    placeholder="Cole aqui a programação..."
+    value={data.nextGame?.logistics || ''}
+    onChange={(e) => {
+        // Atualiza o estado local 'data' apenas para o campo de logística
+        setData({
+            ...data,
+            nextGame: {
+                ...data.nextGame,
+                logistics: e.target.value
+            }
+        });
+    }}
+/>
             </div>
 
             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm mt-1">
