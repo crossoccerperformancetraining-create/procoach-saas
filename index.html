@@ -2199,11 +2199,13 @@
             const [exercises, setExercises] = useState(initialData?.exercises || []); 
             const [library, setLibrary] = useState(initialData?.library || []);
             
-            // ESTADOS ADICIONADOS / MANTIDOS
             const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Livre');
             const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
             const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
-            const [nextGame, setNextGame] = useState(initialData?.nextGame || { logistics: '' }); // <-- NOVO
+            const [nextGame, setNextGame] = useState(initialData?.nextGame || { logistics: '' });
+
+            // NOVO: Estado para armazenar o carimbo do último alerta disparado
+            const [lastAlertSent, setLastAlertSent] = useState(initialData?.lastAlertSent || 0);
 
             const [showSettings, setShowSettings] = useState(false);
             const [syncStatus, setSyncStatus] = useState(''); 
@@ -2225,7 +2227,8 @@
                     setPostWorkout(initialData.postWorkout || 'Livre');
                     setCoachMsg(initialData.coachMsg || '');
                     setVideoUrl(initialData.videoUrl || '');
-                    setNextGame(initialData.nextGame || { logistics: '' }); // <-- NOVO
+                    setNextGame(initialData.nextGame || { logistics: '' });
+                    setLastAlertSent(initialData.lastAlertSent || 0); // <-- Carrega o estado da nuvem
                 }
             }, [initialData]);
 
@@ -2242,7 +2245,8 @@
                         themeColor, players, trainingLog, assessments, 
                         dmRecords, matchMinutes, header, logo, 
                         darkMode, days, exercises, library, 
-                        postWorkout, coachMsg, videoUrl, nextGame // <-- NOVO
+                        postWorkout, coachMsg, videoUrl, nextGame,
+                        lastAlertSent // <-- NOVO: Salva o gatilho de notificação no Firebase de forma nativa
                     };
                     db.collection('coachData').doc(user.uid).update(dataToSave)
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
@@ -2252,7 +2256,13 @@
                         });
                 }, 800);
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user]);
+
+            // NOVO: Função para atualizar a hora do clique e disparar a notificação no app do atleta
+            const dispararAlerta = () => {
+                setLastAlertSent(Date.now());
+                showToast("🔔 Notificação enviada para o aplicativo dos atletas!", "#10b981");
+            };
 
             const handleExport = () => {
                 try {
@@ -2260,7 +2270,7 @@
                         themeColor, players, trainingLog, assessments, 
                         dmRecords, matchMinutes, header, logo, 
                         darkMode, days, exercises, library, 
-                        postWorkout, coachMsg, videoUrl, nextGame // <-- NOVO
+                        postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent
                     };
                     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
@@ -2295,7 +2305,8 @@
                     setPostWorkout(newData.postWorkout || 'Livre');
                     setCoachMsg(newData.coachMsg || '');
                     setVideoUrl(newData.videoUrl || '');
-                    setNextGame(newData.nextGame || { logistics: '' }); // <-- NOVO
+                    setNextGame(newData.nextGame || { logistics: '' });
+                    setLastAlertSent(newData.lastAlertSent || 0);
                     showToast("Dados restaurados! 🔄");
                 }
             };
@@ -2368,6 +2379,16 @@
                                             onChange={e => setNextGame({ ...nextGame, logistics: e.target.value })}
                                         ></textarea>
                                     </div>
+
+                                    {/* NOVO: Linha do Botão Único de Disparo de Alerta */}
+                                    <div className="col-span-1 md:col-span-2 mt-2">
+                                        <button 
+                                            onClick={dispararAlerta} 
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg uppercase tracking-widest transition-transform active:scale-[0.99] border-b-4 border-black/20"
+                                        >
+                                            <Icon name="bell" size={18} /> DISPARAR NOTIFICAÇÃO (ATUALIZAR APP DOS ATLETAS)
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -2386,7 +2407,6 @@
                 </div>
             );
         };
-
         const CloudWrapper = ({ user }) => {
             const [initialData, setInitialData] = useState(null);
             const [loadingCloud, setLoadingCloud] = useState(true);
