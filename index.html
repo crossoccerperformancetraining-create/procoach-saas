@@ -2208,209 +2208,124 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
     );
 };
 
-        const MainApp = ({ user, initialData }) => {
-            const [tab, setTab] = useState('squad'); 
-            const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
-            const [players, setPlayers] = useState(initialData?.players || []);
-            const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
-            const [assessments, setAssessments] = useState(initialData?.assessments || {});
-            const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
-            const [matchMinutes, setMatchMinutes] = useState(initialData?.matchMinutes || {});
-            const [header, setHeader] = useState(initialData?.header || {});
-            const [logo, setLogo] = useState(initialData?.logo || null);
-            const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
-            const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
-            const [exercises, setExercises] = useState(initialData?.exercises || []); 
-            const [library, setLibrary] = useState(initialData?.library || []);
-            const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Livre');
-            const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
-            const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
-            const [showSettings, setShowSettings] = useState(false);
-            const [syncStatus, setSyncStatus] = useState(''); 
+       // Substitua o seu componente MainApp atual por este:
+const MainApp = ({ user, initialData }) => {
+    const [tab, setTab] = useState('squad'); 
+    const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
+    const [players, setPlayers] = useState(initialData?.players || []);
+    const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
+    const [assessments, setAssessments] = useState(initialData?.assessments || {});
+    const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
+    const [matchMinutes, setMatchMinutes] = useState(initialData?.matchMinutes || {});
+    const [header, setHeader] = useState(initialData?.header || {});
+    const [logo, setLogo] = useState(initialData?.logo || null);
+    const [darkMode, setDarkMode] = useState(initialData?.darkMode || false);
+    const [days, setDays] = useState(safeArray(initialData?.days, DEFAULT_DAYS));
+    const [exercises, setExercises] = useState(initialData?.exercises || []); 
+    const [library, setLibrary] = useState(initialData?.library || []);
+    const [logistics, setLogistics] = useState(initialData?.logistics || []); // Novo estado
+    const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Livre');
+    const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
+    const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
+    const [showSettings, setShowSettings] = useState(false);
+    const [syncStatus, setSyncStatus] = useState(''); 
 
-            useEffect(() => {
-                if (initialData) {
-                    setPlayers(initialData.players || []);
-                    setTrainingLog(initialData.trainingLog || {});
-                    setAssessments(initialData.assessments || {});
-                    setDmRecords(initialData.dmRecords || []);
-                    setMatchMinutes(initialData.matchMinutes || {});
-                    setDays(initialData.days || DEFAULT_DAYS);
-                    setExercises(initialData.exercises || []);
-                    setLibrary(initialData.library || []);
-                    setThemeColor(initialData.themeColor || '#1e3a8a');
-                    setDarkMode(!!initialData.darkMode);
-                    setLogo(initialData.logo || null);
-                    setHeader(initialData.header || {});
-                    setPostWorkout(initialData.postWorkout || 'Livre');
-                    setCoachMsg(initialData.coachMsg || '');
-                    setVideoUrl(initialData.videoUrl || '');
-                }
-            }, [initialData]);
+    useEffect(() => {
+        if (initialData) {
+            setPlayers(initialData.players || []);
+            setTrainingLog(initialData.trainingLog || {});
+            setAssessments(initialData.assessments || {});
+            setDmRecords(initialData.dmRecords || []);
+            setMatchMinutes(initialData.matchMinutes || {});
+            setDays(initialData.days || DEFAULT_DAYS);
+            setExercises(initialData.exercises || []);
+            setLibrary(initialData.library || []);
+            setLogistics(initialData.logistics || []); // Carregar logística
+            setThemeColor(initialData.themeColor || '#1e3a8a');
+            setDarkMode(!!initialData.darkMode);
+            setLogo(initialData.logo || null);
+            setHeader(initialData.header || {});
+            setPostWorkout(initialData.postWorkout || 'Livre');
+            setCoachMsg(initialData.coachMsg || '');
+            setVideoUrl(initialData.videoUrl || '');
+        }
+    }, [initialData]);
 
-            useEffect(() => {
-                if (darkMode) document.body.classList.add('dark');
-                else document.body.classList.remove('dark');
-            }, [darkMode]);
-
-            useEffect(() => {
-                if(!user || !players || players.length === 0) return;
-                const timeoutId = setTimeout(() => {
-                    setSyncStatus('A Guardar...');
-                    const dataToSave = { 
-                        themeColor, players, trainingLog, assessments, 
-                        dmRecords, matchMinutes, header, logo, 
-                        darkMode, days, exercises, library, 
-                        postWorkout, coachMsg, videoUrl 
-                    };
-                    db.collection('coachData').doc(user.uid).update(dataToSave)
-                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
-                        .catch((err) => { 
-                            if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
-                            else setSyncStatus('❌ Erro Sinc');
-                        });
-                }, 800);
-                return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, user]);
-
-            const handleExport = () => {
-                try {
-                    const dataToExport = { 
-                        themeColor, players, trainingLog, assessments, 
-                        dmRecords, matchMinutes, header, logo, 
-                        darkMode, days, exercises, library, 
-                        postWorkout, coachMsg, videoUrl 
-                    };
-                    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `procoach_backup_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    showToast("Backup gerado com sucesso! ✅");
-                } catch (err) {
-                    showToast("Erro ao exportar arquivo ❌", "#ef4444");
-                }
+    useEffect(() => {
+        if(!user || !players) return;
+        const timeoutId = setTimeout(() => {
+            setSyncStatus('A Guardar...');
+            const dataToSave = { 
+                themeColor, players, trainingLog, assessments, 
+                dmRecords, matchMinutes, header, logo, 
+                darkMode, days, exercises, library, logistics, // Salvar logística
+                postWorkout, coachMsg, videoUrl 
             };
+            db.collection('coachData').doc(user.uid).update(dataToSave)
+                .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
+                .catch((err) => { 
+                    if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
+                    else setSyncStatus('❌ Erro Sinc');
+                });
+        }, 800);
+        return () => clearTimeout(timeoutId);
+    }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, logistics, postWorkout, coachMsg, videoUrl, user]);
 
-            const handleImport = (newData) => {
-                if(!newData) return;
-                if(confirm("Isso irá substituir todos os dados atuais. Continuar?")) {
-                    setThemeColor(newData.themeColor || '#1e3a8a');
-                    setPlayers(newData.players || []);
-                    setTrainingLog(newData.trainingLog || {});
-                    setAssessments(newData.assessments || {});
-                    setDmRecords(newData.dmRecords || []);
-                    setMatchMinutes(newData.matchMinutes || {});
-                    setHeader(newData.header || {});
-                    setLogo(newData.logo || null);
-                    setDarkMode(!!newData.darkMode);
-                    setDays(newData.days || DEFAULT_DAYS);
-                    setExercises(newData.exercises || []);
-                    setLibrary(newData.library || []);
-                    setPostWorkout(newData.postWorkout || 'Livre');
-                    setCoachMsg(newData.coachMsg || '');
-                    setVideoUrl(newData.videoUrl || '');
-                    showToast("Dados restaurados! 🔄");
-                }
-            };
+    // Componente Logística Interno
+    const LogisticaView = () => {
+        const [form, setForm] = useState({ date: '', title: '', type: 'Viagem', obs: '' });
+        const addLog = () => {
+            if(!form.title) return showToast("Preencha o título", "#ef4444");
+            setLogistics([...logistics, { id: Date.now(), ...form }]);
+            setForm({ date: '', title: '', type: 'Viagem', obs: '' });
+            showToast("Logística salva!");
+        };
+        return (
+            <div className="p-6 h-full overflow-y-auto bg-slate-50 dark:bg-slate-900">
+                <h2 className="text-xl font-black text-slate-800 dark:text-white mb-6 uppercase flex gap-2"><Icon name="calendar"/> Logística e Viagens</h2>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-sm">
+                    <input type="date" className="p-3 border rounded-lg dark:bg-slate-700 dark:text-white" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} />
+                    <select className="p-3 border rounded-lg dark:bg-slate-700 dark:text-white" value={form.type} onChange={e=>setForm({...form, type: e.target.value})}>
+                        <option>Viagem</option><option>Hotel</option><option>Refeição</option><option>Transporte</option>
+                    </select>
+                    <input type="text" placeholder="Descrição/Local" className="p-3 border rounded-lg dark:bg-slate-700 dark:text-white" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
+                    <button onClick={addLog} className="bg-blue-600 text-white font-black rounded-lg">ADICIONAR</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {logistics.sort((a,b)=>new Date(a.date)-new Date(b.date)).map(l => (
+                        <div key={l.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border flex justify-between items-center shadow-sm">
+                            <div>
+                                <div className="font-black text-blue-600 dark:text-blue-400">{l.date}</div>
+                                <div className="font-bold text-slate-700 dark:text-white">{l.title}</div>
+                                <div className="text-[10px] uppercase font-bold text-slate-400">{l.type}</div>
+                            </div>
+                            <button onClick={()=>setLogistics(logistics.filter(x=>x.id!==l.id))} className="text-red-500"><Icon name="trash"/></button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
-            return (
-                <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
-                    <SettingsModal 
-                        show={showSettings} 
-                        onClose={() => setShowSettings(false)} 
-                        themeColor={themeColor} 
-                        setThemeColor={setThemeColor} 
-                        header={header} 
-                        setHeader={setHeader} 
-                        logo={logo} 
-                        setLogo={setLogo} 
-                        onExport={handleExport} 
-                        onImport={handleImport} 
-                    />
-                    <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
-                        <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
-                            {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
-                        </div>
-                        <div className="flex gap-1 items-center">
-                            <button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase">Portal Atleta</button>
-                            <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
-                            <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="settings" size={24}/></button>
-                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded text-red-500"><Icon name="logout" size={20}/></button>
-                        </div>
-                    </div>
-                    
-                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                        {['squad','micro','wellness','pse','workout','match','dm','assessment','library'].map(t => (
-                            <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
-                        ))}
-                    </div>
-                    
-                    <div className="flex-1 overflow-hidden relative">
-                       {tab === 'squad' && (
-    <div className="px-6 pt-4 pb-2 bg-slate-100 dark:bg-slate-900 shrink-0 transition-colors shadow-sm z-10 border-b border-slate-200 dark:border-slate-800">
-        <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-2 tracking-wider">
-            <Icon name="bell" size={14}/> Comunicado aos Atletas
-        </label>
-        <div className="flex flex-col gap-2">
-            <div className="flex flex-col md:flex-row gap-2">
-                <select className="w-full md:w-1/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-white p-2 rounded-lg text-xs font-bold outline-none" onChange={e => {if(e.target.value) setCoachMsg(e.target.value)}}>
-                    <option value="">📋 Selecionar aviso rápido...</option>
-                    <option value="🎥 ATENÇÃO: Reunião de Vídeo Análise antes do treino.">🎥 Vídeo Análise Tática</option>
-                    <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica.">🩺 Avaliação Médica</option>
-                    <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia</option>
-                    <option value="🧊 RECUPERAÇÃO: Crioterapia obrigatória pós-treino.">🧊 Crioterapia</option>
-                </select>
-                <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2 rounded-lg text-sm font-bold outline-none" placeholder="Digite um recado..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
+    // ... (restante dos componentes existentes seguem aqui)
+
+    return (
+        <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
+            {/* ... (Config, Header, etc) */}
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner w-full custom-scroll">
+                {['squad','micro','wellness','pse','workout','match','dm','assessment','library','logistica'].map(t => (
+                    <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
+                ))}
             </div>
             
-            {/* NOVO CAMPO DE LOGÍSTICA */}
-            <div className="mt-2">
-                <label className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase">Logística de Viagem/Jogo</label>
-                <textarea 
-    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white p-3 rounded-lg text-xs outline-none h-32 custom-scroll font-bold" 
-    placeholder="Cole aqui a programação..."
-    value={data.nextGame?.logistics || ''}
-    onChange={(e) => {
-        // Atualiza o estado local 'data' apenas para o campo de logística
-        setData({
-            ...data,
-            nextGame: {
-                ...data.nextGame,
-                logistics: e.target.value
-            }
-        });
-    }}
-/>
-            </div>
-
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm mt-1">
-                <Icon name="play" size={20} className="text-red-500 ml-2 shrink-0"/>
-                <BufferedInput className="w-full bg-transparent text-slate-800 dark:text-white p-1.5 text-xs outline-none" placeholder="Cole link do YouTube para Vídeo-Análise" value={videoUrl} onSave={val=>setVideoUrl(val)} />
+            <div className="flex-1 overflow-hidden">
+                {/* Roteamento de abas */}
+                {tab === 'logistica' && <LogisticaView />}
+                {/* ... manter chamadas dos outros componentes aqui */}
             </div>
         </div>
-    </div>
-)}
-                        <div className="h-full">
-                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
-                            {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
-                            {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                            {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                            {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
-                            {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
-                            {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
-                            {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
-                            {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} initialData={initialData} user={user} />}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
+    );
+};
 
         const CloudWrapper = ({ user }) => {
             const [initialData, setInitialData] = useState(null);
