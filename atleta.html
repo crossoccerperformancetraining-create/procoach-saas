@@ -585,7 +585,7 @@
                                                                         <div className="text-[10px] font-bold uppercase mt-1 text-emerald-400">{ex.sets}x {ex.reps}</div>
                                                                     </div>
                                                                     <div className="flex flex-col gap-2 relative z-50">
-                                                                        <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all pointer-events-auto ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white' : 'border-slate-700 text-slate-500'}`}><Icon name="check" size={20}/></button>
+                                                                        <button onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); tog(ex); }} className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all pointer-events-auto ${completed.includes(ex.id) ? 'bg-green-500 border-green-500 text-white' : 'border-slate-700 text-slate-500 hover:text-green-500'}`}><Icon name="check" size={20}/></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -740,40 +740,36 @@
                                 </div>
                             )}
 
-                            {tab === 'agenda' && (
+                            {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
+                            {tab === 'agenda' && isHighlight && (
                                 <div className="animate-fade-in space-y-6">
-                                    {p.highlight ? (
-                                        <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase tracking-widest shadow-md">Status</div>
-                                            <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL</h3>
-                                            <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
-                                                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{p.number || "!"}</div>
-                                                <div className="flex flex-col justify-center">
-                                                    <div className="text-[12px] font-black text-white uppercase tracking-tight">VOCÊ ESTÁ CONVOCADO!</div>
-                                                    {data.nextG && data.nextG.presentation && (
-                                                        <div className="text-[10px] font-bold text-blue-400 uppercase italic mt-0.5">{data.nextG.presentation}</div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-4 bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-inner">
-                                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon name="calendar" size={14} className="text-blue-400"/> Cronograma e Logística
-                                                    </div>
-                                                </div>
-                                                <div className="text-[10px] text-slate-300 font-bold whitespace-pre-line leading-relaxed">
-                                                    {data.nextG && data.nextG.logistics ? data.nextG.logistics : `🚌 LOGÍSTICA DE VIAGEM: AC SOCCER x CSA\n\n🗓️ VÉSPERA (SEXTA):\n🚌 14h00: Saída para Maceió (Apresentação no CT).\n🏨 16h30: Chegada / Check-in Hotel.\n🍽️ 19h00: Jantar da Equipe (Protocolo Nutricional).\n💤 22h00: Repouso Obrigatório (Celulares desligados).\n\n🏟️ DIA DO JOGO (SÁBADO):\n☕ 08h30: Café da Manhã.\n🍝 11h30: Almoço Pré-Jogo.\n🧠 13h00: Palestra Técnica / Saída para o Estádio.\n👕 14h00: Chegada no Rei Pelé / Vestiário.\n🔥 14h20: Aquecimento no Gramado.\n⚽ 15h00: INÍCIO DO JOGO - FOCO TOTAL!\n\n⚠️ OBS: Traje de viagem oficial. Levar Uniforme de Jogo (Azul), caneleiras e chuteiras prontas.`}
-                                                </div>
+                                    {/* STATUS E LOGÍSTICA */}
+                                    <div className="bg-slate-900/80 border-2 border-blue-500 p-5 rounded-[32px] shadow-lg relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-1 rounded-bl-2xl font-black text-[10px] uppercase tracking-widest shadow-md">Status</div>
+                                        <h3 className="text-sm font-black text-white uppercase mb-4 flex items-center gap-2"><Icon name="trophy" size={16} className="text-yellow-500"/> CONVOCAÇÃO OFICIAL</h3>
+                                        <div className="flex items-center gap-4 bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
+                                            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-white text-xl shadow-lg border-2 border-blue-400 shrink-0">{p.number || "!"}</div>
+                                            <div className="flex flex-col justify-center">
+                                                <div className="text-[12px] font-black text-white uppercase tracking-tight">VOCÊ ESTÁ CONVOCADO!</div>
+                                                {data.nextG && data.nextG.presentation && (
+                                                    <div className="text-[10px] font-bold text-blue-400 uppercase italic mt-0.5">{data.nextG.presentation}</div>
+                                                )}
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px] text-center">
-                                            <Icon name="clock" size={32} className="mx-auto text-slate-600 mb-2"/>
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aguardando lista de relacionados</p>
-                                        </div>
-                                    )}
 
+                                        <div className="mt-4 bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-inner">
+                                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon name="calendar" size={14} className="text-blue-400"/> Cronograma e Logística
+                                                </div>
+                                            </div>
+                                            <div className="text-[10px] text-slate-300 font-bold whitespace-pre-line leading-relaxed">
+                                                {data.nextG && data.nextG.logistics ? data.nextG.logistics : `🚌 LOGÍSTICA DE VIAGEM...\nAguardando preenchimento do treinador.`}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* PROGRAMAÇÃO SEMANAL */}
                                     <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] shadow-inner mb-20">
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="calendar" size={16} className="text-emerald-500"/> Programação Semanal</h3>
                                         <div className="space-y-2.5">
@@ -827,9 +823,15 @@
                             )}
                         </div>
 
+                        {/* MENU INFERIOR AJUSTADO PARA ESCONDER A ABA DE AGENDA */}
                         <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-2 flex justify-around items-center z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] pointer-events-auto">
                             <button onClick={()=>setTab('workout')} className={`flex flex-col items-center p-2 transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></button>
-                            <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
+                            
+                            {/* ABA AGENDA COM TRAVA DE SEGURANÇA */}
+                            {isHighlight && (
+                                <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
+                            )}
+
                             <button onClick={()=>setShowStats(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></button>
                             <button onClick={()=>setTab('ranking')} className={`flex flex-col items-center p-2 transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></button>
                             <button onClick={()=>setShowProfile(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil</span></button>
