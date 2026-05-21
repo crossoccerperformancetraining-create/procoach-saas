@@ -2223,8 +2223,8 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
             const [exercises, setExercises] = useState(initialData?.exercises || []); 
             const [library, setLibrary] = useState(initialData?.library || []);
             const [postWorkout, setPostWorkout] = useState(initialData?.postWorkout || 'Livre');
-            const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
             const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
+            const [txtLogistica, setTxtLogistica] = useState(initialData?.nextGame?.logistics || '');
             const [showSettings, setShowSettings] = useState(false);
             const [syncStatus, setSyncStatus] = useState(''); 
 
@@ -2242,6 +2242,7 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
                     setDarkMode(!!initialData.darkMode);
                     setLogo(initialData.logo || null);
                     setHeader(initialData.header || {});
+                    setTxtLogistica(initialData?.nextGame?.logistics || '');
                     setPostWorkout(initialData.postWorkout || 'Livre');
                     setCoachMsg(initialData.coachMsg || '');
                     setVideoUrl(initialData.videoUrl || '');
@@ -2368,7 +2369,24 @@ const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, post
                                     <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-1 rounded-lg shadow-sm mt-1">
                                         <Icon name="play" size={20} className="text-red-500 ml-2 shrink-0"/>
                                         <BufferedInput className="w-full bg-transparent text-slate-800 dark:text-white p-1.5 text-xs outline-none" placeholder="Cole link do YouTube para Vídeo-Análise" value={videoUrl} onSave={val=>setVideoUrl(val)} />
-                                    </div>
+                                    </div>{/* CAIXA DE LOGÍSTICA CIRÚRGICA */}
+<div className="mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-3 rounded-lg shadow-sm">
+    <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-2">
+        <Icon name="calendar" size={14}/> Logística de Viagem / Jogo (Aparece na aba Agenda dos Convocados)
+    </label>
+    <textarea 
+        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white p-3 rounded-lg text-xs outline-none h-32 custom-scroll font-bold" 
+        placeholder="Cole aqui a programação: 14h Saída, 16h Hotel..."
+        value={txtLogistica}
+        onChange={e => setTxtLogistica(e.target.value)}
+        onBlur={() => {
+            if(user) {
+                db.collection('coachData').doc(user.uid).set({ nextGame: { logistics: txtLogistica } }, { merge: true })
+                .then(() => showToast("Logística salva e enviada aos atletas! 🚀"));
+            }
+        }}
+    ></textarea>
+</div>
                                 </div>
                             </div>
                         )}
