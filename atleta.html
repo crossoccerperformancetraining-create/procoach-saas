@@ -115,7 +115,7 @@
         };
 
        const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [] });
+            const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0 });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1}); const [pain, setPain] = useState([]);
@@ -136,6 +136,9 @@
             
             const [isEditingLogistics, setIsEditingLogistics] = useState(false);
             const [logisticsText, setLogisticsText] = useState("");
+            
+            // NOVO ESTADO: Controle de visualização do Alerta
+            const [showAlertPopup, setShowAlertPopup] = useState(false);
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
 
@@ -145,9 +148,8 @@
                 const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [] });
+                        setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        // 🔥 GARANTE QUE SE O MÊS/INDEX NÃO FOR PASSADO, ELE NÃO QUEBRE E BUSQUE NA URL HTTPS
                         const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
                         setIdx(parsedIdx);
                         if (pIdx !== null) setIsPriv(true);
@@ -162,6 +164,22 @@
                 }, () => { setLoading(false); });
                 return () => unsubscribe();
             }, []);
+
+            // NOVO EFFECT: Lógica do Disparo de Notificação
+            useEffect(() => {
+                if (data.lastAlertSent) {
+                    const localAlert = localStorage.getItem('procoach_last_alert');
+                    if (!localAlert || Number(data.lastAlertSent) > Number(localAlert)) {
+                        setShowAlertPopup(true);
+                    }
+                }
+            }, [data.lastAlertSent]);
+
+            // NOVA FUNÇÃO: Marcar Notificação como lida
+            const markAlertAsRead = () => {
+                localStorage.setItem('procoach_last_alert', data.lastAlertSent.toString());
+                setShowAlertPopup(false);
+            };
 
             const getDM = (id) => { const act = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Active'); if(act.length>0) return (parseInt(act[0].rtpPhase)||1)>=3 ? 'TRANSIÇÃO' : 'DM'; const rec = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Recovered'&&r.dateOut); const td = new Date(getTodayStr()); for(let r of rec) if(!isNaN(new Date(r.dateOut).getTime()) && Math.ceil(Math.abs(td - new Date(r.dateOut))/(1000*60*60*24))<=7) return 'TRANSIÇÃO'; return 'APTO'; };
             const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500', f: 'bg-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500', f: p<40?'bg-red-500':p<75?'bg-yellow-500':'bg-green-500' }; };
@@ -293,6 +311,22 @@
 
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
+            // COMPONENTE DO POPUP DE NOTIFICAÇÃO
+            const alertModalUI = showAlertPopup && (
+                <div className="fixed inset-0 bg-slate-950/90 z-[999999] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in font-sans pointer-events-auto">
+                    <div className="bg-slate-900 border-2 border-blue-500 rounded-3xl p-8 w-full max-w-sm flex flex-col items-center text-center shadow-2xl relative">
+                        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(37,99,235,0.5)] animate-bounce">
+                            <Icon name="bell" size={40} className="text-white" />
+                        </div>
+                        <h2 className="text-2xl font-black text-white uppercase mb-3">Atenção Atleta!</h2>
+                        <p className="text-slate-300 text-sm font-bold mb-8">O professor atualizou o sistema com novos recados, treinos ou convocações na agenda.</p>
+                        <button onClick={markAlertAsRead} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl uppercase tracking-widest shadow-lg transition-transform active:scale-95 text-sm">
+                            VERIFICAR AGORA
+                        </button>
+                    </div>
+                </div>
+            );
+
             if(loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/20"></div>
@@ -333,6 +367,7 @@
                             )
                         })}
                     </div>
+                    {alertModalUI}
                 </div>
             );
 
@@ -362,6 +397,7 @@
                             <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Quadríceps","Posterior Coxa","Joelho","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
                         </div>
                         <div className="fixed bottom-0 left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md z-50 border-t border-slate-800"><button onClick={subData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl" style={{backgroundColor:data.color}}>{submitting ? <Icon name="refresh" className="animate-spin"/> : <><Icon name="send"/> ENVIAR PRONTIDÃO</>}</button></div>
+                        {alertModalUI}
                     </div>
                 );
             }
@@ -1086,6 +1122,7 @@
                             <div className="text-[10px] font-black text-slate-600 tracking-widest uppercase z-10">POWERED BY PROCOACH MAX</div>
                         </div>
                     </div>
+                    {alertModalUI}
                 </React.Fragment>
             );
         };
