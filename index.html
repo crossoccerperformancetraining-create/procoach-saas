@@ -2259,11 +2259,40 @@
             }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user]);
 
             // NOVO: Função para atualizar a hora do clique e disparar a notificação no app do atleta
-            const dispararAlerta = () => {
+           const dispararAlerta = async () => {
+                // 1. Atualiza o carimbo de tempo para a trava interna
                 setLastAlertSent(Date.now());
-                showToast("🔔 Notificação enviada para o aplicativo dos atletas!", "#10b981");
+                
+                // 2. Configura o disparo push de alta prioridade para o OneSignal
+                const options = {
+                    method: 'POST',
+                    headers: {
+                        accept: 'application/json',
+                        'content-type': 'application/json',
+                        // Lembre-se de manter a sua REST API Key aqui
+                        Authorization: 'Basic COLE_AQUI_A_SUA_REST_API_KEY' 
+                    },
+                    body: JSON.stringify({
+                        app_id: 'd5cc1c36-cb5b-403d-ab8b-327de95b7b7c', // O seu ID oficial
+                        included_segments: ['Subscribed Users'],
+                        headings: { pt: '🚨 URGENTE: ProCoach MAX' },
+                        contents: { pt: 'O professor atualizou a agenda e os treinos. Verifique agora!' },
+                        
+                        // FORÇA O POP-UP NO ECRÃ BLOQUEADO:
+                        priority: 10,               // Prioridade Máxima (acende o ecrã e desce o banner)
+                        ttl: 86400,                 // Tempo de vida da mensagem (24 horas)
+                        content_available: true     // Acorda o processo em segundo plano no telemóvel
+                    })
+                };
+                
+                try {
+                    await fetch('https://onesignal.com/api/v1/notifications', options);
+                    showToast("🔔 Notificação de alta prioridade enviada para o elenco!");
+                } catch (err) {
+                    console.error("Erro no OneSignal:", err);
+                    showToast("Aviso interno salvo, mas houve erro no disparo push.");
+                }
             };
-
             const handleExport = () => {
                 try {
                     const dataToExport = { 
