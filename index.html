@@ -2260,51 +2260,8 @@
 
             // NOVO: Função para atualizar a hora do clique e disparar a notificação no app do atleta
            const dispararAlerta = async () => {
+                // 1. Atualiza o carimbo de tempo para a trava interna
                 setLastAlertSent(Date.now());
-                
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer os_v2_app_fib5pnaynngvbjcvnbvofoehquyzkjza75rebr42ifbuudwbhehfllzuj2nryi6j47cb57c36hdfvxmln35yvu45hi75naxrhcjl',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        app_id: '2a03d7b4-186b-4d50-a455-686ae2b88785',
-                        included_segments: ['Subscribed Users'],
-                        headings: { pt: '🚨 ProCoach: Nova Atualização' },
-                        contents: { pt: 'O professor atualizou a agenda e os treinos. Acesse o app!' }
-                    })
-                };
-
-                try {
-                    // Disparo direto (sem o proxy, para evitar conflito de autenticação)
-                    const res = await fetch('https://onesignal.com/api/v1/notifications', options);
-                    if (res.ok) {
-                        showToast("🔔 Notificação enviada!", "#10b981");
-                    } else {
-                        console.error("Erro OneSignal:", await res.text());
-                        showToast("Erro na notificação", "#ef4444");
-                    }
-                } catch (err) {
-                    showToast("Erro de rede.", "#ef4444");
-                }
-            };
-                try {
-                    // Usando o proxy para evitar bloqueio do navegador
-                    const res = await fetch('https://corsproxy.io/?https://onesignal.com/api/v1/notifications', options);
-                    
-                    if (res.ok) {
-                        showToast("🔔 Notificação disparada com sucesso!", "#10b981");
-                    } else {
-                        const err = await res.text();
-                        console.error("Erro OneSignal:", err);
-                        showToast("Erro ao disparar (verifique o console).", "#ef4444");
-                    }
-                } catch (err) {
-                    console.error("Erro na conexão:", err);
-                    showToast("Erro de conexão.", "#ef4444");
-                }
-            };
                 
                 // 2. Configura o disparo push de alta prioridade para o OneSignal
                 const options = {
