@@ -18,9 +18,8 @@
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
-          appId: 2a03d7b4-186b-4d50-a455-686ae2b88785, // <-- SUBSTITUA ISSO AQUI PELO SEU APP ID
+          appId: "d5cc1c36-cb5b-403d-ab8b-327de95b7b7c", // ID Corrigido com aspas!
         });
-        // Isso faz o pop-up de permissão aparecer para o atleta
         OneSignal.Slidedown.promptPush();
       });
     </script>
@@ -150,7 +149,6 @@
             const [isEditingLogistics, setIsEditingLogistics] = useState(false);
             const [logisticsText, setLogisticsText] = useState("");
             
-            // Controle de visualização do Alerta Interno
             const [showAlertPopup, setShowAlertPopup] = useState(false);
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
@@ -178,7 +176,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // Lógica do Disparo de Notificação Interna
             useEffect(() => {
                 if (data.lastAlertSent) {
                     const localAlert = localStorage.getItem('procoach_last_alert');
@@ -323,7 +320,6 @@
 
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
-            // COMPONENTE DO POPUP DE NOTIFICAÇÃO
             const alertModalUI = showAlertPopup && (
                 <div className="fixed inset-0 bg-slate-950/90 z-[999999] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in font-sans pointer-events-auto">
                     <div className="bg-slate-900 border-2 border-blue-500 rounded-3xl p-8 w-full max-w-sm flex flex-col items-center text-center shadow-2xl relative">
