@@ -101,6 +101,10 @@
             const [aiModal, setAiModal] = useState(null);
             const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null });
             
+            // ESTADOS PARA COR E EVENTO PERSONALIZADOS
+            const [customLabel, setCustomLabel] = useState('');
+            const [customColor, setCustomColor] = useState('#2563eb');
+            
             const [startDate, setStartDate] = useState(() => {
                 const d = new Date();
                 const day = d.getDay();
@@ -137,15 +141,17 @@
 
             const openModal = (dayId, period) => { setActiveSlot({ dayId, period }); setModalOpen(true); };
             
-            const addEvent = (typeObj) => {
+            // FUNÇÃO ATUALIZADA PARA ACEITAR EVENTOS PERSONALIZADOS E CORES
+            const addEvent = (typeObj, isCustom = false) => {
                 const newDays = safeDays.map(d => {
                     if(d.id === activeSlot.dayId) {
                         const currentEvents = Array.isArray(d[activeSlot.period]) ? d[activeSlot.period] : [];
                         const newEvent = { 
                             id: Date.now(), 
-                            type: typeObj.label, 
-                            colorClass: typeObj.color, 
-                            textClass: typeObj.text 
+                            type: isCustom ? customLabel.toUpperCase() : typeObj.label, 
+                            colorClass: isCustom ? '' : typeObj.color, 
+                            textClass: isCustom ? 'text-white' : typeObj.text,
+                            customColor: isCustom ? customColor : null // Guarda a cor personalizada
                         };
                         return { ...d, [activeSlot.period]: [...currentEvents, newEvent] };
                     }
@@ -154,6 +160,7 @@
                 
                 setDays(newDays);
                 setModalOpen(false);
+                if(isCustom) setCustomLabel('');
 
                 const user = firebase.auth().currentUser;
                 if(user) {
@@ -245,7 +252,10 @@
                                                 <div className="text-[8px] font-black uppercase text-slate-500 text-center tracking-[0.2em] mb-1">{period==='am'?'Manhã':'Tarde'}</div>
                                                 <div className="flex flex-col gap-1.5 min-h-[100px]">
                                                     {(day[period] || []).map(ev => (
-                                                        <div key={ev.id} className={`${ev.colorClass} ${ev.textClass} text-[9px] font-black py-2.5 px-1 rounded-lg shadow-lg text-center relative group/item uppercase tracking-tighter border-b-2 border-black/20`}>
+                                                        <div key={ev.id} 
+                                                             className={`${ev.colorClass || ''} ${ev.textClass} text-[9px] font-black py-2.5 px-1 rounded-lg shadow-lg text-center relative group/item uppercase tracking-tighter border-b-2 border-black/20`}
+                                                             style={ev.customColor ? { backgroundColor: ev.customColor } : null}
+                                                        >
                                                             {ev.type}
                                                             <button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute -top-1 -right-1 bg-black text-white rounded-full w-4 h-4 flex items-center justify-center hidden group-hover/item:flex border border-white/20">×</button>
                                                         </div>
