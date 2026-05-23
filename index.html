@@ -2259,40 +2259,52 @@
             }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user]);
 
             // NOVO: Função para atualizar a hora do clique e disparar a notificação no app do atleta
-           const dispararAlerta = async () => {
-                // 1. Atualiza o carimbo de tempo para a trava interna
-                setLastAlertSent(Date.now());
-                
-                // 2. Configura o disparo push de alta prioridade para o OneSignal
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        accept: 'application/json',
-                        'content-type': 'application/json',
-                        // Lembre-se de manter a sua REST API Key aqui
-                        Authorization: 'Basic COLE_AQUI_A_SUA_REST_API_KEY' 
-                    },
-                    body: JSON.stringify({
-                        app_id: 'd5cc1c36-cb5b-403d-ab8b-327de95b7b7c', // O seu ID oficial
-                        included_segments: ['Subscribed Users'],
-                        headings: { pt: '🚨 URGENTE: ProCoach MAX' },
-                        contents: { pt: 'O professor atualizou a agenda e os treinos. Verifique agora!' },
-                        
-                        // FORÇA O POP-UP NO ECRÃ BLOQUEADO:
-                        priority: 10,               // Prioridade Máxima (acende o ecrã e desce o banner)
-                        ttl: 86400,                 // Tempo de vida da mensagem (24 horas)
-                        content_available: true     // Acorda o processo em segundo plano no telemóvel
-                    })
-                };
-                
-                try {
-                    await fetch('https://onesignal.com/api/v1/notifications', options);
-                    showToast("🔔 Notificação de alta prioridade enviada para o elenco!");
-                } catch (err) {
-                    console.error("Erro no OneSignal:", err);
-                    showToast("Aviso interno salvo, mas houve erro no disparo push.");
-                }
-            };
+           // --- COPIE APENAS ESTE BLOCO E SUBSTITUA NO SEU index.html ---
+
+const dispararAlerta = async () => {
+    setLastAlertSent(Date.now());
+    
+    // ATENÇÃO: SUBSTITUA O TOKEN ABAIXO PELA SUA CHAVE os_v2_...
+    const MEU_TOKEN = 'os_v2_app_fib5pnaynngvbjcvnbvofoehquyzkjza75rebr42ifbuudwbhehfllzuj2nryi6j47cb57c36hdfvxmln35yvu45hi75naxrhcjl';
+    
+    const options = {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'Authorization': 'Bearer ' + MEU_TOKEN
+        },
+        body: JSON.stringify({
+            app_id: '2a03d7b4-186b-4d50-a455-686ae2b88785',
+            included_segments: ['Subscribed Users'],
+            headings: { pt: '🚨 ProCoach: Nova Atualização' },
+            contents: { pt: 'O professor atualizou a agenda e os treinos. Acesse o app!' },
+            priority: 10,
+            ttl: 86400
+        })
+    };
+
+    try {
+        const res = await fetch('https://onesignal.com/api/v1/notifications', options);
+        if(res.ok) {
+            showToast("🔔 Notificação disparada!", "#10b981");
+        } else {
+            const err = await res.text();
+            console.error("Erro OneSignal:", err);
+            showToast("Erro no disparo (verifique o console F12)", "#ef4444");
+        }
+    } catch (err) {
+        showToast("Erro de rede ao disparar", "#ef4444");
+    }
+};
+
+// ... E no seu render (onde você desenha o painel), certifique-se de ter o botão:
+<button 
+    onClick={dispararAlerta} 
+    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg uppercase tracking-widest transition-all"
+>
+    DISPARAR NOTIFICAÇÃO
+</button>
             const handleExport = () => {
                 try {
                     const dataToExport = { 
