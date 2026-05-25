@@ -270,16 +270,29 @@
                         </div>
                     </div>
 
-                    {modalOpen && (
+                   {modalOpen && (
                         <div className="absolute inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}>
                             <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700 flex flex-col max-h-[85vh]" onClick={e=>e.stopPropagation()}>
-                                <h3 className="text-center font-black text-white mb-6 text-lg uppercase tracking-tighter">Adicionar Evento</h3>
+                                <h3 className="text-center font-black text-white mb-4 text-lg uppercase tracking-tighter">Adicionar Evento</h3>
+                                
                                 <div className="grid grid-cols-1 gap-2 overflow-y-auto flex-1 custom-scroll pr-2">
                                     {eventTypes.map(t => (
-                                        <button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-4 rounded-xl font-black shadow-xl ${t.color} ${t.text} text-xs tracking-widest uppercase border-b-4 border-black/20 active:translate-y-1 active:border-b-0 transition-all`}>{t.label}</button>
+                                        <button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3 rounded-xl font-black shadow-xl ${t.color} ${t.text} text-xs tracking-widest uppercase border-b-4 border-black/20 active:translate-y-1 active:border-b-0 transition-all`}>{t.label}</button>
                                     ))}
                                 </div>
-                                <button onClick={()=>setModalOpen(false)} className="w-full mt-6 py-4 text-slate-400 font-black text-xs uppercase tracking-widest">Cancelar</button>
+                                
+                                {/* --- BLOCO DO EVENTO PERSONALIZADO DE CORES AQUI --- */}
+                                <div className="border-t border-slate-700 pt-4 mt-4 bg-slate-900/50 p-3 rounded-xl shrink-0">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-wider">Novo Modelo Personalizado</h4>
+                                    <div className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="Nome (ex: FINALIZAÇÃO)" value={customLabel} onChange={e => setCustomLabel(e.target.value)} className="flex-1 bg-slate-800 border border-slate-600 rounded-lg p-2 text-xs text-white uppercase font-bold outline-none" />
+                                        <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} className="w-10 h-8 rounded border border-slate-600 bg-transparent cursor-pointer" />
+                                    </div>
+                                    <button onClick={() => { if(customLabel.trim()) addEvent(null, true); }} disabled={!customLabel.trim()} className="w-full bg-emerald-600 disabled:bg-slate-700 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-widest transition-all border-b-4 border-black/20 active:translate-y-1 active:border-b-0">+ Acrescentar</button>
+                                </div>
+                                {/* -------------------------------------------------- */}
+
+                                <button onClick={()=>setModalOpen(false)} className="w-full mt-2 py-2 text-slate-400 font-black text-xs uppercase tracking-widest">Cancelar</button>
                             </div>
                         </div>
                     )}
