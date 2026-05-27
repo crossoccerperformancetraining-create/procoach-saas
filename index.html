@@ -898,178 +898,119 @@
             );
         };
 
-        const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+       const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
             const [viewProfile, setViewProfile] = useState(null);
             const [editPlayer, setEditPlayer] = useState(null); 
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
-           const addP = () => {
-    // Incluí o campo videoUrl: "" para garantir compatibilidade com o novo Editor
-    const newPlayers = [...safePlayers, { 
-        name: "", 
-        image: null, 
-        injured: false, 
-        position: 'Atleta', 
-        number: "", 
-        videoUrl: "" // Campo novo adicionado
-    }];
-    
-    setPlayers(newPlayers);
-    
-    const user = firebase.auth().currentUser;
-    if (user) {
-        db.collection('coachData').doc(user.uid).update({ players: newPlayers });
-    }
-};
+            const addP = () => {
+                const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
+                setPlayers(newPlayers);
+                const user = firebase.auth().currentUser;
+                if (user) db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+            };
 
-            const fileInputRef = useRef(null); const [localData, setLocalData] = useState({});
+            const fileInputRef = useRef(null); 
+            const [localData, setLocalData] = useState({});
             
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
             const Editor = () => { 
-    if(editPlayer === null) return null; 
-    const p = safePlayers[editPlayer]; 
-    if(!p) return null; 
-    
-    const handleImg = async (e) => { 
-        const f=e.target.files[0]; 
-        if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } 
-    }; 
-    
-    return (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}>
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3 max-h-[90vh] overflow-y-auto custom-scroll" onClick={e=>e.stopPropagation()}>
-                <h3 className="font-bold dark:text-white text-center text-lg">Editar Atleta</h3>
-                
-                <div className="flex justify-center flex-col items-center gap-2">
-                    <div onClick={()=>fileInputRef.current.click()} className="w-24 h-24 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">
-                        {localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
-                    </div>
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/>
-                    <div className="w-full">
-                        <label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label>
-                        <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1.5 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} />
-                    </div>
-                </div>
-                
-                <div className="space-y-2">
-                    <div>
-                        <label className="text-[9px] uppercase font-bold text-slate-400">Nome:</label>
-                        <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
-                    </div>
-                    
-                    {/* --- CAMPO DE VÍDEO ADICIONADO ABAIXO --- */}
-                    <div>
-                        <label className="text-[9px] uppercase font-bold text-slate-400">Link de Vídeo Individual (YouTube/Drone):</label>
-                        <BufferedInput 
-                            className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" 
-                            placeholder="https://youtube.com/..." 
-                            value={localData.videoUrl || ''} 
-                            onSave={val => setLocalData({...localData, videoUrl: val})} 
-                        />
-                    </div>
-                    {/* ---------------------------------------- */}
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
-                            <BufferedInput type="number" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="Nº" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/>
-                        </div>
-                        <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-400">Posição:</label>
-                            <select className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}>
-                                <option value="">-</option>
-                                {["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}
-                            </select>
+                if(editPlayer === null) return null; 
+                const p = safePlayers[editPlayer]; 
+                if(!p) return null; 
+                const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; 
+                return (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3 max-h-[90vh] overflow-y-auto custom-scroll" onClick={e=>e.stopPropagation()}>
+                            <h3 className="font-bold dark:text-white text-center text-lg">Editar Atleta</h3>
+                            <div className="flex justify-center flex-col items-center gap-2">
+                                <div onClick={()=>fileInputRef.current.click()} className="w-24 h-24 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">
+                                    {localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
+                                </div>
+                                <input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/>
+                                <div className="w-full">
+                                    <label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label>
+                                    <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1.5 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div>
+                                    <label className="text-[9px] uppercase font-bold text-slate-400">Nome:</label>
+                                    <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-bold text-slate-400">Link de Vídeo Individual (YouTube/Drone):</label>
+                                    <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="https://youtube.com/..." value={localData.videoUrl || ''} onSave={val => setLocalData({...localData, videoUrl: val})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
+                                        <BufferedInput type="number" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="Nº" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/>
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400">Posição:</label>
+                                        <select className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}>
+                                            <option value="">-</option>
+                                            {["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs">EXCLUIR</button>
+                                    <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs">SALVAR</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
-                        <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
-                            <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.g) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, g: e.target.value}})} placeholder="0"/>
-                        </div>
-                        <div>
-                            <label className="text-[9px] uppercase font-bold text-slate-500">👟 Assistências:</label>
-                            <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.a) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, a: e.target.value}})} placeholder="0"/>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
-                            <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
-                            <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">🚫 Suspenso</span>
-                        </label>
-                        <label className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 rounded cursor-pointer transition-colors hover:bg-yellow-100">
-                            <input type="checkbox" checked={localData.highlight || false} onChange={e=>setLocalData({...localData, highlight: e.target.checked})} className="w-4 h-4 accent-yellow-500"/>
-                            <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 uppercase">🏆 Destaque</span>
-                        </label>
-                    </div>
-                </div>
+                );
+            };
 
-                <div className="flex gap-2 pt-2">
-                    <button onClick={()=>{if(confirm('Excluir Atleta da Equipe?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
-                    <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
-                </div>
-            </div>
-        </div>
-    ); 
-};
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
             const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
 
             return (
-               <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll min-h-screen pb-32">
+               <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
                     <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
                     {editPlayer!==null && <Editor/>}
-                    <div className="flex justify-between items-end mb-6"><h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2><div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300"><Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}</div></div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2>
+                            <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
+                                <Icon name="plus" size={14}/> Adicionar Atleta
+                            </button>
+                        </div>
+                        <div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                            <Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
                         {safePlayers.map((p, i) => { 
                             if(!p) return null;
                             const loadPct = getWeeklyLoad(i); 
                             const dailyLog = trainingLog[today]?.[i] || {}; 
                             const wellness = safeObj(dailyLog.wellness); 
                             const soreness = Number(wellness.soreness) || 0; 
-                            const sleep = Number(wellness.sleep) || 0; 
                             const isRisk = soreness >= 5; 
-                            const dmStatus = p.injured ? getPlayerDMStatus(i) : null; 
                             const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
                             
                             return (
-                                <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-4 flex flex-col items-center gap-3 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured || p.suspended ? 'border-red-500 dark:border-red-500 ring-2 ring-red-100 dark:ring-red-900/50' : p.highlight ? 'border-yellow-400 dark:border-yellow-500 ring-2 ring-yellow-100 dark:ring-yellow-900/50' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
-                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-2 right-2 text-slate-300 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-800 rounded-full p-1"><Icon name="edit" size={16}/></button>
-                                    
-                                    {isRisk && !p.injured && !p.suspended && <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse z-10 flex items-center gap-1"><Icon name="alert" size={10} stroke="white"/> RISCO</div>}
-                                    {p.injured && <div className="absolute top-2 left-2 bg-slate-800 dark:bg-slate-600 text-white p-1.5 rounded-full z-10"><Icon name="medkit" size={14}/></div>}
-                                    {inTransition && !p.injured && !p.suspended && <div className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1"><Icon name="activity" size={10} stroke="white"/> EM TRANSIÇÃO</div>}
-                                    {p.suspended && <div className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse z-10">🚫 SUSPENSO</div>}
-                                    {p.highlight && !p.injured && !p.suspended && <div className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1">🏆 DESTAQUE</div>}
-                                    
-                                    <div className={`w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden relative border-2 shrink-0 ${p.highlight ? 'ring-4 ring-yellow-400/30' : ''}`} style={{borderColor: p.injured || p.suspended ? '#ef4444' : inTransition ? '#f97316' : isRisk ? '#ef4444' : p.highlight ? '#facc15' : themeColor}}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-500"><Icon name="user" size={32}/></div>}
+                                <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
+                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500"><Icon name="edit" size={12}/></button>
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2" style={{borderColor: p.injured ? '#ef4444' : themeColor}}>
+                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
                                     </div>
                                     <div className="text-center w-full">
-                                        <div className="font-bold text-slate-700 dark:text-slate-200 text-lg truncate">{p.name}</div>
-                                        <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-1 flex justify-center gap-2">{p.number && <span className="bg-slate-100 dark:bg-slate-700 px-1.5 rounded text-slate-600 dark:text-slate-300">#{p.number}</span>}<span>{p.position || 'Atleta'}</span></div>
+                                        <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate">{p.name}</div>
                                     </div>
-                                    
-                                    <div className="border-t dark:border-slate-700 pt-2 w-full flex justify-center items-center gap-2">
-                                        {p.injured && dmStatus ? (
-                                            <div className="w-full text-center">
-                                                <div className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase mb-1">{dmStatus.location}</div>
-                                                <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 rounded px-2 py-1">{RTP_PHASES.find(ph=>ph.id==dmStatus.rtpPhase)?.label || 'Em tratamento'}</div>
-                                            </div>
-                                        ) : (
-                                            <><MiniGauge value={loadPct} min={0} max={100} label="Carga 7 Dias" />{sleep >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Sono Ruim"><Icon name="moon" size={12}/></div>}{soreness >= 5 && <div className="text-red-500 bg-red-50 dark:bg-red-900/30 p-1 rounded-full" title="Dor Alta"><Icon name="bolt" size={12}/></div>}</>
-                                        )}
-                                    </div>
+                                    <div className="w-full flex justify-center"><MiniGauge value={loadPct} min={0} max={100} /></div>
                                 </div>
                             ) 
                         })}
-                        <button onClick={addP} className="bg-white dark:bg-slate-800 rounded-xl shadow border border-dashed border-slate-300 dark:border-slate-600 p-4 flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 hover:border-blue-500 dark:hover:border-blue-400 transition-all cursor-pointer h-40"><Icon name="plus" size={32}/><span className="font-bold text-sm">Adicionar Atleta</span></button>
                     </div>
                 </div>
             );
