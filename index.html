@@ -1756,11 +1756,16 @@
             );
         };
 
-       const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+      const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
             const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
             const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
             const importInputRef = useRef(null);
+
+            // ESTADOS PARA O LOTE
+            const [batchModalOpen, setBatchModalOpen] = useState(false);
+            const [batchUrls, setBatchUrls] = useState('');
+            const [batchCategory, setBatchCategory] = useState(categories[0]);
 
             useEffect(() => {
                 if(user) db.collection('coachData').doc(user.uid).set({ customCategories: categories }, { merge: true });
@@ -1810,7 +1815,7 @@
                         const currentUrls = new Set(library.map(i => i.gifUrl));
                         const newGifs = importedData.content.filter(i => !currentUrls.has(i.gifUrl));
                         
-                        setLibrary([...library, ...newGifs]);
+                        setLibrary([...newGifs, ...library]);
                         alert(`${newGifs.length} exercícios importados para a pasta ${importedData.category}!`);
                     } catch(err) {
                         alert("Erro ao importar: Arquivo inválido.");
@@ -1821,25 +1826,102 @@
 
             const add = () => {
                 if(!form.title || !form.gifUrl) return;
-                setLibrary([...library, { id: Date.now(), ...form }]);
+                setLibrary([{ id: Date.now(), ...form }, ...library]);
                 setForm({...form, title: '', gifUrl: ''});
+            };
+
+            // FUNÇÃO PARA RENOMEAR PASTA
+            const renameFolder = () => {
+                if(filter === 'Todas') return;
+                const newName = prompt(`Renomear pasta "${filter}" para:`, filter);
+                if(newName && newName.trim() !== '' && newName !== filter) {
+                    if(categories.includes(newName)) {
+                        alert("Já existe uma pasta com este nome.");
+                        return;
+                    }
+                    // Atualiza a lista de pastas
+                    const newCats = categories.map(c => c === filter ? newName : c);
+                    setCategories(newCats);
+                    // Atualiza todos os exercícios que estavam na pasta antiga
+                    const newLib = library.map(l => l.category === filter ? {...l, category: newName} : l);
+                    setLibrary(newLib);
+                    setFilter(newName);
+                    setBatchCategory(newName);
+                    showToast("Pasta renomeada com sucesso!", "#10b981");
+                }
+            };
+
+            // FUNÇÃO DO LOTE
+            const handleBatchAdd = () => {
+                const urls = batchUrls.split('\n').map(u => u.trim()).filter(u => u !== '');
+                if (urls.length === 0) {
+                    alert("Cole pelo menos um link válido.");
+                    return;
+                }
+                
+                const newItems = urls.map((url, index) => ({
+                    id: Date.now() + index,
+                    title: `Nova Atividade ${index + 1}`,
+                    gifUrl: url,
+                    category: batchCategory
+                }));
+                
+                setLibrary([...newItems, ...library]);
+                setBatchUrls('');
+                setBatchModalOpen(false);
+                showToast(`${newItems.length} imagens adicionadas com sucesso!`, "#10b981");
             };
 
             const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll">
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll relative">
+                    
+                    {/* MODAL DO LOTE (COLAR VÁRIOS LINKS) */}
+                    {batchModalOpen && (
+                        <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                            <div className="bg-[#1e293b] p-6 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl">
+                                <h3 className="text-white font-black text-xl mb-1 uppercase tracking-wider flex items-center gap-2">
+                                    <Icon name="list" className="text-blue-500"/> Colar em Lote
+                                </h3>
+                                <p className="text-slate-400 text-xs mb-6 font-bold">Cole 1 link de imagem por linha. O sistema criará os blocos automaticamente.</p>
+                                
+                                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Salvar na Pasta:</label>
+                                <select className="w-full bg-slate-800 border border-slate-600 text-white p-3 rounded-xl mb-4 text-sm font-bold outline-none" value={batchCategory} onChange={e => setBatchCategory(e.target.value)}>
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                
+                                <textarea 
+                                    className="w-full h-48 bg-slate-800 border border-slate-600 text-white text-xs p-3 rounded-xl outline-none custom-scroll mb-6" 
+                                    placeholder="https://postimg.cc/imagem1.png&#10;https://postimg.cc/imagem2.png&#10;https://postimg.cc/imagem3.png" 
+                                    value={batchUrls} 
+                                    onChange={e => setBatchUrls(e.target.value)}
+                                />
+                                
+                                <div className="flex gap-2">
+                                    <button onClick={() => setBatchModalOpen(false)} className="flex-1 bg-slate-700 text-slate-300 font-black py-4 rounded-xl text-xs uppercase hover:bg-slate-600 transition-colors">Cancelar</button>
+                                    <button onClick={handleBatchAdd} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-xl text-xs uppercase shadow-lg hover:bg-blue-500 transition-colors">Salvar Imagens</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-6 border border-slate-200 dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                             <h2 className="text-xl font-black dark:text-white flex gap-2 items-center uppercase italic">
                                 <Icon name="folder" className="text-purple-600"/> BIBLIOTECA DE EXERCÍCIOS
                             </h2>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleImport} />
-                                <button onClick={() => importInputRef.current.click()} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
-                                    <Icon name="upload" size={14}/> IMPORTAR PASTA
+                                
+                                <button onClick={() => setBatchModalOpen(true)} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
+                                    <Icon name="list" size={14}/> COLAR LOTE
                                 </button>
-                                <button onClick={() => {const n = prompt("Nome da pasta:"); if(n) setCategories([...categories, n])}} className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-emerald-700">
+                                
+                                <button onClick={() => importInputRef.current.click()} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-700">
+                                    <Icon name="upload" size={14}/> IMPORTAR
+                                </button>
+                                <button onClick={() => {const n = prompt("Nome da nova pasta:"); if(n && !categories.includes(n)) setCategories([...categories, n])}} className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-emerald-700">
                                     + NOVA PASTA
                                 </button>
                             </div>
@@ -1847,40 +1929,55 @@
                         
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <input type="text" placeholder="Nome do Exercício" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                            <input type="text" placeholder="Link do GIF (URL)" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
+                            <input type="text" placeholder="Link da Imagem (Única)" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
                             <select className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm font-bold" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                            <button onClick={add} className="bg-purple-600 text-white font-black py-3 rounded-xl hover:bg-purple-700 shadow-lg uppercase tracking-widest transition-all">SALVAR GIF</button>
+                            <button onClick={add} className="bg-purple-600 text-white font-black py-3 rounded-xl hover:bg-purple-700 shadow-lg uppercase tracking-widest transition-all">SALVAR ÚNICO</button>
                         </div>
                     </div>
 
                     <div className="flex items-center justify-between mb-6 bg-slate-200/50 dark:bg-slate-800/50 p-3 rounded-2xl">
-                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 max-w-[75%]">
-                            <button onClick={()=>setFilter('Todas')} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${filter==='Todas'?'bg-slate-800 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>Todas</button>
+                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 max-w-[60%] md:max-w-[75%]">
+                            <button onClick={()=>setFilter('Todas')} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter==='Todas'?'bg-slate-800 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>Todas</button>
                             {categories.map(c => (
-                                <button key={c} onClick={()=>setFilter(c)} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all ${filter===c?'bg-purple-600 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>{c}</button>
+                                <button key={c} onClick={()=>setFilter(c)} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter===c?'bg-purple-600 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>{c}</button>
                             ))}
                         </div>
                         
                         {filter !== 'Todas' && (
-                            <button onClick={exportFolder} className="bg-orange-500 text-white text-[10px] font-black px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-lg animate-fade-in hover:bg-orange-600">
-                                <Icon name="share" size={14}/> EXPORTAR {filter.toUpperCase()}
-                            </button>
+                            <div className="flex gap-2 shrink-0">
+                                <button onClick={renameFolder} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-700">
+                                    <Icon name="edit" size={14}/> RENOMEAR
+                                </button>
+                                <button onClick={exportFolder} className="hidden md:flex bg-orange-500 text-white text-[10px] font-black px-4 py-2.5 rounded-xl items-center gap-2 shadow-lg animate-fade-in hover:bg-orange-600">
+                                    <Icon name="share" size={14}/> EXPORTAR
+                                </button>
+                            </div>
                         )}
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-24">
                         {filtered.map(l => (
                             <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-lg relative group border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-purple-500 transition-all">
-                                <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-black/60 text-white backdrop-blur-md border border-white/20">{l.category}</span>
+                                <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-black/60 text-white backdrop-blur-md border border-white/20 truncate max-w-[80%]">{l.category}</span>
                                 <div className="w-full h-32 rounded-xl mb-2 overflow-hidden bg-slate-100 dark:bg-slate-900 border dark:border-slate-700">
                                     <img src={l.gifUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 </div>
-                                <div className="text-[10px] font-black dark:text-slate-200 uppercase truncate px-1 text-center">{l.title}</div>
+                                <div className="flex gap-1 mb-1 items-center px-1">
+                                    <BufferedInput className="text-[10px] font-black dark:bg-slate-700 dark:text-white uppercase truncate px-1 text-center w-full border border-transparent hover:border-slate-300 rounded" value={l.title} onSave={(val) => {
+                                        const newLib = library.map(x => x.id === l.id ? {...x, title: val} : x);
+                                        setLibrary(newLib);
+                                    }}/>
+                                </div>
                                 <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-xl hover:bg-red-700"><Icon name="trash" size={12}/></button>
                             </div>
                         ))}
+                        {filtered.length === 0 && (
+                            <div className="col-span-2 md:col-span-4 lg:col-span-6 text-center text-slate-500 py-10 font-bold border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                                Nenhuma imagem nesta pasta. Use o botão "Colar Lote" acima.
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -1950,7 +2047,7 @@
                 if (!libId) return;
                 const item = library.find(x => x.libId?.toString() === libId || x.id?.toString() === libId);
                 if (item) {
-                    const isField = ['Tático', 'Técnico', 'Coletivo', 'Bola Parada', 'Mini Jogo'].includes(item.method);
+                    const isField = ['Tático', 'Técnico', 'Coletivo', 'Bola Parada', 'Mini Jogo'].includes(item.category || item.method);
                     setTrainingType(isField ? 'campo' : 'academia');
                     setForm({
                         ...form,
@@ -2167,7 +2264,6 @@
                 </div>
             );
         };
-
         const MainApp = ({ user, initialData }) => {
             const [tab, setTab] = useState('squad'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
