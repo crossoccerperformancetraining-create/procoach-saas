@@ -911,14 +911,14 @@
             );
         };
 
-       const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+      const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
             const [viewProfile, setViewProfile] = useState(null);
             const [editPlayer, setEditPlayer] = useState(null); 
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
             const addP = () => {
-                const newPlayers = [...safePlayers, { name: "", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
+                const newPlayers = [...safePlayers, { name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
                 setPlayers(newPlayers);
                 const user = firebase.auth().currentUser;
                 if (user) db.collection('coachData').doc(user.uid).update({ players: newPlayers });
@@ -955,7 +955,7 @@
                                     <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
                                 </div>
                                 <div>
-                                    <label className="text-[9px] uppercase font-bold text-slate-400">Link de Vídeo Individual (YouTube/Drone):</label>
+                                    <label className="text-[9px] uppercase font-bold text-slate-400">Link de Vídeo Individual:</label>
                                     <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="https://youtube.com/..." value={localData.videoUrl || ''} onSave={val => setLocalData({...localData, videoUrl: val})} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
@@ -971,9 +971,34 @@
                                         </select>
                                     </div>
                                 </div>
+                                
+                                {/* ESTATÍSTICAS RESTAURADAS */}
+                                <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
+                                        <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.g) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, g: e.target.value}})} placeholder="0"/>
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-500">👟 Assistências:</label>
+                                        <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.a) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, a: e.target.value}})} placeholder="0"/>
+                                    </div>
+                                </div>
+                                
+                                {/* BOTÕES DE DESTAQUE E SUSPENSÃO RESTAURADOS */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
+                                        <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
+                                        <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">🚫 Suspenso</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 rounded cursor-pointer transition-colors hover:bg-yellow-100">
+                                        <input type="checkbox" checked={localData.highlight || false} onChange={e=>setLocalData({...localData, highlight: e.target.checked})} className="w-4 h-4 accent-yellow-500"/>
+                                        <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 uppercase">🏆 Destaque</span>
+                                    </label>
+                                </div>
+
                                 <div className="flex gap-2 pt-2">
-                                    <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs">EXCLUIR</button>
-                                    <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs">SALVAR</button>
+                                    <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
+                                    <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
                                 </div>
                             </div>
                         </div>
@@ -982,10 +1007,10 @@
             };
 
             const injuredCount = safePlayers.filter(p=>p && p.injured).length;
-            const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} atletas indisponíveis.` : "Elenco com boa disponibilidade geral.";
+            const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} indisponíveis.` : "Elenco pronto.";
 
             return (
-               <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
                     <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
                     {editPlayer!==null && <Editor/>}
                     
@@ -1001,7 +1026,7 @@
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
                         {safePlayers.map((p, i) => { 
                             if(!p) return null;
                             const loadPct = getWeeklyLoad(i); 
@@ -1009,18 +1034,25 @@
                             const wellness = safeObj(dailyLog.wellness); 
                             const soreness = Number(wellness.soreness) || 0; 
                             const isRisk = soreness >= 5; 
-                            const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
                             
                             return (
                                 <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
-                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500"><Icon name="edit" size={12}/></button>
-                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2" style={{borderColor: p.injured ? '#ef4444' : themeColor}}>
+                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500 z-20"><Icon name="edit" size={12}/></button>
+                                    
+                                    {/* ETIQUETAS DE STATUS NA FOTO */}
+                                    {isRisk && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse z-10">RISCO</div>}
+                                    {p.injured && <div className="absolute top-1 left-1 bg-slate-800 dark:bg-slate-600 text-white p-1 rounded-full z-10"><Icon name="medkit" size={10}/></div>}
+                                    {p.suspended && <div className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🚫 SUSPENSO</div>}
+                                    {p.highlight && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🏆 DESTAQUE</div>}
+
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2 shrink-0 relative mt-2" style={{borderColor: p.injured || p.suspended ? '#ef4444' : p.highlight ? '#facc15' : themeColor}}>
                                         {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
                                     </div>
-                                    <div className="text-center w-full">
+                                    <div className="text-center w-full mt-1">
                                         <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate">{p.name}</div>
+                                        <div className="text-[8px] text-slate-400 dark:text-slate-500 uppercase">{p.position || 'Atleta'}</div>
                                     </div>
-                                    <div className="w-full flex justify-center"><MiniGauge value={loadPct} min={0} max={100} /></div>
+                                    <div className="w-full flex justify-center mt-1"><MiniGauge value={loadPct} min={0} max={100} /></div>
                                 </div>
                             ) 
                         })}
