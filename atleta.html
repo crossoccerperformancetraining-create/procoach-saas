@@ -127,8 +127,9 @@
         };
 
        const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, ex:[], act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0 });
+            const [data, setData] = useState({ players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0 });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
+            const [selectedDate, setSelectedDate] = useState(getTodayStr());
             const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1}); const [pain, setPain] = useState([]);
             const [tp, setTp] = useState(''); const [ts, setTs] = useState(''); const [submitting, setSubmitting] = useState(false);
@@ -159,22 +160,31 @@
                 const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
+                        setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
                         const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
-                        setIdx(parsedIdx);
+                        if(idx === null) setIdx(parsedIdx);
                         if (pIdx !== null) setIsPriv(true);
-
-                        if(d.players && d.players[parsedIdx]) {
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parsedIdx] && d.trainingLog[getTodayStr()][parsedIdx].wellness && d.trainingLog[getTodayStr()][parsedIdx].wellness.sleep) setStep(3); else setStep(2);
-                            if(d.trainingLog && d.trainingLog[getTodayStr()] && d.trainingLog[getTodayStr()][parsedIdx] && d.trainingLog[getTodayStr()][parsedIdx].agendaAck) setAgendaAck(true);
-                            setWater(Number(d.trainingLog?.[getTodayStr()]?.[parsedIdx]?.waterIntake) || 0);
-                        }
                     }
                     setLoading(false);
                 }, () => { setLoading(false); });
                 return () => unsubscribe();
             }, []);
+
+            useEffect(() => {
+                if (idx !== null) {
+                    const currentLog = data.log?.[selectedDate]?.[idx];
+                    if(currentLog?.wellness?.sleep) { 
+                        setStep(3); 
+                        setAgendaAck(!!currentLog.agendaAck);
+                        setWater(Number(currentLog.waterIntake) || 0); 
+                    } else { 
+                        setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); 
+                        setPain([]); 
+                        setStep(2); 
+                    }
+                }
+            }, [selectedDate, data.log, idx]);
 
             useEffect(() => {
                 if (data.lastAlertSent) {
@@ -196,7 +206,8 @@
             const getOrderedExs = () => {
                 const pAss = (data.ass && data.ass[idx] && data.ass[idx][0]) ? data.ass[idx][0] : {}; const assStr = (pAss.anamnese || '').toLowerCase();
                 const hasLca = assStr.includes('lca'); const hasPub = assStr.includes('pubalgia'); const hasPost = assStr.includes('posterior')||assStr.includes('muscular'); const hasHist = assStr.trim()!=='' && !assStr.includes('nenhum') && !assStr.includes('sem histórico');
-                let baseExs = safeArray(data.ex); const dm = getDM(idx); const trans = dm==='TRANSIÇÃO'; const inj = dm==='DM';
+                let baseExs = safeArray(data.exHistory?.[selectedDate] || data.ex); 
+                const dm = getDM(idx); const trans = dm==='TRANSIÇÃO'; const inj = dm==='DM';
                 let prevExs = []; let genExs = [];
                 if(trans) { genExs = baseExs.filter(x=>x.target==='Transição (Retorno DM)'); prevExs = baseExs.filter(x=>x.target==='Manutenção (Histórico Lesão)'); } 
                 else if(!inj) { genExs = baseExs.filter(x => !x.target || x.target === 'Geral' || (!x.target.includes('LCA') && !x.target.includes('Pubalgia') && !x.target.includes('Posterior') && !x.target.includes('Manutenção') && !x.target.includes('Transição'))); prevExs = baseExs.filter(x => (x.target==='LCA'&&hasLca) || (x.target==='Pubalgia'&&hasPub) || (x.target==='Posterior'&&hasPost) || (x.target==='Manutenção (Histórico Lesão)'&&hasHist)); }
@@ -217,11 +228,11 @@
             const initAudio = () => { if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} } if(audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); try { const osc = audioCtxRef.current.createOscillator(); const gain = audioCtxRef.current.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtxRef.current.destination); osc.start(); osc.stop(audioCtxRef.current.currentTime + 0.1); } catch(e) {} };
             const playBeep = () => { try { const ctx = audioCtxRef.current; if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(1, ctx.currentTime); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => { const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime); gain2.gain.setValueAtTime(1, ctx.currentTime); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(); osc2.stop(ctx.currentTime + 0.3); }, 400); } catch(e) {} };
 
-            const selectP = (i) => { setIdx(i); initAudio(); if(data.log && data.log[getTodayStr()] && data.log[getTodayStr()][i] && data.log[getTodayStr()][i].wellness && data.log[getTodayStr()][i].wellness.sleep) { setStep(3); if(data.log[getTodayStr()][i].agendaAck) setAgendaAck(true); setWater(Number(data.log[getTodayStr()][i].waterIntake) || 0); } else { setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); setPain([]); setStep(2); } };
+            const selectP = (i) => { setIdx(i); initAudio(); };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
             const subData = () => {
-                setSubmitting(true); const td = getTodayStr(); 
+                setSubmitting(true); const td = selectedDate; 
                 const updateObj = {
                     [`trainingLog.${td}.${idx}.wellness`]: scores,
                     [`trainingLog.${td}.${idx}.painZones`]: pain
@@ -234,7 +245,7 @@
             };
 
             const ackAgenda = () => {
-                const td = getTodayStr();
+                const td = selectedDate;
                 db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.agendaAck`]: true }).then(()=>{ 
                     setAgendaAck(true); const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].agendaAck = true; setData({...data, log: nl});
                 }).catch(()=>{ alert("Erro ao confirmar."); });
@@ -256,14 +267,14 @@
             };
 
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
-            const handleAddWater = () => { const td = getTodayStr(); const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
+            const handleAddWater = () => { const td = selectedDate; const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
 
             const saveRPE = async () => {
                 try {
                     if(submitting) return; 
                     setSubmitting(true); 
                     
-                    const td = getTodayStr(); 
+                    const td = selectedDate; 
                     const allExs = getOrderedExs().flat;
                     const doneExsNames = completed.map(id => { const x = allExs.find(e => e.id === id); return x ? `${x.title} ${exLoads[id] ? `(${exLoads[id]}kg)` : ''}` : null; }).filter(Boolean);
                     const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
@@ -335,6 +346,17 @@
                 </div>
             );
 
+            const DateSelectorUI = (
+                <div className="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center shadow-inner shrink-0 z-20 relative">
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full transition-transform active:scale-95"><Icon name="arrowLeft" size={16}/></button>
+                    <div className="flex flex-col items-center">
+                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Data do Treino</span>
+                        <input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="bg-transparent text-white font-black text-sm outline-none text-center" style={{colorScheme: 'dark'}} />
+                    </div>
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full rotate-180 transition-transform active:scale-95"><Icon name="arrowLeft" size={16}/></button>
+                </div>
+            );
+
             if(loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/20"></div>
@@ -397,9 +419,7 @@
                                 </button>
                             )}
                         </div>
-                        <div className="p-4 bg-blue-900/20 border-b border-blue-800/50 text-center">
-                            <span className="text-xs font-bold text-blue-300">Pronto para o treino de <span className="text-white uppercase">{getDayOfWeek()}</span>?</span>
-                        </div>
+                        {DateSelectorUI}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
                             {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                             <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Pescoço","Ombro","Costas","Lombar","Quadril","Adutor","Quadríceps","Posterior Coxa","Joelho","Panturrilha","Tornozelo","Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
@@ -428,7 +448,7 @@
             const hasAM = exData.act.length > 0 || exData.prev.length > 0 || Object.keys(blocksAM).length > 0;
             const hasPM = Object.keys(blocksPM).length > 0;
 
-            const logToday = data.log[getTodayStr()]?.[idx] || {};
+            const logToday = data.log[selectedDate]?.[idx] || {};
             const isAmDone = logToday.rpe_am_submitted === true;
             const isPmDone = logToday.rpe_pm_submitted === true;
             const isRestDayDone = logToday.rpeSubmitted === true;
@@ -440,14 +460,15 @@
             else isFinished = isAmDone && isPmDone;
 
             const tEx = exData.flat.length; 
-            const wl = data.log[getTodayStr()]?.[idx]?.wellness||{}; 
+            const wl = data.log[selectedDate]?.[idx]?.wellness||{}; 
             const activeDm = safeArray(data.dm).find(r => r && r.playerId == idx && r.status === 'Active');
             let daysInDm = 0;
-            if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(getTodayStr()); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
+            if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(selectedDate); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
 
             return (
                 <React.Fragment>
                     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
+                        {DateSelectorUI}
                         <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10" style={{ background: `linear-gradient(135deg, ${data.color}, #020617)` }}>
                             <div className="flex items-start justify-between gap-4 mt-2">
                                 <div className="flex items-center gap-4 flex-1">
@@ -579,13 +600,13 @@
                                                         {hasAM && (
                                                             <div className="flex justify-between items-center bg-blue-900/20 px-2 py-1 rounded border border-blue-900/50">
                                                                 <span className="text-[9px] font-bold text-blue-400 uppercase">Manhã</span>
-                                                                <span className="text-sm font-black text-blue-400">{data.log[getTodayStr()]?.[idx]?.rpe_am || 0}/10</span>
+                                                                <span className="text-sm font-black text-blue-400">{data.log[selectedDate]?.[idx]?.rpe_am || 0}/10</span>
                                                             </div>
                                                         )}
                                                         {hasPM && (
                                                             <div className="flex justify-between items-center bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50">
                                                                 <span className="text-[9px] font-bold text-orange-400 uppercase">Tarde</span>
-                                                                <span className="text-sm font-black text-orange-400">{data.log[getTodayStr()]?.[idx]?.rpe_pm || 0}/10</span>
+                                                                <span className="text-sm font-black text-orange-400">{data.log[selectedDate]?.[idx]?.rpe_pm || 0}/10</span>
                                                             </div>
                                                         )}
                                                         {!hasAM && !hasPM && (
@@ -598,12 +619,12 @@
                                                 <div className="h-16 w-px bg-slate-700 mx-2"></div>
                                                 <div className="text-center flex flex-col justify-center w-1/2">
                                                     <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Duração</span>
-                                                    <span className="text-3xl font-black text-white mt-1">{data.log[getTodayStr()]?.[idx]?.duration || 0}<span className="text-xs text-slate-400 ml-1">min</span></span>
+                                                    <span className="text-3xl font-black text-white mt-1">{data.log[selectedDate]?.[idx]?.duration || 0}<span className="text-xs text-slate-400 ml-1">min</span></span>
                                                 </div>
                                             </div>
 
                                             {(() => {
-                                                const advice = getNutritionAdvice(data.log[getTodayStr()]?.[idx]);
+                                                const advice = getNutritionAdvice(data.log[selectedDate]?.[idx]);
                                                 return (
                                                     <div className="w-full text-left bg-slate-800 border border-slate-700 p-4 rounded-2xl flex gap-3 items-start mb-4 shadow-sm">
                                                         <span className="text-2xl">{advice.ic}</span>
@@ -1142,7 +1163,7 @@
                                 <div className="h-10 w-px bg-slate-700"></div>
                                 <div className="text-center w-1/2">
                                     <span className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Duração</span>
-                                    <span className="text-2xl font-black text-white">{data.log[getTodayStr()]?.[idx]?.duration || 60}<span className="text-sm text-slate-400">m</span></span>
+                                    <span className="text-2xl font-black text-white">{data.log[selectedDate]?.[idx]?.duration || 60}<span className="text-sm text-slate-400">m</span></span>
                                 </div>
                             </div>
 
