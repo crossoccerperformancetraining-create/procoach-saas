@@ -171,17 +171,21 @@
                 return () => unsubscribe();
             }, []);
 
-            useEffect(() => {
+           useEffect(() => {
                 if (idx !== null) {
                     const currentLog = data.log?.[selectedDate]?.[idx];
-                    if(currentLog?.wellness?.sleep) { 
-                        setStep(3); 
-                        setAgendaAck(!!currentLog.agendaAck);
-                        setWater(Number(currentLog.waterIntake) || 0); 
-                    } else { 
+                    const todayStr = getTodayStr();
+                    
+                    // Só obriga a preencher o questionário se a data for HOJE e estiver vazio
+                    if (selectedDate === todayStr && !currentLog?.wellness?.sleep) {
                         setScores({sleep:1,stress:1,fatigue:1,soreness:1,mood:1}); 
                         setPain([]); 
                         setStep(2); 
+                    } else {
+                        // Se for uma data passada/futura, ou se hoje já estiver preenchido, vai direto pro Treino!
+                        setStep(3); 
+                        setAgendaAck(!!currentLog?.agendaAck);
+                        setWater(Number(currentLog?.waterIntake) || 0); 
                     }
                 }
             }, [selectedDate, data.log, idx]);
