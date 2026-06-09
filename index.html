@@ -1801,6 +1801,13 @@
         };
 
       const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+          const manualSaveLibrary = () => {
+        if(user) {
+            db.collection('coachData').doc(user.uid).update({ library: library })
+            .then(() => showToast("Biblioteca salva na Nuvem com sucesso!", "#10b981"))
+            .catch(() => showToast("Erro ao salvar na nuvem.", "#ef4444"));
+        }
+    };
             const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
             const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
@@ -1961,6 +1968,11 @@
                                 <button onClick={() => setBatchModalOpen(true)} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
                                     <Icon name="list" size={14}/> COLAR LOTE
                                 </button>
+
+                                {/* NOVO BOTÃO DE SALVAR AQUI */}
+                                <button onClick={manualSaveLibrary} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
+                                    <Icon name="save" size={14}/> SALVAR ALTERAÇÕES
+                                </button>
                                 
                                 <button onClick={() => importInputRef.current.click()} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-700">
                                     <Icon name="upload" size={14}/> IMPORTAR
@@ -2027,7 +2039,7 @@
             );
         };
 
-        const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
+       const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
             const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
             const fieldTargets = ['TÉCNICO', 'JOGUINHO', 'ORG. OFENSIVA', 'ORG. DEFENSIVA', 'TRANS. OFENSIVA', 'TRANS. DEFENSIVA', 'ABP OFENSIVA', 'ABP DEFENSIVA', 'TÁTICO GERAL', 'PDI', 'AQUECIMENTO'];
             
