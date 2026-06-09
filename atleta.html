@@ -794,8 +794,7 @@
                                                     ))}
                                                 </div>
                                             )}
-
-                                            {!isFinished && viewMode !== 'review' && (
+{!isFinished && viewMode !== 'review' && selectedDate === getTodayStr() && (
                                                 <div className="mt-8 flex flex-col gap-2 w-full px-2">
                                                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">Finalização do Dia</h3>
                                                     
@@ -820,11 +819,13 @@
                                                     </div>
                                                 </div>
                                             )}
-                                        </>
-                                    )}
-                                </div>
-                            )}
 
+                                            {!isFinished && viewMode !== 'review' && selectedDate !== getTodayStr() && (
+                                                <div className="mt-8 text-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                                    <Icon name="clock" size={24} className="mx-auto text-slate-500 mb-2"/>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">A confirmação do treino e RPE só é permitida na data de hoje.</p>
+                                                </div>
+                                            )}
                             {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
                             {tab === 'agenda' && (
                                 <div className="animate-fade-in space-y-6">
