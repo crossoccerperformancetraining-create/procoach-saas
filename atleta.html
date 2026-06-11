@@ -42,22 +42,22 @@
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
         
-        // PARAMETROS DE URL INTELIGENTES (CHAVEADOR AUTOMÁTICO PROFISSIONAL / BASE)
         const urlParams = new URLSearchParams(window.location.search);
-        const rawCoachId = urlParams.get('id'); // Puxa o ID do link do WhatsApp
-        const playerIndex = parseInt(urlParams.get('p')) || 0; // Puxa o índice do atleta
-        const activeCoachDocId = rawCoachId; // Define a pasta ativa no Firebase
+        const rawCoachId = urlParams.get('id'); 
+        const playerIndex = parseInt(urlParams.get('p')); 
+        const activeCoachDocId = rawCoachId;
 
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
-        // Substitua a linha antiga por esta:
-     const safeArray = (arr) => Array.isArray(arr) ? arr : [];
-    const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
-    const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
-    const getDatesInRange = (start, days) => { const dates = []; const end = new Date(start); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for(let i=0; i<days; i++){ const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
-    const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
+        
+        const safeArray = (arr) => Array.isArray(arr) ? arr : [];
+        const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
+        const getDatesInRange = (start, days) => { const dates = []; const end = new Date(start); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for(let i=0; i<days; i++){ const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
+        const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
+
         const smartShare = async (blob, filename, title) => {
             const file = new File([blob], filename, { type: blob.type });
             if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: title }); return; } catch (err) {} }
@@ -133,7 +133,19 @@
             return { t: "Dia de Recuperação", d: "O corpo está em repouso. Foco total em hidratação contínua e boa qualidade de sono.", ic: "🔋" };
         };
 
-   const AthletePortal = () => {
+        const RTP_PHASES = [ 
+            {id:1, label:"Fase 1: Aguda", desc:"Controle do quadro álgico/inflamatório."}, 
+            {id:2, label:"Fase 2: Sub-aguda", desc:"Reabilitação do segmento lesado + Fortalecimento."}, 
+            {id:3, label:"Fase 3: Transição I", desc:"Força segmentada + Cardio sem impacto."}, 
+            {id:4, label:"Fase 4: Transição II", desc:"Introdução Pliometria/Corrida."}, 
+            {id:5, label:"Fase 5: Transição III", desc:"Transição para o Campo."}, 
+            {id:6, label:"Fase 6: Performance I", desc:"Aceleração sem restrições."}, 
+            {id:7, label:"Fase 7: Performance II", desc:"Preparação parcial com grupo."}, 
+            {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo (minutos limitados)."}, 
+            {id:9, label:"Fase 9: Liberação", desc:"Liberado."} 
+        ];
+
+        const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0 });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [selectedDate, setSelectedDate] = useState(getTodayStr());
@@ -261,7 +273,6 @@
 
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
             
-            // INTELIGÊNCIA DE HIDRATAÇÃO (Melhoria 2)
             const logToday = data.log[selectedDate]?.[idx] || {};
             const maxRpe = Math.max(Number(logToday?.rpe_am)||0, Number(logToday?.rpe_pm)||0);
             const waterGoal = maxRpe >= 8 ? 5.0 : maxRpe >= 6 ? 4.0 : 3.0;
@@ -437,7 +448,6 @@
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
             
-            // INTELIGÊNCIA DE MATCH DAY (Melhoria 3)
             const dayNames = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
             const todayDateObj = new Date(selectedDate + 'T12:00:00');
             const todayName = dayNames[todayDateObj.getDay()];
@@ -474,7 +484,6 @@
             let daysInDm = 0;
             if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(selectedDate); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
 
-            // INTELIGÊNCIA SOS (Melhoria 4)
             const wStats = safeObj(logToday?.wellness);
             const isSOS = (Number(wStats.soreness) >= 6 || Number(wStats.fatigue) >= 6 || (Number(wStats.soreness) >= 5 && Number(wStats.fatigue) >= 5 && Number(wStats.sleep) >= 5));
 
@@ -512,7 +521,6 @@
 
                             {isSuspended && <div className="mt-4 bg-red-600 text-white p-3 rounded-2xl flex items-center gap-3 animate-pulse border border-red-400 shadow-lg"><Icon name="alert" size={24}/><div className="text-[10px] font-black uppercase">Você está Suspenso para o próximo jogo oficial!</div></div>}
                             
-                            {/* INTELIGÊNCIA RTP TRANSPARENTE (Melhoria 1) */}
                             {activeDm && (
                                 <div className="mt-4 bg-red-950/80 text-white p-4 rounded-3xl flex flex-col gap-3 border-2 border-red-500/50 shadow-2xl relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-16 h-16 bg-red-600 rounded-bl-full opacity-20"></div>
@@ -550,7 +558,6 @@
                             {tab === 'workout' && (
                                 <div className="space-y-4 animate-fade-in">
                                     
-                                    {/* INTELIGÊNCIA SOS (Melhoria 4) */}
                                     {isSOS && viewMode !== 'review' && (
                                         <div className="bg-red-600 text-white p-4 rounded-3xl flex items-start gap-3 animate-pulse border-2 border-red-400 shadow-[0_0_20px_rgba(220,38,38,0.6)]">
                                             <div className="bg-white/20 p-2 rounded-full shrink-0"><Icon name="alert" size={24}/></div>
