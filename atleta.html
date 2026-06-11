@@ -56,6 +56,7 @@
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates = []; const end = new Date(start); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for (let i = 0; i < days; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
+
         const smartShare = async (blob, filename, title) => {
             const file = new File([blob], filename, { type: blob.type });
             if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: title }); return; } catch (err) {} }
@@ -159,29 +160,22 @@
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
 
-           useEffect(() => {
-                if (!activeCoachDocId) {
-                    setLoading(false);
-                    showToast("Erro: Link de acesso incompleto.", "#ef4444");
-                    return;
-                }
-                
-                // Conexão em tempo real apontando para o Elenco Ativo selecionado pelo Professor
-                const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
+                if(!uId) { setLoading(false); return; }
+                const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        if(idx === null) setIdx(playerIndex);
-                        setIsPriv(true);
+                        const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
+                        if(idx === null) setIdx(parsedIdx);
+                        if (pIdx !== null) setIsPriv(true);
                     }
                     setLoading(false);
-                }, (err) => {
-                    console.error("Erro ao carregar dados do Firebase:", err);
-                    setLoading(false);
-                });
+                }, () => { setLoading(false); });
                 return () => unsubscribe();
-            }, [activeCoachDocId, playerIndex]);
+            }, []);
 
             useEffect(() => {
                 if (idx !== null) {
