@@ -338,10 +338,41 @@
 
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
-            const getRankingData = () => { const validPlayers = safeArray(data.players).filter(p => p); const players = validPlayers.map((p, i) => { let streak = 0; let checkDate = new Date(); for(let j=0; j<30; j++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); } const g = p.stats ? Number(p.stats.g) : 0; const a = p.stats ? Number(p.stats.a) : 0; return { ...p, streak, goals: g || 0, assists: a || 0 }; }); return { artillery: [...players].sort((a,b) => b.goals - a.goals).slice(0, 5), consistency: [...players].sort((a,b) => b.streak - a.streak).slice(0, 5) }; };
+          const getRankingData = () => { 
+                const validPlayers = safeArray(data.players).filter(p => p); 
+                const playersMap = validPlayers.map((p, i) => { 
+                    let streak = 0; let checkDate = new Date(); 
+                    for(let j=0; j<30; j++) { 
+                        const dStr = checkDate.toISOString().split('T')[0]; 
+                        if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; 
+                        else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); 
+                    } 
+                    const g = p.stats ? Number(p.stats.g) : 0; 
+                    const a = p.stats ? Number(p.stats.a) : 0; 
+                    let m = 0;
+                    if(data.matchM) {
+                        Object.keys(data.matchM).forEach(d => {
+                            m += (Number(data.matchM[d]?.[i]?.mins) || Number(data.matchM[d]?.[i]) || 0);
+                        });
+                    }
+                    return { ...p, streak, goals: g || 0, assists: a || 0, mins: m }; 
+                }); 
+                return { 
+                    artillery: [...playersMap].sort((a,b) => b.goals - a.goals).slice(0, 5), 
+                    assists: [...playersMap].sort((a,b) => b.assists - a.assists).slice(0, 5), 
+                    ironman: [...playersMap].sort((a,b) => b.mins - a.mins).slice(0, 5), 
+                    consistency: [...playersMap].sort((a,b) => b.streak - a.streak).slice(0, 5) 
+                }; 
+            };
 
-            const getPlayerSkills = (pIdx) => { const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {}; const fms = (Number(pAss.fms_total)||0) * 4.7; const force = (Number(pAss.squat_rm)||0); const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: 75, endurance: 70 }; };
-
+            const getPlayerSkills = (pIdx) => { 
+                const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {}; 
+                const fms = (Number(pAss.fms_total)||0) * 4.7; 
+                const force = (Number(pAss.squat_rm)||0); 
+                const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); 
+                const tech = Number(pAss.scout_tech) || 75; // Lê o Scout Técnico da Base se existir
+                return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: tech, endurance: Number(pAss.soccer_test) ? Math.min(99, Number(pAss.soccer_test)/30) : 70 }; 
+            };
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
             const alertModalUI = showAlertPopup && (
@@ -882,6 +913,7 @@
                             )}
 
                             {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
+                          {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
                             {tab === 'agenda' && (
                                 <div className="animate-fade-in space-y-6">
                                     {/* STATUS E LOGÍSTICA */}
@@ -909,6 +941,18 @@
                                                     {data.nextG && data.nextG.logistics ? data.nextG.logistics : `🚌 LOGÍSTICA DE VIAGEM...\nAguardando preenchimento do treinador.`}
                                                 </div>
                                             </div>
+                                            
+                                            {/* DOSSIÊ DO ADVERSÁRIO (VÍDEO) */}
+                                            {data.videoUrl && (
+                                                <div className="mt-4 bg-indigo-950/50 p-4 rounded-2xl border border-indigo-500/30 shadow-inner">
+                                                    <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                        <Icon name="play" size={14} className="text-indigo-400"/> Dossiê do Adversário
+                                                    </div>
+                                                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-indigo-500/30 shadow-lg">
+                                                        {renderVideoElement(data.videoUrl)}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-[32px] shadow-lg relative overflow-hidden text-center opacity-70">
@@ -940,9 +984,42 @@
                             )}
 
                             {tab === 'ranking' && (
-                                <div className="space-y-6 animate-fade-in">
+                                <div className="space-y-6 animate-fade-in pb-20">
+                                    
+                                    {/* ALERTA DE CARTÕES */}
+                                    {(p.stats?.yc >= 2 || p.stats?.rc > 0) && (
+                                        <div className="bg-yellow-500/20 border border-yellow-500/50 p-4 rounded-3xl flex items-center gap-4 shadow-lg animate-pulse">
+                                            <div className="text-3xl drop-shadow-md">{p.stats?.rc > 0 ? '🟥' : '🟨'}</div>
+                                            <div>
+                                                <div className="text-xs font-black text-yellow-500 uppercase tracking-wider">Atenção Disciplinar!</div>
+                                                <div className="text-[10px] font-bold text-yellow-100/80 mt-0.5">
+                                                    {p.stats?.rc > 0 
+                                                        ? `Você tem ${p.stats.rc} cartão vermelho registrado. Fique atento à sua suspensão.` 
+                                                        : `Você está pendurado com ${p.stats.yc} cartões amarelos. Evite faltas bobas no próximo jogo!`
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* HOMEM DE FERRO */}
                                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
-                                        <div className="flex items-center gap-3 mb-6"><div className="bg-yellow-500/20 p-2 rounded-full"><Icon name="ball" size={20} className="text-yellow-500"/></div><h3 className="font-black text-lg uppercase text-white">Artilharia</h3></div>
+                                        <div className="flex items-center gap-3 mb-6"><div className="bg-blue-500/20 p-2 rounded-full"><Icon name="activity" size={20} className="text-blue-500"/></div><h3 className="font-black text-lg uppercase text-white">Homem de Ferro 🤖</h3><span className="text-[9px] text-slate-500 ml-auto uppercase font-bold">Minutos Jogados</span></div>
+                                        <div className="space-y-3">
+                                            {ranking.ironman.map((player, i) => (
+                                                <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3">
+                                                    <span className={`text-xl font-black w-6 ${i===0?'text-blue-500':'text-slate-600'}`}>{i+1}</span>
+                                                    <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700">{player.image && <img src={player.image} className="w-full h-full object-cover"/>}</div>
+                                                    <div className="flex-1 font-bold text-sm uppercase">{player.name}</div>
+                                                    <div className="bg-blue-500/20 px-3 py-1 rounded-full font-black text-blue-500 text-xs">{player.mins} min</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* ARTILHARIA */}
+                                    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
+                                        <div className="flex items-center gap-3 mb-6"><div className="bg-yellow-500/20 p-2 rounded-full"><Icon name="ball" size={20} className="text-yellow-500"/></div><h3 className="font-black text-lg uppercase text-white">Artilharia ⚽</h3></div>
                                         <div className="space-y-3">
                                             {ranking.artillery.map((player, i) => (
                                                 <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3">
@@ -955,8 +1032,24 @@
                                         </div>
                                     </div>
 
+                                    {/* GARÇONS (ASSISTÊNCIAS) */}
                                     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
-                                        <div className="flex items-center gap-3 mb-6"><div className="bg-orange-500/20 p-2 rounded-full"><Icon name="fire" size={20} className="text-orange-500"/></div><h3 className="font-black text-lg uppercase text-white">Consistência (🔥)</h3></div>
+                                        <div className="flex items-center gap-3 mb-6"><div className="bg-emerald-500/20 p-2 rounded-full"><Icon name="target" size={20} className="text-emerald-500"/></div><h3 className="font-black text-lg uppercase text-white">Garçons 👟</h3></div>
+                                        <div className="space-y-3">
+                                            {ranking.assists.map((player, i) => (
+                                                <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3">
+                                                    <span className={`text-xl font-black w-6 ${i===0?'text-emerald-500':'text-slate-600'}`}>{i+1}</span>
+                                                    <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden border border-slate-700">{player.image && <img src={player.image} className="w-full h-full object-cover"/>}</div>
+                                                    <div className="flex-1 font-bold text-sm uppercase">{player.name}</div>
+                                                    <div className="bg-slate-800 px-3 py-1 rounded-full font-black text-emerald-500 text-xs">{player.assists} Ass.</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* CONSISTÊNCIA */}
+                                    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-[32px]">
+                                        <div className="flex items-center gap-3 mb-6"><div className="bg-orange-500/20 p-2 rounded-full"><Icon name="fire" size={20} className="text-orange-500"/></div><h3 className="font-black text-lg uppercase text-white">Consistência 🔥</h3></div>
                                         <div className="space-y-3">
                                             {ranking.consistency.map((player, i) => (
                                                 <div key={i} className="flex items-center gap-3 border-b border-slate-800/50 pb-3">
@@ -970,7 +1063,6 @@
                                     </div>
                                 </div>
                             )}
-                        </div>
 
                         {/* MENU INFERIOR LIBERADO PARA TODOS */}
                         <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-2 flex justify-around items-center z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] pointer-events-auto">
