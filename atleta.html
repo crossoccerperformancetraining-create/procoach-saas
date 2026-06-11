@@ -42,15 +42,20 @@
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
         
+        // PARAMETROS DE URL INTELIGENTES (CHAVEADOR AUTOMÁTICO PROFISSIONAL / BASE)
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawCoachId = urlParams.get('id'); // Puxa o ID do link do WhatsApp
+        const playerIndex = parseInt(urlParams.get('p')) || 0; // Puxa o índice do atleta
+        const activeCoachDocId = rawCoachId; // Define a pasta ativa no Firebase
+
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
         const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
-        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : []; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+        const safeArray = (arr) => (Array.isArray(arr) && arr.length > 0) ? arr : fallback=[]; const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
-        const getDatesInRange = (start, days) => { const dates=[]; const end=new Date(start); end.setMinutes(end.getMinutes()-end.getTimezoneOffset()); for(let i=0;i<days;i++){const d=new Date(end); d.setDate(end.getDate()-i); dates.push(d.toISOString().split('T')[0]);} return dates; };
+        const getDatesInRange = (start, days) => { const dates = []; const end = new Date(start); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for (let i = 0; i < days; i++) { const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
-
         const smartShare = async (blob, filename, title) => {
             const file = new File([blob], filename, { type: blob.type });
             if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: title }); return; } catch (err) {} }
@@ -154,22 +159,29 @@
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
 
-            useEffect(() => {
-                const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
-                if(!uId) { setLoading(false); return; }
-                const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
+           useEffect(() => {
+                if (!activeCoachDocId) {
+                    setLoading(false);
+                    showToast("Erro: Link de acesso incompleto.", "#ef4444");
+                    return;
+                }
+                
+                // Conexão em tempo real apontando para o Elenco Ativo selecionado pelo Professor
+                const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
-                        if(idx === null) setIdx(parsedIdx);
-                        if (pIdx !== null) setIsPriv(true);
+                        if(idx === null) setIdx(playerIndex);
+                        setIsPriv(true);
                     }
                     setLoading(false);
-                }, () => { setLoading(false); });
+                }, (err) => {
+                    console.error("Erro ao carregar dados do Firebase:", err);
+                    setLoading(false);
+                });
                 return () => unsubscribe();
-            }, []);
+            }, [activeCoachDocId, playerIndex]);
 
             useEffect(() => {
                 if (idx !== null) {
