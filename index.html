@@ -1482,9 +1482,10 @@
             );
         };
 
-        const AssessmentView = ({ players, themeColor, assessments, setAssessments, dmRecords }) => {
+       const AssessmentView = ({ players, themeColor, assessments, setAssessments, dmRecords }) => {
+            const activeTeam = localStorage.getItem('procoach_active_team') || 'pro';
             const [selectedPlayer, setSelectedPlayer] = useState(0);
-            const [viewMetric, setViewMetric] = useState('fms_total'); 
+            const [viewMetric, setViewMetric] = useState(activeTeam === 'base' ? 'scout_tech' : 'fms_total'); 
             
             const [form, setForm] = useState({ 
                 date: getTodayStr(), weight: '', height: '', age: '', 
@@ -1497,46 +1498,32 @@
                 lachman: '', mcmurray: '', isocinetica: '', 
                 tornozelo_gaveta: '', lunge_test: '', 
                 quadril_adm: '', quadril_forca: '', 
-                y_balance: '', conduta: 'Liberado'
+                y_balance: '', conduta: 'Liberado',
+                // SCOUT BASE
+                scout_pass: '', scout_fin: '', scout_dec: '', scout_1v1: '', scout_tech: ''
             });
 
             const playerPastInjuries = safeArray(dmRecords).filter(r => r && r.playerId == selectedPlayer);
 
             const calculateFMS = () => {
                 const getV = (k) => parseInt(form[k]);
-                const ds = getV('fms_ds') || 0;
-                const hs = Math.min(getV('fms_hs_l')||0, getV('fms_hs_r')||0);
-                const ill = Math.min(getV('fms_ill_l')||0, getV('fms_ill_r')||0);
-                const sm = Math.min(getV('fms_sm_l')||0, getV('fms_sm_r')||0);
-                const aslr = Math.min(getV('fms_aslr_l')||0, getV('fms_aslr_r')||0);
-                const tspu = getV('fms_tspu') || 0;
-                const rs = Math.min(getV('fms_rs_l')||0, getV('fms_rs_r')||0);
-                return ds + hs + ill + sm + aslr + tspu + rs;
+                return (getV('fms_ds')||0) + Math.min(getV('fms_hs_l')||0, getV('fms_hs_r')||0) + Math.min(getV('fms_ill_l')||0, getV('fms_ill_r')||0) + Math.min(getV('fms_sm_l')||0, getV('fms_sm_r')||0) + Math.min(getV('fms_aslr_l')||0, getV('fms_aslr_r')||0) + (getV('fms_tspu')||0) + Math.min(getV('fms_rs_l')||0, getV('fms_rs_r')||0);
             };
 
             const calculateBF = () => { const sum = Number(form.chest)+Number(form.axilla)+Number(form.tricep)+Number(form.subscap)+Number(form.abdo)+Number(form.supra)+Number(form.thigh); if(sum===0||!form.age) return 0; const bd = 1.112 - (0.00043499*sum) + (0.00000055*sum*sum) - (0.00028826*form.age); return (((4.95/bd)-4.50)*100).toFixed(1); };
             
+            const calculateScoutMedia = () => {
+                const s1 = parseInt(form.scout_pass)||0; const s2 = parseInt(form.scout_fin)||0; const s3 = parseInt(form.scout_dec)||0; const s4 = parseInt(form.scout_1v1)||0;
+                return ((s1 + s2 + s3 + s4) / 4).toFixed(1);
+            };
+
             const saveAssessment = () => { 
-                const newRec = { ...form, bf: calculateBF(), fms_total: calculateFMS() }; 
+                const newRec = { ...form, bf: calculateBF(), fms_total: calculateFMS(), scout_tech: calculateScoutMedia() }; 
                 const h = Array.isArray(assessments[selectedPlayer]) ? assessments[selectedPlayer] : []; 
                 setAssessments({ ...assessments, [selectedPlayer]: [newRec, ...h] }); 
                 showToast("Avaliação Salva!"); 
             };
 
-            const autoSugerirConduta = () => {
-                const fmsScore = calculateFMS();
-                if (form.lachman === 'Positivo' || form.mcmurray === 'Positivo' || form.tornozelo_gaveta === 'Instável' || (fmsScore > 0 && fmsScore < 14)) {
-                    setForm({...form, conduta: 'Não Liberado'});
-                    showToast("IA: Atleta Não Liberado (Risco Crítico)");
-                } else if (form.lunge_test === 'Restrito' || form.quadril_adm === 'Restrito' || form.assimetria !== '') {
-                    setForm({...form, conduta: 'Restrições'});
-                    showToast("IA: Liberado com Restrições");
-                } else {
-                    setForm({...form, conduta: 'Liberado'});
-                    showToast("IA: Liberado sem restrições");
-                }
-            };
-            
             const getRankings = (metric) => { 
                 const list = safeArray(players).map((p, i) => { 
                     if(!p) return null; 
@@ -1555,73 +1542,12 @@
             const rankings = getRankings(viewMetric);
             const RankChart = ({ title, data, color }) => ( <div className="mb-4"><h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">{title}</h4>{data.length === 0 ? <div className="text-xs text-slate-300 dark:text-slate-600">Sem dados válidos para a equipa</div> : data.map((d, i) => ( <div key={i} className="flex items-center gap-2 mb-1"><div className="text-[10px] font-bold w-4 text-slate-400">#{i+1}</div><div className="flex-1"><div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5"><span>{d.name}</span><span>{d.val}</span></div><div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width: '100%', backgroundColor: color}}></div></div></div></div> ))}</div> );
             const history = Array.isArray(assessments[selectedPlayer]) ? assessments[selectedPlayer] : [];
-            
-            const FmsRow = ({ label, id, isBilateral }) => {
-                if (isBilateral) {
-                    return (
-                        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
-                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 w-1/2 pr-2 leading-tight">{label}</span>
-                            <div className="flex gap-2 w-1/2 justify-end">
-                                <div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Esq:</span><input type="number" min="0" max="3" className="w-10 p-1 text-center text-xs font-bold rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form[`fms_${id}_l`] || ''} onChange={e=>setForm({...form, [`fms_${id}_l`]: e.target.value})} /></div>
-                                <div className="flex items-center gap-1"><span className="text-[9px] text-slate-400">Dir:</span><input type="number" min="0" max="3" className="w-10 p-1 text-center text-xs font-bold rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form[`fms_${id}_r`] || ''} onChange={e=>setForm({...form, [`fms_${id}_r`]: e.target.value})} /></div>
-                            </div>
-                        </div>
-                    );
-                } else {
-                    return (
-                        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
-                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 w-1/2 pr-2 leading-tight">{label}</span>
-                            <div className="w-1/2 flex justify-end">
-                                <input type="number" min="0" max="3" className="w-12 p-1 text-center text-xs font-bold rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form[`fms_${id}`] || ''} onChange={e=>setForm({...form, [`fms_${id}`]: e.target.value})} />
-                            </div>
-                        </div>
-                    );
-                }
-            };
-
-            const renderPhysicalAnalyst = () => { 
-                if (form.conduta === 'Não Liberado') {
-                    return (<div className="mt-6 p-4 border rounded-xl bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200"><div className="flex gap-3 items-center mb-2"><Icon name="alert" size={24} className="text-red-600" /><div className="text-xs font-black uppercase tracking-wider text-red-600">ATLETA VETADO</div></div><div className="text-sm font-bold leading-snug mb-2">Incapacitado para treino/jogo pelo Departamento Médico.</div><div className="text-[10px] font-bold bg-white/50 dark:bg-black/30 p-2 rounded">Plano: Iniciar protocolo de recuperação.</div></div>);
-                }
-
-                const bf = calculateBF(); 
-                const fmsScore = calculateFMS();
-                
-                let feedback = "Atleta apto. Parâmetros normais."; 
-                let plan = "Plano Sugerido: Treino padrão da equipa.";
-                let isAlert = false;
-
-                if(fmsScore > 0 && fmsScore < 14) {
-                    feedback = `ALTO RISCO DE LESÃO! Escore FMS (${fmsScore}) muito baixo.`;
-                    plan = "Plano: Foco imediato em mobilidade e estabilidade do core.";
-                    isAlert = true;
-                } else if(form.lachman === 'Positivo' || form.mcmurray === 'Positivo') {
-                    feedback = `ALTO RISCO! Teste de joelho (Lachman/McMurray) Positivo.`;
-                    plan = "Plano: RM Imediata e encaminhamento ortopédico.";
-                    isAlert = true;
-                } else if(bf > 15) { 
-                    feedback = "Gordura acima do ideal para a posição."; 
-                    plan = "Plano: Aeróbico contínuo + Ajuste Nutricional."; 
-                } else if(bf > 0 && bf < 8) { 
-                    feedback = "Gordura baixa (Nível Elite). Excelente."; 
-                    plan = "Plano: Manutenção de força e monitorar CK constante."; 
-                }
-                
-                if(form.speed30 > 0 && form.speed30 < 4.0) feedback += " Velocidade de Sprint acima da média."; 
-                else if (form.speed30 > 4.4) plan += " Sugerida Pliometria 2x semana.";
-
-                const colors = isAlert ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200' : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200';
-
-                return (<div className={`mt-6 p-4 border rounded-xl ${colors}`}><div className="flex gap-3 items-center mb-2"><Icon name="brain" size={24} className={isAlert ? 'text-red-600' : 'text-emerald-600'} /><div className={`text-xs font-black uppercase tracking-wider ${isAlert ? 'text-red-600' : 'text-emerald-600'}`}>Analista Clínico & Físico IA</div></div><div className="text-sm font-bold leading-snug mb-2">{feedback}</div><div className="text-[10px] font-bold bg-white/50 dark:bg-black/30 p-2 rounded">{plan}</div></div>); 
-            };
-
             const selectedP = players[selectedPlayer] || { name: 'Selecione', image: null };
 
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in flex flex-col gap-6 custom-scroll">
                     <div className="flex flex-col lg:flex-row gap-6 h-full">
                         
-                        {/* LISTA DE ATLETAS */}
                         <div className="w-full lg:w-60 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 overflow-y-auto h-64 lg:h-auto custom-scroll">
                             <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Atleta</h3>
                             {safeArray(players).map((p, i) => { 
@@ -1635,84 +1561,34 @@
                             })}
                         </div>
                         
-                        {/* FORMULÁRIO CENTRAL */}
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scroll">
                             <div className="flex items-center gap-4 mb-6 border-b dark:border-slate-700 pb-4">
                                 <div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{selectedP.image ? <img src={selectedP.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
                                 <div className="flex-1">
                                     <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase leading-none">{selectedP.name}</h2>
-                                    <div className="text-xs font-bold text-slate-400 uppercase mt-1">Ficha Clínica e Esportiva</div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase mt-1">Ficha Clínica e Esportiva {activeTeam === 'base' ? '(FORMATIVA)' : '(PRO)'}</div>
                                 </div>
                                 <div className="text-right">
                                     <input type="date" value={form.date || ''} onChange={e=>setForm({...form, date: e.target.value})} className="border dark:border-slate-600 rounded px-2 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 outline-none"/>
                                 </div>
                             </div>
 
-                            {playerPastInjuries.length > 0 && (
-                                <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                                    <h4 className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase mb-2 flex items-center gap-1"><Icon name="alert" size={12}/> Lesões Anteriores Registradas no Clube</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {playerPastInjuries.map((inj, idx) => (
-                                            <span key={idx} className="text-[9px] bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-1 rounded font-bold border border-red-200 dark:border-red-800">
-                                                {formatDateBR(inj.dateIn)} - {inj.location} ({inj.type})
-                                            </span>
-                                        ))}
+                            {/* SCOUT DE BASE VISÍVEL APENAS NO ELENCO BASE */}
+                            {activeTeam === 'base' && (
+                                <div className="mb-6 bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50">
+                                    <h3 className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase mb-3 flex items-center gap-2"><Icon name="eye"/> Scout: Avaliação Técnica e Tática (0-100)</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Passe / Recepção</label><input type="number" max="100" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.scout_pass || ''} onChange={e=>setForm({...form, scout_pass: e.target.value})}/></div>
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Finalização</label><input type="number" max="100" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.scout_fin || ''} onChange={e=>setForm({...form, scout_fin: e.target.value})}/></div>
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Tomada de Decisão</label><input type="number" max="100" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.scout_dec || ''} onChange={e=>setForm({...form, scout_dec: e.target.value})}/></div>
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Duelo 1v1</label><input type="number" max="100" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white" value={form.scout_1v1 || ''} onChange={e=>setForm({...form, scout_1v1: e.target.value})}/></div>
+                                    </div>
+                                    <div className="mt-3 text-right">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase mr-2">Média Técnica GERAL:</span>
+                                        <span className="text-xl font-black text-blue-600 dark:text-blue-400">{calculateScoutMedia()}</span>
                                     </div>
                                 </div>
                             )}
-                            
-                            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="medkit"/> Avaliação Clínica Inicial</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Anamnese (Cirurgias/Histórico)</label>
-                                    <textarea className="w-full border dark:border-slate-600 rounded p-2 text-xs font-medium dark:bg-slate-700 dark:text-white h-20 custom-scroll outline-none" value={form.anamnese || ''} onChange={e=>setForm({...form, anamnese: e.target.value})} placeholder="Lesões crônicas, cirurgias prévias..."></textarea>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        <span onClick={()=>setForm({...form, anamnese: form.anamnese ? form.anamnese+', Sem histórico grave' : 'Sem histórico grave'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Nenhum</span>
-                                        <span onClick={()=>setForm({...form, anamnese: form.anamnese ? form.anamnese+', Cirurgia LCA prévia' : 'Cirurgia LCA prévia'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Cirurgia LCA</span>
-                                        <span onClick={()=>setForm({...form, anamnese: form.anamnese ? form.anamnese+', Histórico de Pubalgia' : 'Histórico de Pubalgia'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Pubalgia</span>
-                                        <span onClick={()=>setForm({...form, anamnese: form.anamnese ? form.anamnese+', Lesão muscular recorrente' : 'Lesão muscular recorrente'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Lesão Muscular</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Avaliação Ortopédica (Articulações)</label>
-                                    <textarea className="w-full border dark:border-slate-600 rounded p-2 text-xs font-medium dark:bg-slate-700 dark:text-white h-20 custom-scroll outline-none" value={form.orto || ''} onChange={e=>setForm({...form, orto: e.target.value})} placeholder="Sinais clínicos, edema, perda ADM..."></textarea>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        <span onClick={()=>setForm({...form, orto: form.orto ? form.orto+', Estável/Sem Dor' : 'Estável/Sem Dor'})} className="bg-green-100 dark:bg-green-900/30 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-green-500 hover:text-white font-bold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">Sem Dor</span>
-                                        <span onClick={()=>setForm({...form, orto: form.orto ? form.orto+', Dor à palpação' : 'Dor à palpação'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Dor Palpação</span>
-                                        <span onClick={()=>setForm({...form, orto: form.orto ? form.orto+', Edema' : 'Edema'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Edema</span>
-                                        <span onClick={()=>setForm({...form, orto: form.orto ? form.orto+', Perda de ADM' : 'Perda de ADM'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Perda ADM</span>
-                                        <span onClick={()=>setForm({...form, orto: form.orto ? form.orto+', Crepitação' : 'Crepitação'})} className="bg-slate-200 dark:bg-slate-600 text-[8px] px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-500 hover:text-white font-bold text-slate-600 dark:text-slate-300">Crepitação</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mt-6 mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="medkit"/> Testes Ortopédicos Específicos</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded border dark:border-slate-600">
-                                    <h4 className="text-[10px] font-black text-blue-500 uppercase mb-2">Joelho (LCA/Menisco)</h4>
-                                    <select className="w-full text-xs p-1 mb-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.lachman || ''} onChange={e=>setForm({...form, lachman: e.target.value})}><option value="">Lachman/Gaveta...</option><option value="Negativo">Negativo (Estável)</option><option value="Positivo">Positivo (Instável)</option></select>
-                                    <select className="w-full text-xs p-1 mb-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.mcmurray || ''} onChange={e=>setForm({...form, mcmurray: e.target.value})}><option value="">McMurray/Thessaly...</option><option value="Negativo">Negativo (Sem lesão)</option><option value="Positivo">Positivo (Sinal Meniscal)</option></select>
-                                    <input type="text" placeholder="Isocinética (Déficit %)" className="w-full text-xs p-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.isocinetica || ''} onChange={e=>setForm({...form, isocinetica: e.target.value})}/>
-                                </div>
-                                
-                                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded border dark:border-slate-600">
-                                    <h4 className="text-[10px] font-black text-orange-500 uppercase mb-2">Tornozelo & Quadril</h4>
-                                    <select className="w-full text-xs p-1 mb-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.tornozelo_gaveta || ''} onChange={e=>setForm({...form, tornozelo_gaveta: e.target.value})}><option value="">Estabilidade Tornozelo...</option><option value="Estável">Estável</option><option value="Instável">Instável (Laxidão)</option></select>
-                                    <input type="text" placeholder="Lunge Test (Restrição?)" className="w-full text-xs p-1 mb-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.lunge_test || ''} onChange={e=>setForm({...form, lunge_test: e.target.value})}/>
-                                    <select className="w-full text-xs p-1 rounded border dark:border-slate-500 dark:bg-slate-800 dark:text-white outline-none" value={form.quadril_adm || ''} onChange={e=>setForm({...form, quadril_adm: e.target.value})}><option value="">ADM Quadril/Pelve...</option><option value="Normal">Normal</option><option value="Restrito">Restrito (Risco Pubalgia)</option></select>
-                                </div>
-
-                                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded border dark:border-slate-600">
-                                    <h4 className="text-[10px] font-black text-purple-500 uppercase mb-2">Decisão Clínica</h4>
-                                    <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Parecer Final (Conduta)</label>
-                                    <select className="w-full font-bold text-xs p-1.5 rounded bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-500 outline-none" value={form.conduta || 'Liberado'} onChange={e=>setForm({...form, conduta: e.target.value})}>
-                                        <option value="Liberado">🟢 Liberado (Sem restrições)</option>
-                                        <option value="Restrições">🟡 Liberado com Restrições</option>
-                                        <option value="Não Liberado">🔴 Não Liberado (Afastado)</option>
-                                    </select>
-                                    <button onClick={autoSugerirConduta} className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold py-1.5 rounded flex items-center justify-center gap-1"><Icon name="brain" size={12}/> GERAR CONDUTA IA</button>
-                                </div>
-                            </div>
 
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="user"/> Composição Corporal</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -1729,57 +1605,30 @@
 
                             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase mb-3 border-b dark:border-slate-700 pb-1 flex items-center gap-2"><Icon name="activity"/> Testes Físicos & FMS</h3>
                             
-                            <div className="mb-6 bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-xl border border-blue-200 dark:border-blue-900/50">
-                                <div className="flex justify-between items-end mb-4">
-                                    <div>
-                                        <h4 className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Protocolo FMS (0-21)</h4>
-                                        <p className="text-[9px] text-slate-500 dark:text-slate-400 uppercase">Avaliação de Padrões de Movimento</p>
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Escore Total</span>
-                                        <div className={`text-2xl font-black rounded px-3 py-1 bg-white dark:bg-slate-900 border ${calculateFMS() < 14 && calculateFMS() > 0 ? 'text-red-500 border-red-500' : 'text-emerald-500 border-emerald-500'}`}>{calculateFMS()}</div>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <FmsRow label="1. Agachamento Profundo" id="ds" isBilateral={false} />
-                                    <FmsRow label="2. Passo sobre Barreira" id="hs" isBilateral={true} />
-                                    <FmsRow label="3. Avanço em Linha" id="ill" isBilateral={true} />
-                                    <FmsRow label="4. Mobilidade de Ombro" id="sm" isBilateral={true} />
-                                    <FmsRow label="5. Elevação Perna Estendida" id="aslr" isBilateral={true} />
-                                    <FmsRow label="6. Flexão com Estabilidade" id="tspu" isBilateral={false} />
-                                    <FmsRow label="7. Estabilidade Rotacional" id="rs" isBilateral={true} />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Força Máx (1RM Squat)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.squat_rm || ''} onChange={e=>setForm({...form, squat_rm: e.target.value})} placeholder="kg"/></div>
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Soccer Test (m)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.soccer_test || ''} onChange={e=>setForm({...form, soccer_test: e.target.value})}/></div>
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Velocidade 30m (s)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.speed30 || ''} onChange={e=>setForm({...form, speed30: e.target.value})}/></div>
                                 <div><label className="text-[10px] font-bold text-slate-400 uppercase">Salto SJ (cm)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.sj || ''} onChange={e=>setForm({...form, sj: e.target.value})}/></div>
-                                <div><label className="text-[10px] font-bold text-slate-400 uppercase">Salto CMJ (cm)</label><input type="number" className="w-full border dark:border-slate-600 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.cmj || ''} onChange={e=>setForm({...form, cmj: e.target.value})}/></div>
-                                <div className="col-span-1 md:col-span-1"><label className="text-[10px] font-bold text-slate-400 uppercase text-orange-500">Desequilíbrio / Assimetria</label><input type="text" className="w-full border border-orange-200 dark:border-orange-800 rounded p-2 text-sm font-bold dark:bg-slate-700 dark:text-white outline-none" value={form.assimetria || ''} onChange={e=>setForm({...form, assimetria: e.target.value})} placeholder="Ex: 15% defict pos. esq"/></div>
                             </div>
-
-                            {renderPhysicalAnalyst()}
                             
                             <button onClick={saveAssessment} className="w-full py-4 bg-slate-800 dark:bg-slate-700 text-white font-black rounded-xl hover:opacity-90 flex items-center justify-center gap-2 mt-6 shadow-lg"><Icon name="save"/> SALVAR TODA AVALIAÇÃO</button>
                             
                             <div className="mt-8">
-                                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3">Histórico de Performance (Tabela)</h3>
+                                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3">Histórico de Performance</h3>
                                 <div className="overflow-x-auto rounded-lg border dark:border-slate-700">
                                     <table className="w-full text-xs text-left">
-                                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"><tr><th className="p-3">Data</th><th className="p-3">Conduta</th><th className="p-3">FMS</th><th className="p-3">1RM</th><th className="p-3">Ação</th></tr></thead>
+                                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"><tr><th className="p-3">Data</th>{activeTeam === 'base' && <th className="p-3">Técnica (Scout)</th>}<th className="p-3">1RM</th><th className="p-3">Vel. 30m</th><th className="p-3">Ação</th></tr></thead>
                                         <tbody>
                                             {history.length === 0 ? <tr><td colSpan="5" className="p-4 text-center text-slate-400">Nenhuma avaliação salva.</td></tr> : history.map((h, i) => {
                                                 if(!h) return null;
                                                 return (
                                                     <tr key={i} className="border-t dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                                         <td className="p-3 font-bold dark:text-slate-300">{formatDateBR(h.date)}</td>
-                                                        <td className="p-3 font-bold text-blue-600 dark:text-blue-400">{h.conduta || 'Liberado'}</td>
-                                                        <td className="p-3 font-bold text-emerald-600">{h.fms_total||'-'}</td>
+                                                        {activeTeam === 'base' && <td className="p-3 font-bold text-blue-600 dark:text-blue-400">{h.scout_tech||'-'}</td>}
                                                         <td className="p-3 dark:text-slate-300">{h.squat_rm||'-'} kg</td>
-                                                        <td className="p-3"><button onClick={()=>{setForm(h); showToast("Dados carregados no formulário!");}} className="text-[9px] bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded font-bold text-slate-600 dark:text-slate-300 hover:bg-blue-500 hover:text-white transition-colors">VER COMPLETO</button></td>
+                                                        <td className="p-3 dark:text-slate-300">{h.speed30||'-'} s</td>
+                                                        <td className="p-3"><button onClick={()=>{setForm(h); showToast("Dados carregados!");}} className="text-[9px] bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded font-bold text-slate-600 dark:text-slate-300 hover:bg-blue-500 hover:text-white transition-colors">VER</button></td>
                                                     </tr>
                                                 )
                                             })}
@@ -1790,10 +1639,10 @@
                         </div>
                     </div>
                     
-                    {/* BARRA LATERAL DOS RANKINGS */}
                     <div className="w-full lg:w-64 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 h-fit">
                         <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase mb-4 flex items-center gap-2"><Icon name="trophy"/> Top 5 da Equipa</h3>
                         <select className="w-full mb-4 text-xs font-bold border dark:border-slate-600 rounded p-2 dark:bg-slate-700 dark:text-white outline-none" value={viewMetric} onChange={e=>setViewMetric(e.target.value)}>
+                            {activeTeam === 'base' && <option value="scout_tech">⭐ Média Técnica (Scout)</option>}
                             <option value="fms_total">Escore FMS (Prevenção)</option>
                             <option value="squat_rm">Força Máx (1RM)</option>
                             <option value="speed30">Velocidade 30m</option>
@@ -2341,7 +2190,7 @@
 
             const updateStat = (pIdx, stat, val) => {
                 const newPs = [...safePs];
-                if (!newPs[pIdx].stats) newPs[pIdx].stats = { g: 0, a: 0 };
+                if (!newPs[pIdx].stats) newPs[pIdx].stats = { g: 0, a: 0, yc: 0, rc: 0 };
                 newPs[pIdx].stats[stat] = Math.max(0, (Number(newPs[pIdx].stats[stat]) || 0) + val);
                 setPlayers(newPs);
                 if(user) db.collection('coachData').doc(user.uid).update({ players: newPs });
@@ -2364,7 +2213,6 @@
                 if(user) db.collection('coachData').doc(user.uid).update({ matchMinutes: newMins });
             };
 
-            // GERADOR DE RELATÓRIO DO JOGO PDF
             const gerarPDFJogo = () => {
                 if(!opponent) return showToast("Digite o nome do adversário antes de gerar o PDF!", "#ef4444");
                 showToast("Gerando PDF do Jogo...", "#3b82f6");
@@ -2393,7 +2241,7 @@
                         const pos = parseFloat(data.postW) || 0;
                         const dehidracao = pre > 0 && pos > 0 ? (((pre - pos) / pre) * 100).toFixed(1) : 0;
                         
-                        doc.text(`- ${p.name}: ${data.mins} min Jogados | Gols: ${p.stats?.g||0} | Assist: ${p.stats?.a||0}`, 20, y);
+                        doc.text(`- ${p.name}: ${data.mins} min | Gols: ${p.stats?.g||0} | Ass: ${p.stats?.a||0} | CA: ${p.stats?.yc||0} | CV: ${p.stats?.rc||0}`, 20, y);
                         y += 6;
                         if(pre > 0 && pos > 0) {
                             doc.setFontSize(10);
@@ -2456,11 +2304,11 @@
 
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-4 text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase shrink-0">
-                            <div className="col-span-4">Atleta</div>
-                            <div className="col-span-1 text-center">⚽ Gols</div>
-                            <div className="col-span-1 text-center">👟 Ass.</div>
+                            <div className="col-span-3">Atleta</div>
+                            <div className="col-span-2 text-center">⚽ / 👟 (G / A)</div>
+                            <div className="col-span-2 text-center">🟨 / 🟥 Cartões</div>
                             <div className="col-span-2 text-center">⏱️ Minutos</div>
-                            <div className="col-span-4 text-center">💧 Controle de Peso (Desidratação)</div>
+                            <div className="col-span-3 text-center">💧 Controle de Peso (Desidratação)</div>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-slate-700">
                             {safePs.map((p, i) => {
@@ -2479,37 +2327,31 @@
 
                                 return (
                                     <div key={i} className="grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <div className="col-span-4 flex items-center gap-3">
+                                        <div className="col-span-3 flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
                                                 {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}
                                             </div>
                                             <div>
-                                                <div className="font-black text-sm text-slate-800 dark:text-slate-100 uppercase truncate">{p.name}</div>
+                                                <div className="font-black text-sm text-slate-800 dark:text-slate-100 uppercase truncate max-w-[100px]">{p.name}</div>
                                                 <div className="text-[9px] font-bold text-slate-400">{p.pos || 'Atleta'}</div>
                                             </div>
                                         </div>
                                         
-                                        <div className="col-span-1 flex justify-center items-center gap-1">
-                                            <span className="font-black text-sm w-4 text-center dark:text-white">{(p.stats && p.stats.g) || 0}</span>
-                                            <div className="flex flex-col">
-                                                <button onClick={()=>updateStat(i, 'g', 1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button>
-                                                <button onClick={()=>updateStat(i, 'g', -1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button>
-                                            </div>
+                                        <div className="col-span-2 flex justify-center items-center gap-2">
+                                            <div className="flex flex-col items-center"><span className="text-[8px] opacity-60">Gols</span><div className="flex items-center gap-1"><span className="font-black text-sm dark:text-white">{(p.stats && p.stats.g) || 0}</span><div className="flex flex-col"><button onClick={()=>updateStat(i,'g',1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button><button onClick={()=>updateStat(i,'g',-1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button></div></div></div>
+                                            <div className="flex flex-col items-center"><span className="text-[8px] opacity-60">Ass</span><div className="flex items-center gap-1"><span className="font-black text-sm dark:text-white">{(p.stats && p.stats.a) || 0}</span><div className="flex flex-col"><button onClick={()=>updateStat(i,'a',1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button><button onClick={()=>updateStat(i,'a',-1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button></div></div></div>
                                         </div>
 
-                                        <div className="col-span-1 flex justify-center items-center gap-1">
-                                            <span className="font-black text-sm w-4 text-center dark:text-white">{(p.stats && p.stats.a) || 0}</span>
-                                            <div className="flex flex-col">
-                                                <button onClick={()=>updateStat(i, 'a', 1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button>
-                                                <button onClick={()=>updateStat(i, 'a', -1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button>
-                                            </div>
+                                        <div className="col-span-2 flex justify-center items-center gap-3">
+                                            <div className="flex items-center gap-1"><span className="bg-yellow-400 text-yellow-900 px-1 rounded font-black text-xs">{(p.stats?.yc)||0}</span><div className="flex flex-col"><button onClick={()=>updateStat(i,'yc',1)} className="text-slate-400 hover:text-white"><Icon name="arrowUp" size={10}/></button><button onClick={()=>updateStat(i,'yc',-1)} className="text-slate-400 hover:text-white"><Icon name="arrowDown" size={10}/></button></div></div>
+                                            <div className="flex items-center gap-1"><span className="bg-red-500 text-white px-1 rounded font-black text-xs">{(p.stats?.rc)||0}</span><div className="flex flex-col"><button onClick={()=>updateStat(i,'rc',1)} className="text-slate-400 hover:text-white"><Icon name="arrowUp" size={10}/></button><button onClick={()=>updateStat(i,'rc',-1)} className="text-slate-400 hover:text-white"><Icon name="arrowDown" size={10}/></button></div></div>
                                         </div>
 
                                         <div className="col-span-2 flex justify-center">
                                             <input type="number" placeholder="0" value={minJ || ''} onChange={e=>updateMins(i, e.target.value)} className="w-16 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-black p-2 rounded-lg outline-none focus:border-blue-500 dark:text-white"/>
                                         </div>
 
-                                        <div className="col-span-4 flex justify-center items-center gap-2">
+                                        <div className="col-span-3 flex justify-center items-center gap-2">
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[8px] uppercase font-bold text-slate-400">Pré (kg)</span>
                                                 <input type="number" step="0.1" placeholder="-" value={mData.preW || ''} onChange={e=>updateWeight(i, 'preW', e.target.value)} className="w-14 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-bold p-1.5 rounded outline-none dark:text-white text-xs"/>
@@ -2518,7 +2360,7 @@
                                                 <span className="text-[8px] uppercase font-bold text-slate-400">Pós (kg)</span>
                                                 <input type="number" step="0.1" placeholder="-" value={mData.postW || ''} onChange={e=>updateWeight(i, 'postW', e.target.value)} className="w-14 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-bold p-1.5 rounded outline-none dark:text-white text-xs"/>
                                             </div>
-                                            <div className="flex flex-col items-center w-14">
+                                            <div className="flex flex-col items-center w-12">
                                                 <span className="text-[8px] uppercase font-bold text-slate-400">Perda</span>
                                                 <span className={`text-xs ${color}`}>{perc > 0 ? `-${perc}%` : '--'}</span>
                                             </div>
