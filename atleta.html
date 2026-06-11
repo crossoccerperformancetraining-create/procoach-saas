@@ -338,7 +338,7 @@
 
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
-          const getRankingData = () => { 
+            const getRankingData = () => { 
                 const validPlayers = safeArray(data.players).filter(p => p); 
                 const playersMap = validPlayers.map((p, i) => { 
                     let streak = 0; let checkDate = new Date(); 
@@ -370,9 +370,10 @@
                 const fms = (Number(pAss.fms_total)||0) * 4.7; 
                 const force = (Number(pAss.squat_rm)||0); 
                 const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); 
-                const tech = Number(pAss.scout_tech) || 75; // Lê o Scout Técnico da Base se existir
+                const tech = Number(pAss.scout_tech) || 75;
                 return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: tech, endurance: Number(pAss.soccer_test) ? Math.min(99, Number(pAss.soccer_test)/30) : 70 }; 
             };
+
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
             const alertModalUI = showAlertPopup && (
@@ -913,7 +914,6 @@
                             )}
 
                             {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
-                          {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
                             {tab === 'agenda' && (
                                 <div className="animate-fade-in space-y-6">
                                     {/* STATUS E LOGÍSTICA */}
@@ -1063,6 +1063,7 @@
                                     </div>
                                 </div>
                             )}
+                        </div>
 
                         {/* MENU INFERIOR LIBERADO PARA TODOS */}
                         <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-2 flex justify-around items-center z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] pointer-events-auto">
