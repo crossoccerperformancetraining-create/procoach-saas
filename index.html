@@ -1729,54 +1729,47 @@
             );
         };
 
-      const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
-          const manualSaveLibrary = () => {
-        if(user) {
-            db.collection('coachData').doc(user.uid).update({ library: library })
-            .then(() => showToast("Biblioteca salva na Nuvem com sucesso!", "#10b981"))
-            .catch(() => showToast("Erro ao salvar na nuvem.", "#ef4444"));
-        }
-    };
-            const [categories, setCategories] = useState(initialData?.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção']);
-            const [form, setForm] = useState({ title: '', gifUrl: '', category: categories[0] });
+     const LibraryView = ({ themeColor, library, setLibrary, initialData, user }) => {
+            const manualSaveLibrary = () => {
+                if(user) {
+                    db.collection('coachData').doc(getActiveDocId(user.uid)).update({ library: library })
+                    .then(() => showToast("Central atualizada na Nuvem!", "#10b981"))
+                    .catch(() => showToast("Erro ao salvar na nuvem.", "#ef4444"));
+                }
+            };
+            
+            // INTELIGÊNCIA DE PASTAS: Se o usuário não tiver pastas, criamos as táticas de alto nível
+            const defaultCats = ['Org. Ofensiva', 'Org. Defensiva', 'Transição Rápida', 'Bola Parada', 'Drone / Jogos', 'Academia / Força', 'Prevenção / Físico'];
+            const [categories, setCategories] = useState(initialData?.customCategories?.length > 0 ? initialData.customCategories : defaultCats);
+            
+            const [mediaType, setMediaType] = useState('video'); // 'image' ou 'video'
+            const [form, setForm] = useState({ title: '', gifUrl: '', videoUrl: '', category: categories[0] });
             const [filter, setFilter] = useState('Todas');
             const importInputRef = useRef(null);
 
-            // ESTADOS PARA O LOTE
             const [batchModalOpen, setBatchModalOpen] = useState(false);
             const [batchUrls, setBatchUrls] = useState('');
             const [batchCategory, setBatchCategory] = useState(categories[0]);
 
             useEffect(() => {
-                if(user) db.collection('coachData').doc(user.uid).set({ customCategories: categories }, { merge: true });
+                if(user) db.collection('coachData').doc(getActiveDocId(user.uid)).set({ customCategories: categories }, { merge: true });
             }, [categories, user]);
 
             const exportFolder = () => {
-                if(filter === 'Todas') {
-                    alert("Por favor, selecione uma pasta específica para exportar.");
-                    return;
-                }
+                if(filter === 'Todas') return alert("Por favor, selecione uma pasta específica para exportar.");
                 const folderContent = library.filter(l => l.category === filter);
-                if(folderContent.length === 0) {
-                    alert("Esta pasta está vazia.");
-                    return;
-                }
+                if(folderContent.length === 0) return alert("Esta pasta está vazia.");
 
-                const dataToExport = {
-                    appName: "ProCoach_AdrianoCabeça",
-                    category: filter,
-                    content: folderContent
-                };
-
+                const dataToExport = { appName: "ProCoach_V144MAX", category: filter, content: folderContent };
                 const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `PASTA_${filter.toUpperCase()}_PROCOACH.json`;
+                link.download = `PASTA_${filter.toUpperCase().replace(/\s/g, '_')}_PROCOACH.json`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                alert("Pasta exportada com sucesso! Agora você pode enviar este arquivo para outros treinadores.");
+                showToast("Pasta exportada com sucesso!");
             };
 
             const handleImport = (e) => {
@@ -1787,16 +1780,11 @@
                     try {
                         const importedData = JSON.parse(event.target.result);
                         if(!importedData.content) throw new Error();
-
-                        if(!categories.includes(importedData.category)) {
-                            setCategories([...categories, importedData.category]);
-                        }
-
-                        const currentUrls = new Set(library.map(i => i.gifUrl));
-                        const newGifs = importedData.content.filter(i => !currentUrls.has(i.gifUrl));
-                        
-                        setLibrary([...newGifs, ...library]);
-                        alert(`${newGifs.length} exercícios importados para a pasta ${importedData.category}!`);
+                        if(!categories.includes(importedData.category)) setCategories([...categories, importedData.category]);
+                        const currentUrls = new Set(library.map(i => i.gifUrl || i.videoUrl));
+                        const newItems = importedData.content.filter(i => !currentUrls.has(i.gifUrl || i.videoUrl));
+                        setLibrary([...newItems, ...library]);
+                        showToast(`${newItems.length} análises importadas!`, "#10b981");
                     } catch(err) {
                         alert("Erro ao importar: Arquivo inválido.");
                     }
@@ -1805,82 +1793,87 @@
             };
 
             const add = () => {
-                if(!form.title || !form.gifUrl) return;
-                setLibrary([{ id: Date.now(), ...form }, ...library]);
-                setForm({...form, title: '', gifUrl: ''});
+                if(!form.title || (!form.gifUrl && !form.videoUrl)) return showToast("Preencha o título e o link!", "#ef4444");
+                const newItem = { 
+                    id: Date.now(), 
+                    title: form.title, 
+                    category: form.category,
+                    gifUrl: mediaType === 'image' ? form.gifUrl : '',
+                    videoUrl: mediaType === 'video' ? form.videoUrl : ''
+                };
+                setLibrary([newItem, ...library]);
+                setForm({...form, title: '', gifUrl: '', videoUrl: ''});
+                showToast("Análise Salva!", "#10b981");
             };
 
-            // FUNÇÃO PARA RENOMEAR PASTA
             const renameFolder = () => {
                 if(filter === 'Todas') return;
                 const newName = prompt(`Renomear pasta "${filter}" para:`, filter);
                 if(newName && newName.trim() !== '' && newName !== filter) {
-                    if(categories.includes(newName)) {
-                        alert("Já existe uma pasta com este nome.");
-                        return;
-                    }
-                    // Atualiza a lista de pastas
-                    const newCats = categories.map(c => c === filter ? newName : c);
-                    setCategories(newCats);
-                    // Atualiza todos os exercícios que estavam na pasta antiga
-                    const newLib = library.map(l => l.category === filter ? {...l, category: newName} : l);
-                    setLibrary(newLib);
+                    if(categories.includes(newName)) return alert("Já existe uma pasta com este nome.");
+                    setCategories(categories.map(c => c === filter ? newName : c));
+                    setLibrary(library.map(l => l.category === filter ? {...l, category: newName} : l));
                     setFilter(newName);
                     setBatchCategory(newName);
-                    showToast("Pasta renomeada com sucesso!", "#10b981");
+                    showToast("Pasta renomeada!", "#10b981");
                 }
             };
 
-            // FUNÇÃO DO LOTE
             const handleBatchAdd = () => {
                 const urls = batchUrls.split('\n').map(u => u.trim()).filter(u => u !== '');
-                if (urls.length === 0) {
-                    alert("Cole pelo menos um link válido.");
-                    return;
-                }
-                
+                if (urls.length === 0) return alert("Cole pelo menos um link válido.");
                 const newItems = urls.map((url, index) => ({
                     id: Date.now() + index,
-                    title: `Nova Atividade ${index + 1}`,
-                    gifUrl: url,
+                    title: `Análise ${index + 1}`,
+                    gifUrl: mediaType === 'image' ? url : '',
+                    videoUrl: mediaType === 'video' ? url : '',
                     category: batchCategory
                 }));
-                
                 setLibrary([...newItems, ...library]);
                 setBatchUrls('');
                 setBatchModalOpen(false);
-                showToast(`${newItems.length} imagens adicionadas com sucesso!`, "#10b981");
+                showToast(`${newItems.length} mídias adicionadas!`, "#10b981");
             };
 
             const filtered = filter === 'Todas' ? library : library.filter(l => l.category === filter);
 
             return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll relative">
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto custom-scroll relative pb-32">
                     
-                    {/* MODAL DO LOTE (COLAR VÁRIOS LINKS) */}
                     {batchModalOpen && (
                         <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                             <div className="bg-[#1e293b] p-6 rounded-3xl w-full max-w-md border border-slate-700 shadow-2xl">
                                 <h3 className="text-white font-black text-xl mb-1 uppercase tracking-wider flex items-center gap-2">
                                     <Icon name="list" className="text-blue-500"/> Colar em Lote
                                 </h3>
-                                <p className="text-slate-400 text-xs mb-6 font-bold">Cole 1 link de imagem por linha. O sistema criará os blocos automaticamente.</p>
+                                <p className="text-slate-400 text-xs mb-6 font-bold">Cole 1 link de {mediaType === 'video' ? 'Vídeo (YouTube/Drive)' : 'Imagem (Tática)'} por linha.</p>
                                 
-                                <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Salvar na Pasta:</label>
-                                <select className="w-full bg-slate-800 border border-slate-600 text-white p-3 rounded-xl mb-4 text-sm font-bold outline-none" value={batchCategory} onChange={e => setBatchCategory(e.target.value)}>
-                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Tipo de Mídia:</label>
+                                        <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-600">
+                                            <button onClick={()=>setMediaType('video')} className={`flex-1 py-1.5 text-[10px] font-black rounded ${mediaType==='video'?'bg-red-500 text-white':'text-slate-500'}`}>VÍDEO</button>
+                                            <button onClick={()=>setMediaType('image')} className={`flex-1 py-1.5 text-[10px] font-black rounded ${mediaType==='image'?'bg-blue-500 text-white':'text-slate-500'}`}>IMAGEM</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Salvar na Pasta:</label>
+                                        <select className="w-full bg-slate-800 border border-slate-600 text-white p-2 rounded-lg text-xs font-bold outline-none h-[34px]" value={batchCategory} onChange={e => setBatchCategory(e.target.value)}>
+                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
                                 
                                 <textarea 
-                                    className="w-full h-48 bg-slate-800 border border-slate-600 text-white text-xs p-3 rounded-xl outline-none custom-scroll mb-6" 
-                                    placeholder="https://postimg.cc/imagem1.png&#10;https://postimg.cc/imagem2.png&#10;https://postimg.cc/imagem3.png" 
+                                    className="w-full h-40 bg-slate-800 border border-slate-600 text-white text-xs p-3 rounded-xl outline-none custom-scroll mb-6" 
+                                    placeholder={mediaType === 'video' ? "https://youtube.com/watch?v=...\nhttps://youtube.com/watch?v=..." : "https://link-da-imagem.com/1.png\nhttps://link-da-imagem.com/2.png"} 
                                     value={batchUrls} 
                                     onChange={e => setBatchUrls(e.target.value)}
                                 />
                                 
                                 <div className="flex gap-2">
                                     <button onClick={() => setBatchModalOpen(false)} className="flex-1 bg-slate-700 text-slate-300 font-black py-4 rounded-xl text-xs uppercase hover:bg-slate-600 transition-colors">Cancelar</button>
-                                    <button onClick={handleBatchAdd} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-xl text-xs uppercase shadow-lg hover:bg-blue-500 transition-colors">Salvar Imagens</button>
+                                    <button onClick={handleBatchAdd} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-xl text-xs uppercase shadow-lg hover:bg-blue-500 transition-colors">Salvar Mídias</button>
                                 </div>
                             </div>
                         </div>
@@ -1889,78 +1882,111 @@
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl mb-6 border border-slate-200 dark:border-slate-700">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                             <h2 className="text-xl font-black dark:text-white flex gap-2 items-center uppercase italic">
-                                <Icon name="folder" className="text-purple-600"/> BIBLIOTECA DE EXERCÍCIOS
+                                <Icon name="play" className="text-red-500"/> CENTRAL DE VÍDEO-ANÁLISE & TÁTICA
                             </h2>
                             <div className="flex flex-wrap gap-2">
                                 <input type="file" ref={importInputRef} className="hidden" accept=".json" onChange={handleImport} />
                                 
-                                <button onClick={() => setBatchModalOpen(true)} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
+                                <button onClick={() => setBatchModalOpen(true)} className="bg-slate-700 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-600 transition-colors">
                                     <Icon name="list" size={14}/> COLAR LOTE
                                 </button>
-
-                                {/* NOVO BOTÃO DE SALVAR AQUI */}
-                                <button onClick={manualSaveLibrary} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700">
-                                    <Icon name="save" size={14}/> SALVAR ALTERAÇÕES
-                                </button>
-                                
-                                <button onClick={() => importInputRef.current.click()} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-700">
+                                <button onClick={() => importInputRef.current.click()} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-500 transition-colors">
                                     <Icon name="upload" size={14}/> IMPORTAR
                                 </button>
-                                <button onClick={() => {const n = prompt("Nome da nova pasta:"); if(n && !categories.includes(n)) setCategories([...categories, n])}} className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-emerald-700">
+                                <button onClick={() => {const n = prompt("Nome da nova pasta:"); if(n && !categories.includes(n)) setCategories([...categories, n])}} className="bg-emerald-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-emerald-700 transition-colors">
                                     + NOVA PASTA
+                                </button>
+                                <button onClick={manualSaveLibrary} className="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-colors">
+                                    <Icon name="save" size={14}/> SALVAR NUVEM
                                 </button>
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input type="text" placeholder="Nome do Exercício" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
-                            <input type="text" placeholder="Link da Imagem (Única)" className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm outline-none" value={form.gifUrl} onChange={e=>setForm({...form, gifUrl: e.target.value})}/>
-                            <select className="p-3 border rounded-xl dark:bg-slate-700 dark:text-white text-sm font-bold" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
-                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <button onClick={add} className="bg-purple-600 text-white font-black py-3 rounded-xl hover:bg-purple-700 shadow-lg uppercase tracking-widest transition-all">SALVAR ÚNICO</button>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                            <div className="md:col-span-3">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Nome da Análise</label>
+                                <input type="text" placeholder="Ex: Saída de Bola 3-2" className="w-full p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs font-bold outline-none focus:border-blue-500" value={form.title} onChange={e=>setForm({...form, title: e.target.value})}/>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Tipo Mídia</label>
+                                <div className="flex bg-slate-200 dark:bg-slate-800 rounded-lg p-1 border dark:border-slate-600">
+                                    <button onClick={()=>setMediaType('video')} className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded ${mediaType === 'video' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>🎥 VÍDEO</button>
+                                    <button onClick={()=>setMediaType('image')} className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded ${mediaType === 'image' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>📷 IMG</button>
+                                </div>
+                            </div>
+                            <div className="md:col-span-3">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block flex items-center gap-1">
+                                    Link {mediaType === 'video' ? <span className="text-red-500">(YouTube/Drone)</span> : <span className="text-blue-500">(Imagem Tática)</span>}
+                                </label>
+                                <input type="text" placeholder="https://..." className="w-full p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs outline-none focus:border-blue-500" value={mediaType === 'image' ? form.gifUrl : form.videoUrl} onChange={e=>{ mediaType === 'image' ? setForm({...form, gifUrl: e.target.value}) : setForm({...form, videoUrl: e.target.value}) }}/>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Pasta de Destino</label>
+                                <select className="w-full p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs font-bold outline-none" value={form.category} onChange={e=>setForm({...form, category: e.target.value})}>
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className="md:col-span-2">
+                                <button onClick={add} className="w-full bg-blue-600 text-white font-black py-2.5 rounded-lg hover:bg-blue-700 shadow-md uppercase tracking-widest text-xs transition-colors">ADICIONAR</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between mb-6 bg-slate-200/50 dark:bg-slate-800/50 p-3 rounded-2xl">
-                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 max-w-[60%] md:max-w-[75%]">
-                            <button onClick={()=>setFilter('Todas')} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter==='Todas'?'bg-slate-800 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>Todas</button>
+                    <div className="flex items-center justify-between mb-6 bg-slate-200/50 dark:bg-slate-800/50 p-3 rounded-2xl border dark:border-slate-700/50">
+                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 max-w-[65%] md:max-w-[75%]">
+                            <button onClick={()=>setFilter('Todas')} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter==='Todas'?'bg-slate-800 text-white shadow-lg scale-105':'text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>Visão Geral</button>
                             {categories.map(c => (
-                                <button key={c} onClick={()=>setFilter(c)} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter===c?'bg-purple-600 text-white shadow-xl scale-105':'text-slate-500 hover:bg-slate-300'}`}>{c}</button>
+                                <button key={c} onClick={()=>setFilter(c)} className={`px-5 py-2 rounded-full text-xs font-black uppercase transition-all shrink-0 ${filter===c?'bg-red-600 text-white shadow-lg scale-105':'text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>{c}</button>
                             ))}
                         </div>
                         
                         {filter !== 'Todas' && (
                             <div className="flex gap-2 shrink-0">
-                                <button onClick={renameFolder} className="bg-slate-600 text-white text-[10px] font-black px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg hover:bg-slate-700">
-                                    <Icon name="edit" size={14}/> RENOMEAR
+                                <button onClick={renameFolder} className="bg-slate-600 text-white text-[9px] font-black px-3 py-2 rounded-lg flex items-center gap-1 shadow hover:bg-slate-700 transition-colors">
+                                    <Icon name="edit" size={12}/> RENOMEAR
                                 </button>
-                                <button onClick={exportFolder} className="hidden md:flex bg-orange-500 text-white text-[10px] font-black px-4 py-2.5 rounded-xl items-center gap-2 shadow-lg animate-fade-in hover:bg-orange-600">
-                                    <Icon name="share" size={14}/> EXPORTAR
+                                <button onClick={exportFolder} className="hidden md:flex bg-orange-500 text-white text-[9px] font-black px-3 py-2 rounded-lg items-center gap-1 shadow hover:bg-orange-600 transition-colors">
+                                    <Icon name="share" size={12}/> COMPARTILHAR PASTA
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-24">
-                        {filtered.map(l => (
-                            <div key={l.id} className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-lg relative group border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-purple-500 transition-all">
-                                <span className="absolute top-2 left-2 z-10 text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-black/60 text-white backdrop-blur-md border border-white/20 truncate max-w-[80%]">{l.category}</span>
-                                <div className="w-full h-32 rounded-xl mb-2 overflow-hidden bg-slate-100 dark:bg-slate-900 border dark:border-slate-700">
-                                    <img src={l.gifUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {filtered.map(l => {
+                            const isVid = !!l.videoUrl;
+                            return (
+                                <div key={l.id} className="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-md relative group border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-red-500 transition-all flex flex-col">
+                                    <span className="absolute top-4 left-4 z-20 text-[9px] font-black uppercase px-2.5 py-1 rounded-lg bg-slate-900/80 text-white backdrop-blur-md border border-white/10 shadow flex items-center gap-1.5">
+                                        {isVid ? <Icon name="play" size={10} className="text-red-500"/> : <Icon name="image" size={10} className="text-blue-500"/>} {l.category}
+                                    </span>
+                                    
+                                    <div className="w-full h-48 rounded-xl mb-3 overflow-hidden bg-slate-100 dark:bg-slate-900 border dark:border-slate-700 relative z-10 pointer-events-auto flex items-center justify-center shadow-inner">
+                                        {isVid ? (
+                                            renderVideoElement(l.videoUrl)
+                                        ) : l.gifUrl ? (
+                                            <img src={l.gifUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" onError={(e)=>e.target.style.display='none'}/>
+                                        ) : (
+                                            <div className="text-slate-400 opacity-50"><Icon name="image" size={40}/></div>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="flex gap-1 items-center relative z-20">
+                                        <BufferedInput className="text-xs font-black dark:bg-slate-700/50 dark:text-white uppercase truncate px-2 py-1.5 w-full border border-transparent hover:border-slate-300 dark:hover:border-slate-600 rounded outline-none focus:border-red-500 transition-colors" value={l.title} onSave={(val) => {
+                                            const newLib = library.map(x => x.id === l.id ? {...x, title: val} : x);
+                                            setLibrary(newLib);
+                                        }}/>
+                                        <button onClick={()=> {if(confirm('Apagar arquivo?')) setLibrary(library.filter(x=>x.id!==l.id))}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-all shadow hover:bg-red-600 hover:text-white shrink-0">
+                                            <Icon name="trash" size={14}/>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-1 mb-1 items-center px-1">
-                                    <BufferedInput className="text-[10px] font-black dark:bg-slate-700 dark:text-white uppercase truncate px-1 text-center w-full border border-transparent hover:border-slate-300 rounded" value={l.title} onSave={(val) => {
-                                        const newLib = library.map(x => x.id === l.id ? {...x, title: val} : x);
-                                        setLibrary(newLib);
-                                    }}/>
-                                </div>
-                                <button onClick={()=>setLibrary(library.filter(x=>x.id!==l.id))} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-xl hover:bg-red-700"><Icon name="trash" size={12}/></button>
-                            </div>
-                        ))}
+                            );
+                        })}
                         {filtered.length === 0 && (
-                            <div className="col-span-2 md:col-span-4 lg:col-span-6 text-center text-slate-500 py-10 font-bold border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
-                                Nenhuma imagem nesta pasta. Use o botão "Colar Lote" acima.
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 text-center text-slate-500 py-16 font-bold border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center gap-3">
+                                <Icon name="folder" size={40} className="opacity-50"/>
+                                <p>Pasta vazia. Comece a criar seu acervo tático!</p>
                             </div>
                         )}
                     </div>
