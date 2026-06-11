@@ -95,7 +95,10 @@
             {id:8, label:"Fase 8: Performance III", desc:"Retorno ao grupo com minutagem controlada em jogo. Liberado treino com o grupo sem restrições."}, 
             {id:9, label:"Fase 9: Liberação", desc:"Responsabilidade do atleta com cuidados antes e após treinos e jogos."} 
         ];
-
+            const getActiveDocId = (uid) => {
+            const team = localStorage.getItem('procoach_active_team') || 'pro';
+            return team === 'base' ? `${uid}_base` : uid;
+        };
            const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
             const [modalOpen, setModalOpen] = useState(false);
             const [aiModal, setAiModal] = useState(null);
@@ -527,7 +530,7 @@
                             <button onClick={onClose} className="text-white hover:bg-white/20 p-1 rounded"><Icon name="x"/></button>
                         </div>
                         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-                            <div>
+                           <div>
                                 <h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Identidade</h3>
                                 <div className="flex items-center gap-4">
                                     <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-700 border-2 flex items-center justify-center relative group cursor-pointer overflow-hidden" style={{borderColor:themeColor}}>
@@ -537,9 +540,22 @@
                                             <Icon name="folder" className="text-white"/>
                                         </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME DA EQUIPE</label>
-                                        <BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/>
+                                    <div className="flex-1 space-y-2">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">NOME DA EQUIPE</label>
+                                            <BufferedInput className="w-full border-b-2 border-slate-200 dark:border-slate-600 py-1 font-bold text-lg outline-none bg-transparent dark:text-white" value={header.teamName || ''} onSave={val=>setHeader({...header, teamName:val})}/>
+                                        </div>
+                                       {/* CAMPOS PARA RENOMEAR OS BOTÕES DO TOPO */}
+        <div className="grid grid-cols-2 gap-2">
+            <div>
+                <label className="text-[8px] font-bold text-slate-400 uppercase">Nome Botão 1</label>
+                <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 bg-transparent dark:text-white font-bold text-center" value={header.labelPro || 'CSE (PRO)'} onSave={val=>setHeader({...header, labelPro:val})}/>
+            </div>
+            <div>
+                <label className="text-[8px] font-bold text-slate-400 uppercase">Nome Botão 2</label>
+                <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1 bg-transparent dark:text-white font-bold text-center" value={header.labelBase || 'Base (AC)'} onSave={val=>setHeader({...header, labelBase:val})}/>
+            </div>
+        </div>
                                         <BufferedInput className="w-full text-xs mt-1 border-b border-slate-100 dark:border-slate-700 p-1 bg-transparent dark:text-slate-300" placeholder="Ou cole URL da logo..." value={logo && logo.startsWith('http')?logo:''} onSave={val=>setLogo(val)}/>
                                     </div>
                                 </div>
@@ -2323,7 +2339,207 @@
                 </div>
             );
         };
-        const MainApp = ({ user, initialData }) => {
+       
+  const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user }) => {
+            const [matchDate, setMatchDate] = useState(getTodayStr());
+            const [opponent, setOpponent] = useState('');
+            const [homeScore, setHomeScore] = useState(0);
+            const [awayScore, setAwayScore] = useState(0);
+            const safePs = safeArray(players);
+
+            const updateStat = (pIdx, stat, val) => {
+                const newPs = [...safePs];
+                if (!newPs[pIdx].stats) newPs[pIdx].stats = { g: 0, a: 0 };
+                newPs[pIdx].stats[stat] = Math.max(0, (Number(newPs[pIdx].stats[stat]) || 0) + val);
+                setPlayers(newPs);
+                if(user) db.collection('coachData').doc(user.uid).update({ players: newPs });
+            };
+
+            const updateMins = (pIdx, val) => {
+                const newMins = {...matchMinutes};
+                if(!newMins[matchDate]) newMins[matchDate] = {};
+                newMins[matchDate][pIdx] = { ...newMins[matchDate][pIdx], mins: parseInt(val) || 0 };
+                setMatchMinutes(newMins);
+                if(user) db.collection('coachData').doc(user.uid).update({ matchMinutes: newMins });
+            };
+
+            const updateWeight = (pIdx, type, val) => {
+                const newMins = {...matchMinutes};
+                if(!newMins[matchDate]) newMins[matchDate] = {};
+                if(!newMins[matchDate][pIdx]) newMins[matchDate][pIdx] = {};
+                newMins[matchDate][pIdx][type] = parseFloat(val) || '';
+                setMatchMinutes(newMins);
+                if(user) db.collection('coachData').doc(user.uid).update({ matchMinutes: newMins });
+            };
+
+            // GERADOR DE RELATÓRIO DO JOGO PDF
+            const gerarPDFJogo = () => {
+                if(!opponent) return showToast("Digite o nome do adversário antes de gerar o PDF!", "#ef4444");
+                showToast("Gerando PDF do Jogo...", "#3b82f6");
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFontSize(22);
+                doc.setTextColor(220, 38, 38); 
+                doc.text("RELATORIO POS-JOGO (MATCH DAY)", 14, 20);
+                
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Adversario: ${opponent}`, 14, 30);
+                doc.text(`Data: ${formatDateBR(matchDate)}`, 14, 38);
+                doc.text(`Placar Final: Equipe ${homeScore} x ${awayScore} Adversario`, 14, 46);
+                doc.line(14, 50, 196, 50);
+
+                doc.setFontSize(12);
+                doc.text("Atletas que atuaram:", 14, 60);
+                
+                let y = 68;
+                safePs.forEach((p, i) => {
+                    const data = matchMinutes[matchDate]?.[i];
+                    if(data && data.mins > 0) {
+                        const pre = parseFloat(data.preW) || 0;
+                        const pos = parseFloat(data.postW) || 0;
+                        const dehidracao = pre > 0 && pos > 0 ? (((pre - pos) / pre) * 100).toFixed(1) : 0;
+                        
+                        doc.text(`- ${p.name}: ${data.mins} min Jogados | Gols: ${p.stats?.g||0} | Assist: ${p.stats?.a||0}`, 20, y);
+                        y += 6;
+                        if(pre > 0 && pos > 0) {
+                            doc.setFontSize(10);
+                            doc.setTextColor(100, 116, 139);
+                            doc.text(`  * Peso Pre: ${pre}kg | Pos: ${pos}kg | Desidratacao: ${dehidracao}%`, 25, y);
+                            doc.setFontSize(12);
+                            doc.setTextColor(0, 0, 0);
+                            y += 6;
+                        }
+                        if(y > 270) { doc.addPage(); y = 20; }
+                    }
+                });
+
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text("ProCoach MAX - Sistema de Gestao Esportiva", 105, 290, null, null, "center");
+
+                doc.save(`Relatorio_Jogo_${opponent}_${matchDate}.pdf`);
+            };
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 mb-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
+                                <Icon name="target"/> Relatório Pós-Jogo (Scout & Fisiologia)
+                            </h2>
+                            <button onClick={gerarPDFJogo} className="bg-red-600 hover:bg-red-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+                                <Icon name="download" size={14}/> Gerar PDF do Jogo
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase text-slate-500">Data da Partida</label>
+                                <input type="date" value={matchDate} onChange={e=>setMatchDate(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold"/>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase text-slate-500">Adversário</label>
+                                <input type="text" placeholder="Nome do Clube..." value={opponent} onChange={e=>setOpponent(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold uppercase"/>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-[10px] font-black uppercase text-slate-500 text-center">Placar Final</label>
+                                <div className="flex justify-center items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={()=>setHomeScore(Math.max(0, homeScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white transition-transform active:scale-90">-</button>
+                                        <span className="text-3xl font-black dark:text-white w-8 text-center">{homeScore}</span>
+                                        <button onClick={()=>setHomeScore(homeScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white transition-transform active:scale-90">+</button>
+                                    </div>
+                                    <span className="font-black text-slate-400">X</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={()=>setAwayScore(Math.max(0, awayScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white transition-transform active:scale-90">-</button>
+                                        <span className="text-3xl font-black dark:text-white w-8 text-center">{awayScore}</span>
+                                        <button onClick={()=>setAwayScore(awayScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white transition-transform active:scale-90">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div className="grid grid-cols-12 bg-slate-100 dark:bg-slate-700 p-4 text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase shrink-0">
+                            <div className="col-span-4">Atleta</div>
+                            <div className="col-span-1 text-center">⚽ Gols</div>
+                            <div className="col-span-1 text-center">👟 Ass.</div>
+                            <div className="col-span-2 text-center">⏱️ Minutos</div>
+                            <div className="col-span-4 text-center">💧 Controle de Peso (Desidratação)</div>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {safePs.map((p, i) => {
+                                if(!p) return null;
+                                const mData = matchMinutes[matchDate]?.[i] || {};
+                                const minJ = mData.mins || (typeof mData === 'number' ? mData : 0);
+                                const wPre = parseFloat(mData.preW) || 0;
+                                const wPost = parseFloat(mData.postW) || 0;
+                                let perc = 0; let color = "text-slate-500";
+                                if(wPre > 0 && wPost > 0 && wPre > wPost) {
+                                    perc = (((wPre - wPost) / wPre) * 100).toFixed(1);
+                                    if(perc >= 2.0) color = "text-red-500 font-black animate-pulse";
+                                    else if(perc >= 1.0) color = "text-orange-500 font-bold";
+                                    else color = "text-green-500 font-bold";
+                                }
+
+                                return (
+                                    <div key={i} className="grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                        <div className="col-span-4 flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
+                                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-sm text-slate-800 dark:text-slate-100 uppercase truncate">{p.name}</div>
+                                                <div className="text-[9px] font-bold text-slate-400">{p.pos || 'Atleta'}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="col-span-1 flex justify-center items-center gap-1">
+                                            <span className="font-black text-sm w-4 text-center dark:text-white">{(p.stats && p.stats.g) || 0}</span>
+                                            <div className="flex flex-col">
+                                                <button onClick={()=>updateStat(i, 'g', 1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button>
+                                                <button onClick={()=>updateStat(i, 'g', -1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button>
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-1 flex justify-center items-center gap-1">
+                                            <span className="font-black text-sm w-4 text-center dark:text-white">{(p.stats && p.stats.a) || 0}</span>
+                                            <div className="flex flex-col">
+                                                <button onClick={()=>updateStat(i, 'a', 1)} className="text-green-500"><Icon name="arrowUp" size={12}/></button>
+                                                <button onClick={()=>updateStat(i, 'a', -1)} className="text-red-500"><Icon name="arrowDown" size={12}/></button>
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-2 flex justify-center">
+                                            <input type="number" placeholder="0" value={minJ || ''} onChange={e=>updateMins(i, e.target.value)} className="w-16 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-black p-2 rounded-lg outline-none focus:border-blue-500 dark:text-white"/>
+                                        </div>
+
+                                        <div className="col-span-4 flex justify-center items-center gap-2">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[8px] uppercase font-bold text-slate-400">Pré (kg)</span>
+                                                <input type="number" step="0.1" placeholder="-" value={mData.preW || ''} onChange={e=>updateWeight(i, 'preW', e.target.value)} className="w-14 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-bold p-1.5 rounded outline-none dark:text-white text-xs"/>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[8px] uppercase font-bold text-slate-400">Pós (kg)</span>
+                                                <input type="number" step="0.1" placeholder="-" value={mData.postW || ''} onChange={e=>updateWeight(i, 'postW', e.target.value)} className="w-14 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-center font-bold p-1.5 rounded outline-none dark:text-white text-xs"/>
+                                            </div>
+                                            <div className="flex flex-col items-center w-14">
+                                                <span className="text-[8px] uppercase font-bold text-slate-400">Perda</span>
+                                                <span className={`text-xs ${color}`}>{perc > 0 ? `-${perc}%` : '--'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        const MainApp = ({ user, initialData, activeTeam, setActiveTeam }) => {
             const [tab, setTab] = useState('squad'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
             const [players, setPlayers] = useState(initialData?.players || []);
@@ -2342,9 +2558,7 @@
             const [coachMsg, setCoachMsg] = useState(initialData?.coachMsg || '');
             const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
             const [nextGame, setNextGame] = useState(initialData?.nextGame || { logistics: '' });
-
-            // NOVO: Estado para armazenar o carimbo do último alerta disparado
-            const [lastAlertSent, setLastAlertSent] = useState(initialData?.lastAlertSent || 0);
+            const [lastAlertSent, setLastAlertSent] = useState(initialData?.lastAlertSent || 0); 
 
             const [showSettings, setShowSettings] = useState(false);
             const [syncStatus, setSyncStatus] = useState(''); 
@@ -2367,7 +2581,7 @@
                     setCoachMsg(initialData.coachMsg || '');
                     setVideoUrl(initialData.videoUrl || '');
                     setNextGame(initialData.nextGame || { logistics: '' });
-                    setLastAlertSent(initialData.lastAlertSent || 0); // <-- Carrega o estado da nuvem
+                    setLastAlertSent(initialData.lastAlertSent || 0);
                 }
             }, [initialData]);
 
@@ -2385,45 +2599,38 @@
                         dmRecords, matchMinutes, header, logo, 
                         darkMode, days, exercises, library, 
                         postWorkout, coachMsg, videoUrl, nextGame,
-                        lastAlertSent // <-- NOVO: Salva o gatilho de notificação no Firebase de forma nativa
+                        lastAlertSent
                     };
-                    db.collection('coachData').doc(user.uid).update(dataToSave)
+                    const docId = getActiveDocId(user.uid);
+                    db.collection('coachData').doc(docId).update(dataToSave)
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { 
-                            if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set(dataToSave, { merge: true });
+                            if(err.code === 'not-found') db.collection('coachData').doc(docId).set(dataToSave, { merge: true });
                             else setSyncStatus('❌ Erro Sinc');
                         });
                 }, 800);
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam]);
 
-            // NOVO: Função para atualizar a hora do clique e disparar a notificação no app do atleta
            const dispararAlerta = async () => {
-                // 1. Atualiza o carimbo de tempo para a trava interna
                 setLastAlertSent(Date.now());
-                
-                // 2. Configura o disparo push de alta prioridade para o OneSignal
                 const options = {
                     method: 'POST',
                     headers: {
                         accept: 'application/json',
                         'content-type': 'application/json',
-                        // Lembre-se de manter a sua REST API Key aqui
                         Authorization: 'Basic COLE_AQUI_A_SUA_REST_API_KEY' 
                     },
                     body: JSON.stringify({
-                        app_id: 'd5cc1c36-cb5b-403d-ab8b-327de95b7b7c', // O seu ID oficial
+                        app_id: 'd5cc1c36-cb5b-403d-ab8b-327de95b7b7c',
                         included_segments: ['Subscribed Users'],
                         headings: { pt: '🚨 URGENTE: ProCoach MAX' },
                         contents: { pt: 'O professor atualizou a agenda e os treinos. Verifique agora!' },
-                        
-                        // FORÇA O POP-UP NO ECRÃ BLOQUEADO:
-                        priority: 10,               // Prioridade Máxima (acende o ecrã e desce o banner)
-                        ttl: 86400,                 // Tempo de vida da mensagem (24 horas)
-                        content_available: true     // Acorda o processo em segundo plano no telemóvel
+                        priority: 10,
+                        ttl: 86400,
+                        content_available: true
                     })
                 };
-                
                 try {
                     await fetch('https://onesignal.com/api/v1/notifications', options);
                     showToast("🔔 Notificação de alta prioridade enviada para o elenco!");
@@ -2432,6 +2639,7 @@
                     showToast("Aviso interno salvo, mas houve erro no disparo push.");
                 }
             };
+
             const handleExport = () => {
                 try {
                     const dataToExport = { 
@@ -2495,19 +2703,27 @@
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
-                            {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse">{syncStatus}</span>}
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
+                            {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
-                            <button onClick={()=>window.open(`atleta.html?id=${user.uid}`,'_blank')} className="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase">Portal Atleta</button>
-                            <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
-                            <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="settings" size={24}/></button>
-                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded text-red-500"><Icon name="logout" size={20}/></button>
+                            
+                            {/* BOTÕES DO CHAVEADOR DE ELENCO */}
+                            <div className="flex bg-slate-100 dark:bg-slate-700 rounded p-1 mr-2 border dark:border-slate-600">
+                                <button onClick={() => setActiveTeam('pro')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${activeTeam !== 'base' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>CSE (PRO)</button>
+                                <button onClick={() => setActiveTeam('base')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${activeTeam === 'base' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>Base (AC)</button>
+                            </div>
+
+                            {/* LINK DO PORTAL LENDO A PASTA ATIVA */}
+                            <button onClick={()=>window.open(`atleta.html?id=${getActiveDocId(user.uid)}`,'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1"><Icon name="user" size={14}/><span className="hidden md:inline">Portal Atleta</span></button>
+                            <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="sun" size={20}/></button>
+                            <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="settings" size={20}/></button>
+                            <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"><Icon name="logout" size={20}/></button>
                         </div>
                     </div>
                     
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                        {['squad','micro','wellness','pse','workout','match','dm','assessment','library'].map(t => (
+                        {['squad','micro','wellness','pse','workout','match','gameday','dm','assessment','library'].map(t => (
                             <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
                         ))}
                     </div>
@@ -2516,7 +2732,6 @@
                         {tab === 'squad' && (
                             <div className="px-6 pt-4 pb-4 bg-slate-100 dark:bg-slate-900 shrink-0 transition-colors shadow-sm z-10 border-b border-slate-200 dark:border-slate-800">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Coluna 1: Comunicado Geral e Vídeo */}
                                     <div>
                                         <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase flex gap-1 items-center mb-2 tracking-wider"><Icon name="bell" size={14}/> Comunicado aos Atletas</label>
                                         <div className="flex flex-col gap-2">
@@ -2537,7 +2752,6 @@
                                         </div>
                                     </div>
 
-                                    {/* Coluna 2: Logística da Convocação */}
                                     <div>
                                         <label className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 uppercase flex gap-1 items-center mb-2 tracking-wider"><Icon name="trophy" size={14}/> Logística de Convocação (App Atleta)</label>
                                         <textarea 
@@ -2548,7 +2762,6 @@
                                         ></textarea>
                                     </div>
 
-                                    {/* NOVO: Linha do Botão Único de Disparo de Alerta */}
                                     <div className="col-span-1 md:col-span-2 mt-2">
                                         <button 
                                             onClick={dispararAlerta} 
@@ -2566,6 +2779,7 @@
                             {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                             {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                             {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
+                            {tab === 'gameday' && <GameDayView players={players} setPlayers={setPlayers} themeColor={themeColor} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} user={user} />}
                             {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                             {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
                             {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
@@ -2575,12 +2789,14 @@
                 </div>
             );
         };
-        const CloudWrapper = ({ user }) => {
+      const CloudWrapper = ({ user, activeTeam, setActiveTeam }) => {
             const [initialData, setInitialData] = useState(null);
             const [loadingCloud, setLoadingCloud] = useState(true);
 
             useEffect(() => {
-                const unsubscribe = db.collection('coachData').doc(user.uid).onSnapshot(doc => {
+                setLoadingCloud(true);
+                const docId = getActiveDocId(user.uid);
+                const unsubscribe = db.collection('coachData').doc(docId).onSnapshot(doc => {
                     setInitialData(sanitizeCloudData(doc.exists ? doc.data() : {}));
                     setLoadingCloud(false);
                 }, err => {
@@ -2589,15 +2805,16 @@
                     setLoadingCloud(false);
                 });
                 return () => unsubscribe();
-            }, [user]);
+            }, [user, activeTeam]);
 
-            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold">A sincronizar...</div>;
-            return <ErrorBoundary><MainApp user={user} initialData={initialData} /></ErrorBoundary>;
+            if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold">A Carregar Dados...</div>;
+            return <ErrorBoundary><MainApp user={user} initialData={initialData} activeTeam={activeTeam} setActiveTeam={setActiveTeam} /></ErrorBoundary>;
         };
 
         const RootApp = () => {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [activeTeam, setActiveTeam] = useState(localStorage.getItem('procoach_active_team') || 'pro');
 
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged(u => {
@@ -2609,9 +2826,14 @@
                 return () => unsubscribe();
             }, []);
 
+            const handleSetTeam = (team) => {
+                setActiveTeam(team);
+                localStorage.setItem('procoach_active_team', team);
+            };
+
             if (loading) return null;
             if (!user) return <LoginScreen onLogin={() => {}} />;
-            return <CloudWrapper user={user} />;
+            return <CloudWrapper user={user} activeTeam={activeTeam} setActiveTeam={handleSetTeam} />;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
