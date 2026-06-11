@@ -133,7 +133,7 @@
             return { t: "Dia de Recuperação", d: "O corpo está em repouso. Foco total em hidratação contínua e boa qualidade de sono.", ic: "🔋" };
         };
 
-       const AthletePortal = () => {
+   const AthletePortal = () => {
             const [data, setData] = useState({ players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0 });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [selectedDate, setSelectedDate] = useState(getTodayStr());
@@ -154,29 +154,28 @@
             const [showProfile, setShowProfile] = useState(false);
             const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
             
-            const [isEditingLogistics, setIsEditingLogistics] = useState(false);
-            const [logisticsText, setLogisticsText] = useState("");
-            
             const [showAlertPopup, setShowAlertPopup] = useState(false);
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null);
 
             useEffect(() => {
-                const params = new URLSearchParams(window.location.search); const uId = params.get('id'); const pIdx = params.get('p');
-                if(!uId) { setLoading(false); return; }
-                const unsubscribe = db.collection('coachData').doc(uId).onSnapshot(doc => {
+                if (!activeCoachDocId) {
+                    setLoading(false);
+                    showToast("Erro: Link de acesso incompleto.", "#ef4444");
+                    return;
+                }
+                const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        const parsedIdx = pIdx !== null ? parseInt(pIdx) : 0;
-                        if(idx === null) setIdx(parsedIdx);
-                        if (pIdx !== null) setIsPriv(true);
+                        if(idx === null && !isNaN(playerIndex)) setIdx(playerIndex);
+                        setIsPriv(true);
                     }
                     setLoading(false);
                 }, () => { setLoading(false); });
                 return () => unsubscribe();
-            }, []);
+            }, [activeCoachDocId, playerIndex]);
 
             useEffect(() => {
                 if (idx !== null) {
@@ -260,23 +259,17 @@
                 }).catch(()=>{ alert("Erro ao confirmar."); });
             };
 
-            const saveLogistics = () => {
-                if(!logisticsText.trim()) return;
-                setSubmitting(true);
-                db.collection('coachData').doc(data.id).set({
-                    nextGame: { ...data.nextG, logistics: logisticsText }
-                }, { merge: true }).then(() => {
-                    setIsEditingLogistics(false);
-                    setSubmitting(false);
-                    showToast("Roteiro atualizado com sucesso! 🚀");
-                }).catch(() => {
-                    setSubmitting(false);
-                    alert("Erro ao salvar logística.");
-                });
-            };
-
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
-            const handleAddWater = () => { const td = selectedDate; const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast("+250ml 💧", "💧"); };
+            
+            // INTELIGÊNCIA DE HIDRATAÇÃO (Melhoria 2)
+            const logToday = data.log[selectedDate]?.[idx] || {};
+            const maxRpe = Math.max(Number(logToday?.rpe_am)||0, Number(logToday?.rpe_pm)||0);
+            const waterGoal = maxRpe >= 8 ? 5.0 : maxRpe >= 6 ? 4.0 : 3.0;
+
+            const handleAddWater = () => { 
+                const td = selectedDate; const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; 
+                const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast(`+250ml 💧 (Meta: ${waterGoal}L)`, "💧"); 
+            };
 
             const saveRPE = async () => {
                 try {
@@ -330,7 +323,7 @@
 
             const shareToInsta = async () => { const el = document.getElementById('share-card'); if(!el) return; showToast("A gerar o seu Card...", "📸"); try { el.style.display = 'flex'; const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#0f172a' }); el.style.display = 'none'; canvas.toBlob(blob => { smartShare(blob, 'meutreino.png', 'Treino Concluído'); }); } catch(e) { el.style.display = 'none'; showToast("Erro ao compartilhar."); } };
 
-            const getPlayerStats = () => { let wCompleted = 0; let sleepSum = 0; let sleepCount = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = data.log[dateStr]?.[idx]; if(l?.rpeSubmitted || l?.rpe_am_submitted || l?.rpe_pm_submitted) wCompleted++; if(l?.wellness?.sleep) { sleepSum += l.wellness.sleep; sleepCount++; } }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]) || 0); }); } let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset()); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
+            const getPlayerStats = () => { let wCompleted = 0; let sleepSum = 0; let sleepCount = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = data.log[dateStr]?.[idx]; if(l?.rpeSubmitted || l?.rpe_am_submitted || l?.rpe_pm_submitted) wCompleted++; if(l?.wellness?.sleep) { sleepSum += l.wellness.sleep; sleepCount++; } }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]?.mins) || Number(data.matchM[d]?.[idx]) || 0); }); } let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset()); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
 
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
@@ -444,6 +437,14 @@
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
             
+            // INTELIGÊNCIA DE MATCH DAY (Melhoria 3)
+            const dayNames = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
+            const todayDateObj = new Date(selectedDate + 'T12:00:00');
+            const todayName = dayNames[todayDateObj.getDay()];
+            const todayMicrocycle = safeArray(data.days).find(d => d.name === todayName) || {};
+            const isMatchDay = todayMicrocycle.md === 'JOGO';
+            const headerGradient = isMatchDay ? 'linear-gradient(135deg, #b45309, #7f1d1d, #020617)' : `linear-gradient(135deg, ${data.color}, #020617)`;
+            
             const blocksAM = exData.gen.filter(e => e.period !== 'pm').reduce((acc, ex) => {
                 const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TREINO PRINCIPAL';
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
@@ -457,7 +458,6 @@
             const hasAM = exData.act.length > 0 || exData.prev.length > 0 || Object.keys(blocksAM).length > 0;
             const hasPM = Object.keys(blocksPM).length > 0;
 
-            const logToday = data.log[selectedDate]?.[idx] || {};
             const isAmDone = logToday.rpe_am_submitted === true;
             const isPmDone = logToday.rpe_pm_submitted === true;
             const isRestDayDone = logToday.rpeSubmitted === true;
@@ -474,14 +474,19 @@
             let daysInDm = 0;
             if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(selectedDate); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
 
+            // INTELIGÊNCIA SOS (Melhoria 4)
+            const wStats = safeObj(logToday?.wellness);
+            const isSOS = (Number(wStats.soreness) >= 6 || Number(wStats.fatigue) >= 6 || (Number(wStats.soreness) >= 5 && Number(wStats.fatigue) >= 5 && Number(wStats.sleep) >= 5));
+
             return (
                 <React.Fragment>
                     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
                         {DateSelectorUI}
-                        <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10" style={{ background: `linear-gradient(135deg, ${data.color}, #020617)` }}>
-                            <div className="flex items-start justify-between gap-4 mt-2">
+                        <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10 transition-all duration-700" style={{ background: headerGradient }}>
+                            {isMatchDay && <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAgMjBsMjAtMjBIMHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+')] opacity-20"></div>}
+                            <div className="flex items-start justify-between gap-4 mt-2 relative z-10">
                                 <div className="flex items-center gap-4 flex-1">
-                                    <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer shrink-0 ${isHighlight ? 'gold-glow' : ''}`}>
+                                    <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer shrink-0 ${isHighlight || isMatchDay ? 'gold-glow' : ''}`}>
                                         {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
                                     </div>
                                     <div className="flex-1">
@@ -489,7 +494,7 @@
                                             <h1 className="text-2xl font-black uppercase text-white leading-none truncate">{p.name}</h1>
                                             {stats.streak > 2 && <div className="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 shadow-sm border border-orange-500/30"><Icon name="fire" size={10}/> {stats.streak}d</div>}
                                         </div>
-                                        <div className="text-[10px] font-black text-blue-400 uppercase mt-1 tracking-widest">{streakTitle}</div>
+                                        <div className={`text-[10px] font-black uppercase mt-1 tracking-widest ${isMatchDay ? 'text-yellow-400' : 'text-blue-400'}`}>{isMatchDay ? '🔥 MATCH DAY' : streakTitle}</div>
                                         <div className="text-[9px] text-slate-300 font-medium italic mt-1.5 opacity-90 leading-tight">"{getMotivationalQuote()}"</div>
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
@@ -507,13 +512,36 @@
 
                             {isSuspended && <div className="mt-4 bg-red-600 text-white p-3 rounded-2xl flex items-center gap-3 animate-pulse border border-red-400 shadow-lg"><Icon name="alert" size={24}/><div className="text-[10px] font-black uppercase">Você está Suspenso para o próximo jogo oficial!</div></div>}
                             
+                            {/* INTELIGÊNCIA RTP TRANSPARENTE (Melhoria 1) */}
                             {activeDm && (
-                                <div className="mt-3 bg-red-900/50 text-white p-3 rounded-2xl flex items-center gap-3 border border-red-500 shadow-lg">
-                                    <Icon name="medkit" size={24} className="text-red-400"/>
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase text-red-200">Departamento Médico</div>
-                                        <div className="text-[10px] font-bold text-white">Há {daysInDm} dia(s) em tratamento ({activeDm.location}).</div>
+                                <div className="mt-4 bg-red-950/80 text-white p-4 rounded-3xl flex flex-col gap-3 border-2 border-red-500/50 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-red-600 rounded-bl-full opacity-20"></div>
+                                    <div className="flex items-center gap-3 border-b border-red-500/30 pb-3 relative z-10">
+                                        <div className="bg-red-500/20 p-2 rounded-full"><Icon name="medkit" size={24} className="text-red-400"/></div>
+                                        <div>
+                                            <div className="text-[12px] font-black uppercase text-red-200 tracking-wider">Departamento Médico</div>
+                                            <div className="text-[10px] font-bold text-red-100 opacity-80">Tratamento dia {daysInDm} ({activeDm.location})</div>
+                                        </div>
                                     </div>
+                                    {(() => {
+                                        const phaseId = parseInt(activeDm.rtpPhase) || 1;
+                                        const phase = RTP_PHASES.find(p => p.id === phaseId) || RTP_PHASES[0];
+                                        const pct = (phaseId / 9) * 100;
+                                        return (
+                                            <div className="pt-1 relative z-10">
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{phase.label}</span>
+                                                    <span className="text-[9px] font-bold text-red-300 bg-red-900/50 px-2 py-0.5 rounded border border-red-800">{Math.round(pct)}% Progresso</span>
+                                                </div>
+                                                <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden mb-3 border border-red-900">
+                                                    <div className="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-1000 shadow-[0_0_10px_rgba(239,68,68,0.8)]" style={{width: `${pct}%`}}></div>
+                                                </div>
+                                                <div className="text-[10px] text-red-100 leading-tight bg-red-900/30 p-3 rounded-xl border border-red-500/20">
+                                                    <strong className="text-red-400 block mb-1">FOCO DA FASE ATUAL:</strong> {phase.desc}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -521,6 +549,18 @@
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-40">
                             {tab === 'workout' && (
                                 <div className="space-y-4 animate-fade-in">
+                                    
+                                    {/* INTELIGÊNCIA SOS (Melhoria 4) */}
+                                    {isSOS && viewMode !== 'review' && (
+                                        <div className="bg-red-600 text-white p-4 rounded-3xl flex items-start gap-3 animate-pulse border-2 border-red-400 shadow-[0_0_20px_rgba(220,38,38,0.6)]">
+                                            <div className="bg-white/20 p-2 rounded-full shrink-0"><Icon name="alert" size={24}/></div>
+                                            <div>
+                                                <div className="text-xs font-black uppercase tracking-widest mb-1">🚨 Nível Crítico Detectado</div>
+                                                <div className="text-[10px] font-bold opacity-90 leading-tight">Os seus índices de fadiga, dor ou sono estão em alerta máximo hoje. <strong>Procure a fisiologia imediatamente ao chegar no clube antes de iniciar qualquer atividade.</strong></div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col items-center shadow-inner">
                                             <Icon name="ball" className="text-yellow-500 mb-1" size={20}/>
@@ -555,26 +595,23 @@
                                             </div>
                                         </div>
                                     )}
-{/* --- INÍCIO: VÍDEO INDIVIDUAL DO ATLETA --- */}
-{p.videoUrl && viewMode !== 'review' && (
-    <div className="bg-red-900/20 border border-red-800/50 p-4 rounded-3xl flex flex-col gap-3 shadow-lg relative overflow-hidden mt-4">
-        <div className="absolute top-0 left-0 w-2 h-full bg-red-600"></div>
-        <div className="flex items-center gap-2 mb-1">
-            <Icon name="play" size={18} className="text-red-500"/>
-            <h3 className="text-[10px] font-black text-red-500 uppercase tracking-wider">Análise Individual (Seu Feedback)</h3>
-        </div>
-        <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-red-500/30 relative z-50 shadow-inner">
-            {renderVideoElement(p.videoUrl)}
-        </div>
-        <p className="text-[9px] text-red-400/80 font-bold uppercase italic tracking-widest text-center mt-1">
-            Exclusivo: Enviado pelo professor
-        </p>
-    </div>
-)}
-{/* --- FIM: VÍDEO INDIVIDUAL DO ATLETA --- */}
+                                    {p.videoUrl && viewMode !== 'review' && (
+                                        <div className="bg-red-900/20 border border-red-800/50 p-4 rounded-3xl flex flex-col gap-3 shadow-lg relative overflow-hidden mt-4">
+                                            <div className="absolute top-0 left-0 w-2 h-full bg-red-600"></div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Icon name="play" size={18} className="text-red-500"/>
+                                                <h3 className="text-[10px] font-black text-red-500 uppercase tracking-wider">Análise Individual (Seu Feedback)</h3>
+                                            </div>
+                                            <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-red-500/30 relative z-50 shadow-inner">
+                                                {renderVideoElement(p.videoUrl)}
+                                            </div>
+                                            <p className="text-[9px] text-red-400/80 font-bold uppercase italic tracking-widest text-center mt-1">Exclusivo: Enviado pelo professor</p>
+                                        </div>
+                                    )}
+
                                     <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3 relative shadow-inner">
-                                        <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">💧 Hidratação Diária</h3><span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{water.toFixed(2)}L / 3.0L</span></div>
-                                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${Math.min(100, (water/3)*100)}%`}}></div></div>
+                                        <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">💧 Hidratação Diária</h3><span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{water.toFixed(2)}L / {waterGoal.toFixed(1)}L</span></div>
+                                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${Math.min(100, (water/waterGoal)*100)}%`}}></div></div>
                                         <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
                                     </div>
 
