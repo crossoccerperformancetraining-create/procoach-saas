@@ -551,6 +551,44 @@
             return (<div className="relative flex items-center justify-center" style={{width:size,height:size}}><svg width={size} height={size} viewBox="0 0 80 80" className="rotate-[-90deg]"><circle cx="40" cy="40" r={r} className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8" fill="transparent"/><circle cx="40" cy="40" r={r} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={c} strokeDashoffset={o||0} strokeLinecap="round" style={{transition:'stroke-dashoffset 0.5s'}}/></svg><div className="absolute flex flex-col items-center"><span className="text-xl font-bold text-slate-700 dark:text-slate-200">{value}</span>{label&&<span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500">{label}</span>}</div></div>);
         };
 
+  const LineChart = ({ data, color, height = 50 }) => {
+            if (!data || data.length === 0) return null;
+            const max = Math.max(...data, 100);
+            const min = Math.min(...data, 0);
+            const range = max - min || 1;
+            const w = 100 / Math.max(data.length - 1, 1);
+            const points = data.map((val, i) => `${i * w},${100 - (((val - min) / range) * 100)}`).join(' ');
+            return (
+                <div className="w-full relative" style={{ height: `${height}px` }}>
+                    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                        <polyline fill="none" stroke={color} strokeWidth="3" points={points} strokeLinejoin="round" strokeLinecap="round" className="drop-shadow-md" />
+                        {data.map((val, i) => (
+                            <circle key={i} cx={i * w} cy={100 - (((val - min) / range) * 100)} r="2" fill="white" stroke={color} strokeWidth="1" />
+                        ))}
+                    </svg>
+                </div>
+            );
+        };      
+        const renderVideoElement = (url) => {
+            if(!url) return null;
+            let ytId = null;
+            const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i;
+            const match = url.match(ytRegex);
+            if(match && match[1]) ytId = match[1];
+
+            if(ytId) {
+                return <iframe src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full pointer-events-auto rounded-xl"></iframe>;
+            }
+            if(url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.mov')) {
+                return <video src={url} controls className="w-full h-full object-cover pointer-events-auto rounded-xl" playsInline></video>;
+            }
+            return (
+                <div className="flex flex-col items-center justify-center h-full bg-slate-900 gap-2 p-6 text-center pointer-events-auto rounded-xl border border-slate-700">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Este vídeo abre no navegador</span>
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-black flex gap-2 items-center transition-colors shadow-lg mt-2"><Icon name="play" size={14}/> ABRIR VÍDEO</a>
+                </div>
+            );
+        };
         const LoginScreen = ({ onLogin }) => {
             const [email, setEmail] = useState('crossoccerperformancetraining@gmail.com');
             const [password, setPassword] = useState('');
@@ -854,6 +892,9 @@
             let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
             const avgLoad = (chronicLoad + todayLoad) / 7;
             
+            // DADOS PARA O GRÁFICO (Últimos 14 dias)
+            const loadHistoryLine = getDatesInRange(today, 14).reverse().map(d => getLoad(d));
+            
             let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
             let loadColor = "text-green-500";
             
@@ -870,49 +911,15 @@
                 return null;
             };
 
-            const generateShareCard = async () => {
-                const el = document.getElementById('export-card-' + playerIndex);
-                if(!el) return;
-                
-                el.style.left = '0'; el.style.top = '0'; el.style.position = 'absolute'; el.style.zIndex = '9999';
-                const originalBg = el.style.backgroundColor;
-                el.style.backgroundColor = '#0f172a'; 
-                
-                showToast("Gerando card...");
-                
-                try {
-                    const canvas = await html2canvas(el, {
-                        scale: 2, 
-                        useCORS: true, 
-                        backgroundColor: '#0f172a',
-                        logging: false
-                    });
-                    
-                    canvas.toBlob(blob => {
-                        smartShare(blob, `card_${player.name.replace(/\s+/g, '_')}.png`, `Status - ${player.name}`);
-                        el.style.left = '-9999px'; el.style.top = '-9999px';
-                        el.style.backgroundColor = originalBg;
-                    });
-                } catch(e) {
-                    showToast("Erro ao gerar card");
-                    el.style.left = '-9999px'; el.style.top = '-9999px';
-                    el.style.backgroundColor = originalBg;
-                }
-            };
-
             const copyAthleteLink = () => {
                 const user = firebase.auth().currentUser;
                 if(user) {
-                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${user.uid}&p=${playerIndex}`;
+                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(link).then(() => {
                             showToast("Link copiado! Envie no WhatsApp.");
-                        }).catch(() => {
-                            alert("Copie este link e mande pro atleta:\n" + link);
-                        });
-                    } else {
-                        alert("Copie este link e mande pro atleta:\n" + link);
-                    }
+                        }).catch(() => alert("Copie este link:\n" + link));
+                    } else { alert("Copie este link:\n" + link); }
                 }
             };
 
@@ -922,7 +929,6 @@
             return (
                 <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
-                        
                         <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
                             <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
                             <div className="w-32 h-32 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
@@ -932,9 +938,21 @@
                                 <button onClick={toggleInjury} className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
                             </div>
                         </div>
-                        
                         <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll">
                             
+                            {/* NOVO: GRÁFICO DE GPS VIRTUAL */}
+                            <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-inner">
+                                <div className="flex justify-between items-end mb-4">
+                                    <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                                        <Icon name="barChart" size={14} className="text-blue-500"/> GPS Virtual (14 Dias)
+                                    </h3>
+                                    <span className="text-[9px] font-bold text-slate-400">sRPE</span>
+                                </div>
+                                <div className="mt-2 w-full px-2">
+                                    <LineChart data={loadHistoryLine} color={themeColor} height={50} />
+                                </div>
+                            </div>
+
                             <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 p-4 shadow-inner">
                                 <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-600 pb-2">
                                     <Icon name="brain" className={loadColor} size={18}/>
@@ -942,64 +960,20 @@
                                 </div>
                                 <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{loadMsg}</div>
                             </div>
-
                             <HistoryAI />
-                            
                             <div>
                                 <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="smile"/> Status ({formatDateBR(today)})</h3>
                                 <div className="grid grid-cols-2 gap-4">{Object.entries({Sono:wellness.sleep,Estresse:wellness.stress,Fadiga:wellness.fatigue,Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(<div key={k} className="bg-slate-50 dark:bg-slate-700 p-2 rounded border border-slate-100 dark:border-slate-600"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-500 dark:text-slate-400">{k}</span><span className="dark:text-white">{v||'-'}</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div></div></div>))}</div>
                             </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="list"/> Histórico de Dores & Carga (sRPE)</h3>
-                                <div className="bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-100 dark:border-slate-600 overflow-hidden max-h-64 overflow-y-auto custom-scroll"><table className="w-full text-xs"><thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 sticky top-0"><tr><th className="p-2 text-left">Data</th><th className="p-2 text-center">Local Dor</th><th className="p-2 text-center">Carga sRPE</th></tr></thead><tbody>{dates.map(d=>{const l=logs[d]?.[playerIndex]||{};const t=calcDailyLoad(l);const pz=Array.isArray(l.painZones) && l.painZones.length>0 ? l.painZones : null;return(<tr key={d} className="border-t border-slate-100 dark:border-slate-600"><td className="p-2 font-bold text-slate-600 dark:text-slate-300">{formatDateBR(d)}</td><td className="p-2 text-center">{pz ? <div className="flex flex-wrap gap-1 justify-center">{pz.map(z=><span key={z} className="bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-red-200 dark:border-red-800">{z}</span>)}</div> : <span className="text-slate-300 dark:text-slate-500">-</span>}</td><td className="p-2 text-center font-bold text-blue-600 dark:text-blue-400">{t||'-'}</td></tr>)})}</tbody></table></div>
-                            </div>
-                            
                             <div className="flex flex-col gap-2 mt-4">
-                                <button onClick={generateShareCard} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="share"/> GERAR CARD (WHATSAPP)</button>
                                 <button onClick={copyAthleteLink} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg"><Icon name="copy"/> COPIAR LINK DO APP DO ATLETA</button>
                             </div>
-                        </div>
-                    </div>
-
-                    <div id={`export-card-${playerIndex}`} className="fixed z-[-1] bg-slate-900" style={{left:'-9999px', top: '-9999px', width: '400px', backgroundColor: '#0f172a'}}>
-                        <div className="p-6 rounded-3xl border-4 border-slate-700 text-white flex flex-col items-center relative overflow-hidden" style={{backgroundColor: '#0f172a'}}>
-                            <div className="absolute top-0 left-0 w-full h-32 opacity-50" style={{background:`linear-gradient(to bottom, ${themeColor}, transparent)`}}></div>
-                            <div className="w-32 h-32 rounded-full border-4 border-slate-800 bg-slate-800 shadow-2xl mb-4 overflow-hidden z-10 relative">
-                                {player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-500"><Icon name="user" size={40}/></div>}
-                            </div>
-                            <h2 className="text-3xl font-black uppercase z-10 mb-1 text-white">{player.name}</h2>
-                            <p className="text-slate-400 font-bold z-10 mb-6 tracking-widest">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
-                            
-                            <div className="w-full bg-slate-800 rounded-xl p-4 mb-4 border border-slate-700 flex justify-between items-center z-10 shadow-inner" style={{backgroundColor: '#1e293b'}}>
-                                <div className="text-center">
-                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Wellness Index</div>
-                                    <div className={`text-3xl font-black ${wColor}`}>{totalW > 0 ? totalW : '-'}</div>
-                                </div>
-                                <div className="h-10 w-px bg-slate-700"></div>
-                                <div className="text-center">
-                                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Carga Hoje</div>
-                                    <div className="text-3xl font-black text-blue-400">{todayLoad || '-'}</div>
-                                </div>
-                            </div>
-                            
-                            <div className="w-full bg-slate-800 rounded-xl p-4 border border-slate-700 z-10" style={{backgroundColor: '#1e293b'}}>
-                                <div className="flex items-center gap-2 mb-2 border-b border-slate-700 pb-2">
-                                    <Icon name="brain" className={loadColor.replace('text-', 'text-')} size={16}/>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{color: loadColor === 'text-red-500' ? '#ef4444' : '#eab308'}}>{loadMsg}</span>
-                                </div>
-                                <div className="text-sm text-slate-300 leading-snug">
-                                    {totalW >= 25 ? "Alerta Crítico: Risco de Burnout ou Lesão." : totalW >= 18 ? "Atenção: Fadiga acumulada. Recuperação sugerida." : "Prontidão Alta: Atleta em boas condições."}
-                                    {Array.isArray(currentLog.painZones) && currentLog.painZones.length > 0 && <span className="block mt-1 text-red-400 font-bold text-xs">Dores: {currentLog.painZones.join(', ')}</span>}
-                                </div>
-                            </div>
-                            <div className="mt-4 text-[9px] text-slate-500 font-bold tracking-widest uppercase">Gerado por ProCoach Nuvem</div>
                         </div>
                     </div>
                 </div>
             );
         };
-
-      const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+     const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
             const [viewProfile, setViewProfile] = useState(null);
             const [editPlayer, setEditPlayer] = useState(null); 
             const today = getTodayStr(); 
@@ -1009,7 +983,7 @@
                 const newPlayers = [...safePlayers, { name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
                 setPlayers(newPlayers);
                 const user = firebase.auth().currentUser;
-                if (user) db.collection('coachData').doc(user.uid).update({ players: newPlayers });
+                if (user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ players: newPlayers });
             };
 
             const fileInputRef = useRef(null); 
@@ -1018,6 +992,68 @@
             const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
             const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
             
+            const generateExecutiveDossier = () => {
+                showToast("Gerando Dossiê Executivo...", "#3b82f6");
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFontSize(22);
+                doc.setTextColor(30, 58, 138); 
+                doc.text("DOSSIE EXECUTIVO DE PERFORMANCE", 14, 20);
+                
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Gerado em: ${formatDateBR(today)}`, 14, 28);
+                doc.line(14, 32, 196, 32);
+
+                const dms = safePlayers.filter(p => p && p.injured);
+                doc.setFontSize(14);
+                doc.setTextColor(220, 38, 38);
+                doc.text(`DEPARTAMENTO MEDICO: ${dms.length} atleta(s)`, 14, 45);
+                doc.setFontSize(10);
+                doc.setTextColor(50, 50, 50);
+                let y = 52;
+                if(dms.length === 0) { doc.text("- Nenhum atleta no DM atualmente. Elenco 100% livre.", 14, y); y+=8; }
+                else {
+                    dms.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
+                    y+=4;
+                }
+
+                const scorers = [...safePlayers].filter(p => p && p.stats && p.stats.g > 0).sort((a,b) => b.stats.g - a.stats.g).slice(0,5);
+                doc.setFontSize(14);
+                doc.setTextColor(34, 197, 94);
+                doc.text("DESTAQUES (ARTILHARIA)", 14, y+5);
+                y += 12;
+                doc.setFontSize(10);
+                doc.setTextColor(50, 50, 50);
+                if(scorers.length === 0) { doc.text("- Sem dados de gols registrados na plataforma.", 14, y); y+=8; }
+                else {
+                    scorers.forEach(p => { doc.text(`- ${p.name}: ${p.stats.g} gol(s)`, 14, y); y += 6; });
+                    y+=4;
+                }
+
+                doc.setFontSize(14);
+                doc.setTextColor(234, 179, 8);
+                doc.text("SINTESE DE CARGA (RISCO DE LESAO)", 14, y+5);
+                y += 12;
+                doc.setFontSize(10);
+                doc.setTextColor(50, 50, 50);
+                const risks = safePlayers.filter((p, i) => getWeeklyLoad(i) >= 80);
+                if(risks.length === 0) {
+                    doc.text("- Nenhum atleta em zona critica de sobrecarga (ACWR controlado).", 14, y);
+                } else {
+                    doc.text(`Atletas necessitando de controle de carga: ${risks.length}`, 14, y);
+                    y += 6;
+                    risks.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
+                }
+
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text("ProCoach MAX - Sistema de Inteligencia Esportiva", 105, 290, null, null, "center");
+
+                doc.save(`Dossie_Executivo_ProCoach_${today}.pdf`);
+            };
+
             const Editor = () => { 
                 if(editPlayer === null) return null; 
                 const p = safePlayers[editPlayer]; 
@@ -1060,7 +1096,6 @@
                                     </div>
                                 </div>
                                 
-                                {/* ESTATÍSTICAS RESTAURADAS */}
                                 <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
@@ -1072,7 +1107,6 @@
                                     </div>
                                 </div>
                                 
-                                {/* BOTÕES DE DESTAQUE E SUSPENSÃO RESTAURADOS */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
                                         <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
@@ -1108,10 +1142,16 @@
                             <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
                                 <Icon name="plus" size={14}/> Adicionar Atleta
                             </button>
+                            <button onClick={generateExecutiveDossier} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest hidden md:flex">
+                                <Icon name="download" size={14}/> GerAR DOSSIÊ (PDF)
+                            </button>
                         </div>
                         <div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
                             <Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}
                         </div>
+                        <button onClick={generateExecutiveDossier} className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg transition-all uppercase tracking-widest md:hidden">
+                            <Icon name="download" size={14}/> Gerar Dossiê da Diretoria (PDF)
+                        </button>
                     </div>
                     
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
@@ -1304,6 +1344,32 @@
                 return { percentage, statusColor, statusText, avgLoadPerAtleta };
             }, [trainingLog, monitorDate, safePs]);
 
+            // INTELIGÊNCIA ACWR: Painel Consolidado do Elenco
+            const acwrGroups = useMemo(() => {
+                const groups = { danger: [], optimal: [], under: [] };
+                safePs.forEach((p, i) => {
+                    if(!p || p.injured) return;
+                    const chronicDates = getDatesInRange(monitorDate, 28);
+                    let acuteLoad = 0; let chronicLoadTotal = 0;
+                    chronicDates.forEach((d, index) => {
+                        const dailyL = calcDailyLoad(trainingLog[d]?.[i]);
+                        if(dailyL > 0) { 
+                            chronicLoadTotal += dailyL; 
+                            if(index < 7) acuteLoad += dailyL; 
+                        }
+                    });
+                    const acwrVal = (chronicLoadTotal/4) > 0 ? parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2)) : 0;
+                    if(acwrVal === 0) return; // Ignora quem não tem dados suficientes
+
+                    const pData = { ...p, idx: i, acwr: acwrVal };
+                    
+                    if (acwrVal >= 1.5) groups.danger.push(pData);
+                    else if (acwrVal >= 0.8 && acwrVal < 1.5) groups.optimal.push(pData);
+                    else if (acwrVal > 0 && acwrVal < 0.8) groups.under.push(pData);
+                });
+                return groups;
+            }, [trainingLog, monitorDate, safePs]);
+
             const activePlayersIndices = [];
             safePs.forEach((p, i) => { if(p && safeObj(dailyData[i]?.wellness).sleep) activePlayersIndices.push(i); });
             
@@ -1322,7 +1388,8 @@
 
             const copySummary = () => {
                 const dms = players.filter(p => p && p.injured).map(p => p.name).join(', ') || 'Nenhum';
-                const text = `📊 *Resumo de Performance*\n🗓️ Data: ${formatDateBR(monitorDate)}\n\n📈 *Carga Média do Elenco:* ${pseAvgRaw} sRPE\n⚠️ *Atletas no DM (${dmCount}):* ${dms}`;
+                const risco = acwrGroups.danger.map(p => p.name).join(', ') || 'Nenhum';
+                const text = `📊 *Resumo de Performance*\n🗓️ Data: ${formatDateBR(monitorDate)}\n\n📈 *Carga Média:* ${pseAvgRaw} sRPE\n⚠️ *Atletas em Risco (ACWR > 1.5):* ${risco}\n🏥 *Atletas no DM (${dmCount}):* ${dms}`;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(() => showToast("Resumo copiado para o WhatsApp!", "#10b981")).catch(()=> alert(text));
                 } else {
@@ -1333,8 +1400,11 @@
             const updateMinutes = (pIdx, val) => { 
                 const newMins = {...matchMinutes}; 
                 if(!newMins[monitorDate]) newMins[monitorDate] = {}; 
-                newMins[monitorDate][pIdx] = parseInt(val) || 0; 
-                setMatchMinutes(newMins); 
+                newMins[monitorDate][pIdx] = { ...newMins[monitorDate][pIdx], mins: parseInt(val) || 0 }; 
+                setMatchMinutes(newMins);
+                const user = firebase.auth().currentUser;
+                const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
+                if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
             };
 
             const renderMatchReadinessAI = (pLog, mins, isInjured, inTransition, dehydrationLevel) => {
@@ -1362,6 +1432,28 @@
                             <button onClick={copySummary} className="ml-2 text-green-600 hover:text-green-500 transition-colors bg-green-100 dark:bg-green-900/30 p-1 rounded" title="Copiar Resumo Diário para WhatsApp">
                                 <Icon name="copy" size={14}/>
                             </button>
+                        </div>
+                    </div>
+
+                    {/* PAINEL CENTRAL ACWR (NOVIDADE) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
+                        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 p-4 rounded-xl shadow-sm relative overflow-hidden">
+                            <h3 className="text-red-600 dark:text-red-400 font-black uppercase text-[10px] mb-3 flex items-center gap-1"><Icon name="alert"/> Zona de Perigo (ACWR > 1.5)</h3>
+                            <div className="flex flex-wrap gap-1.5 relative z-10">
+                                {acwrGroups.danger.length > 0 ? acwrGroups.danger.map(p => <span key={p.idx} onClick={()=>setViewProfile(p.idx)} className="bg-red-600 hover:bg-red-500 cursor-pointer text-white text-[9px] font-bold px-2 py-1 rounded shadow">{p.name} ({p.acwr})</span>) : <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">Nenhum atleta em risco.</span>}
+                            </div>
+                        </div>
+                        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800/50 p-4 rounded-xl shadow-sm">
+                            <h3 className="text-green-600 dark:text-green-400 font-black uppercase text-[10px] mb-3 flex items-center gap-1"><Icon name="check"/> Zona Ótima (0.8 - 1.49)</h3>
+                            <div className="flex flex-wrap gap-1.5">
+                                {acwrGroups.optimal.length > 0 ? acwrGroups.optimal.map(p => <span key={p.idx} onClick={()=>setViewProfile(p.idx)} className="bg-green-600 hover:bg-green-500 cursor-pointer text-white text-[9px] font-bold px-2 py-1 rounded shadow">{p.name} ({p.acwr})</span>) : <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">Nenhum atleta nesta zona.</span>}
+                            </div>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800/50 p-4 rounded-xl shadow-sm">
+                            <h3 className="text-blue-600 dark:text-blue-400 font-black uppercase text-[10px] mb-3 flex items-center gap-1"><Icon name="arrowDown"/> Subtreinamento (&lt; 0.8)</h3>
+                            <div className="flex flex-wrap gap-1.5">
+                                {acwrGroups.under.length > 0 ? acwrGroups.under.map(p => <span key={p.idx} onClick={()=>setViewProfile(p.idx)} className="bg-blue-600 hover:bg-blue-500 cursor-pointer text-white text-[9px] font-bold px-2 py-1 rounded shadow">{p.name} ({p.acwr})</span>) : <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">Nenhum atleta destreinado.</span>}
+                            </div>
                         </div>
                     </div>
 
@@ -1445,7 +1537,6 @@
                 </div>
             );
         };
-
         const MedicalView = ({ players, setPlayers, dmRecords, setDmRecords, themeColor }) => {
             const [selectedPlayer, setSelectedPlayer] = useState('');
             const [injuryType, setInjuryType] = useState('Muscular');
