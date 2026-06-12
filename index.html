@@ -551,7 +551,7 @@
             return (<div className="relative flex items-center justify-center" style={{width:size,height:size}}><svg width={size} height={size} viewBox="0 0 80 80" className="rotate-[-90deg]"><circle cx="40" cy="40" r={r} className="stroke-slate-200 dark:stroke-slate-700" strokeWidth="8" fill="transparent"/><circle cx="40" cy="40" r={r} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={c} strokeDashoffset={o||0} strokeLinecap="round" style={{transition:'stroke-dashoffset 0.5s'}}/></svg><div className="absolute flex flex-col items-center"><span className="text-xl font-bold text-slate-700 dark:text-slate-200">{value}</span>{label&&<span className="text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500">{label}</span>}</div></div>);
         };
 
-  const LineChart = ({ data, color, height = 50 }) => {
+const LineChart = ({ data, color, height = 50 }) => {
             if (!data || data.length === 0) return null;
             const max = Math.max(...data, 100);
             const min = Math.min(...data, 0);
@@ -568,34 +568,91 @@
                     </svg>
                 </div>
             );
-        };      
-        const renderVideoElement = (url) => {
-            if(!url) return null;
-            let ytId = null;
-            const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i;
-            const match = url.match(ytRegex);
-            if(match && match[1]) ytId = match[1];
-
-            if(ytId) {
-                return <iframe src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full pointer-events-auto rounded-xl"></iframe>;
-            }
-            if(url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.mov')) {
-                return <video src={url} controls className="w-full h-full object-cover pointer-events-auto rounded-xl" playsInline></video>;
-            }
-            return (
-                <div className="flex flex-col items-center justify-center h-full bg-slate-900 gap-2 p-6 text-center pointer-events-auto rounded-xl border border-slate-700">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Este vídeo abre no navegador</span>
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-black flex gap-2 items-center transition-colors shadow-lg mt-2"><Icon name="play" size={14}/> ABRIR VÍDEO</a>
-                </div>
-            );
         };
+
         const LoginScreen = ({ onLogin }) => {
             const [email, setEmail] = useState('crossoccerperformancetraining@gmail.com');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
-            const handleLogin = (e) => { e.preventDefault(); setError(''); auth.signInWithEmailAndPassword(email, password).then(() => onLogin()).catch(err => { console.error(err); setError('Acesso negado. Verifique a senha.'); }); };
+            const [loading, setLoading] = useState(false);
+
+            const handleLogin = (e) => { 
+                e.preventDefault(); 
+                setError(''); 
+                setLoading(true);
+                auth.signInWithEmailAndPassword(email, password)
+                    .then(() => onLogin())
+                    .catch(err => { 
+                        console.error(err); 
+                        setError('Acesso negado. Verifique a senha.'); 
+                        setLoading(false);
+                    }); 
+            };
+
             return (
-                <div className="flex h-screen w-full items-center justify-center bg-slate-900 px-4 animate-fade-in"><div className="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-700"><div className="text-center mb-6"><h1 className="text-3xl font-black text-white italic tracking-wider"><span className="text-blue-500">PRO</span>COACH</h1><p className="text-slate-400 text-xs mt-1 uppercase font-bold">Cloud Sync Edition</p></div>{error && <div className="bg-red-500/20 border border-red-500 text-red-300 text-xs p-3 rounded-lg mb-4 text-center">{error}</div>}<form onSubmit={handleLogin} className="space-y-4"><div><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">E-mail</label><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg outline-none focus:border-blue-500 transition-colors" /></div><div><label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Senha</label><input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg outline-none focus:border-blue-500 transition-colors" /></div><button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition-colors mt-4">ENTRAR NO SISTEMA</button></form></div></div>
+                <div className="relative flex min-h-screen w-full items-center justify-center bg-slate-950 px-4 overflow-hidden font-sans">
+                    {/* IMAGEM DE FUNDO - ESTÁDIO PREMIUM */}
+                    <div className="absolute inset-0 z-0">
+                        <img src="https://images.unsplash.com/photo-1518605368461-1ee7c5320d7e?q=80&w=2000&auto=format&fit=crop" alt="Stadium" className="w-full h-full object-cover opacity-40" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-900/70 to-slate-950"></div>
+                    </div>
+
+                    {/* CAIXA DE LOGIN COM EFEITO VIDRO (GLASSMORPHISM) */}
+                    <div className="relative z-10 w-full max-w-md animate-fade-in">
+                        <div className="backdrop-blur-xl bg-slate-900/70 border border-slate-700/50 p-8 md:p-10 rounded-[32px] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center relative overflow-hidden">
+                            
+                            {/* LUZ DE FUNDO AZUL */}
+                            <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-30 pointer-events-none"></div>
+
+                            {/* LOGO */}
+                            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(37,99,235,0.6)] mb-6 border-4 border-slate-800 relative z-10">
+                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                            </div>
+                            
+                            <div className="text-center mb-8 w-full relative z-10">
+                                <h1 className="text-4xl md:text-5xl font-black text-white italic tracking-tighter mb-2 drop-shadow-lg"><span className="text-blue-500">PRO</span>COACH</h1>
+                                <div className="h-px w-16 bg-blue-500 mx-auto mb-3"></div>
+                                <p className="text-blue-300 text-[10px] md:text-xs uppercase font-bold tracking-[0.2em]">Software de Inteligência Esportiva</p>
+                            </div>
+
+                            {error && (
+                                <div className="w-full bg-red-500/20 border border-red-500/50 text-red-200 text-xs p-3 rounded-xl mb-6 text-center flex items-center justify-center gap-2 relative z-10">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    {error}
+                                </div>
+                            )}
+
+                            <form onSubmit={handleLogin} className="space-y-4 w-full relative z-10">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block tracking-wider">Usuário / E-mail</label>
+                                    <div className="relative">
+                                        <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-slate-950/50 border border-slate-700 text-white px-4 py-3.5 rounded-xl outline-none focus:border-blue-500 transition-all font-medium pl-11" />
+                                        <svg className="absolute left-4 top-4 text-slate-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 block tracking-wider">Chave de Acesso</label>
+                                    <div className="relative">
+                                        <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-slate-950/50 border border-slate-700 text-white px-4 py-3.5 rounded-xl outline-none focus:border-blue-500 transition-all font-medium pl-11" />
+                                        <svg className="absolute left-4 top-4 text-slate-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    </div>
+                                </div>
+                                <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all mt-6 uppercase tracking-widest flex justify-center items-center gap-2 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
+                                    {loading ? (
+                                        <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    ) : (
+                                        <>ENTRAR NO SISTEMA <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></>
+                                    )}
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div className="mt-8 text-center animate-fade-in" style={{animationDelay: '0.3s'}}>
+                            <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">V144 MAX Edition</p>
+                            <p className="text-[9px] text-slate-600 mt-1 uppercase font-bold">Acesso Restrito - Comissão Técnica</p>
+                        </div>
+                    </div>
+                </div>
             );
         };
 
@@ -610,7 +667,6 @@
                 </div>
             )
         };
-
         const SettingsModal = ({ show, onClose, themeColor, setThemeColor, header, setHeader, logo, setLogo, onExport, onImport }) => {
             if (!show) return null;
             const fileInputRef=useRef(null); const importInputRef=useRef(null);
