@@ -181,8 +181,12 @@
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        if(idx === null && !isNaN(playerIndex)) setIdx(playerIndex);
-                        setIsPriv(true);
+                        if(idx === null && !isNaN(playerIndex)) {
+                            setIdx(playerIndex);
+                            setIsPriv(true);
+                        } else if (isNaN(playerIndex)) {
+                            setIsPriv(false);
+                        }
                     }
                     setLoading(false);
                 }, () => { setLoading(false); });
@@ -338,7 +342,7 @@
 
             const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
-            const getRankingData = () => { 
+          const getRankingData = () => { 
                 const validPlayers = safeArray(data.players).filter(p => p); 
                 const playersMap = validPlayers.map((p, i) => { 
                     let streak = 0; let checkDate = new Date(); 
@@ -370,10 +374,9 @@
                 const fms = (Number(pAss.fms_total)||0) * 4.7; 
                 const force = (Number(pAss.squat_rm)||0); 
                 const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); 
-                const tech = Number(pAss.scout_tech) || 75;
+                const tech = Number(pAss.scout_tech) || 75; // Lê o Scout Técnico da Base se existir
                 return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: tech, endurance: Number(pAss.soccer_test) ? Math.min(99, Number(pAss.soccer_test)/30) : 70 }; 
             };
-
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
 
             const alertModalUI = showAlertPopup && (
@@ -1238,7 +1241,10 @@
                                     <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-center"><div className="text-[10px] font-bold text-slate-600 uppercase mb-1">Potencial</div><div className="text-2xl font-black text-blue-400">94</div></div>
                                 </div>
                             </div>
-                            <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl border border-slate-700">FECHAR PERFIL</button>
+                            <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl border border-slate-700 mb-2">FECHAR PERFIL</button>
+                            {!isPriv && (
+                                <button onClick={()=>{setShowProfile(false); setIdx(null); setStep(1);}} className="w-full bg-red-600/20 text-red-500 font-black py-4 rounded-2xl border border-red-500/50 flex items-center justify-center gap-2"><Icon name="logout" size={18}/> TROCAR DE ATLETA</button>
+                            )}
                         </div>
                     )}
 
