@@ -97,7 +97,7 @@
         ];
             const getActiveDocId = (uid) => {
             const team = localStorage.getItem('procoach_active_team') || 'pro';
-            return team === 'base' ? `${uid}_base` : uid;
+            return team === 'pro' ? uid : `${uid}_${team}`;
         };
     const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
             const [modalOpen, setModalOpen] = useState(false);
@@ -2824,12 +2824,30 @@ const renderVideoElement = (url) => {
                         <div className="flex gap-1 items-center">
                             
                             {/* CHAVEADOR DE ELENCOS DINÂMICO NA BARRA PRINCIPAL */}
-                            <div className="flex bg-slate-100 dark:bg-slate-700 rounded p-1 mr-2 border dark:border-slate-600">
-                                <button onClick={() => setActiveTeam('pro')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${activeTeam !== 'base' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
-                                    {header.labelPro || 'CSE (PRO)'}
+                            <div className="flex bg-slate-100 dark:bg-slate-700 rounded p-1 mr-2 border dark:border-slate-600 overflow-x-auto custom-scroll max-w-[45vw] md:max-w-none">
+                                <button onClick={() => setActiveTeam('pro')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTeam === 'pro' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
+                                    {header.labelPro || 'PRO'}
                                 </button>
-                                <button onClick={() => setActiveTeam('base')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${activeTeam === 'base' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
-                                    {header.labelBase || 'Base (AC)'}
+                                <button onClick={() => setActiveTeam('base')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTeam === 'base' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
+                                    {header.labelBase || 'BASE'}
+                                </button>
+                                
+                                {/* Renderiza as categorias adicionais (Sub-15, Sub-17, etc) */}
+                                {(header.extraTeams || []).map(team => (
+                                     <button key={team.id} onClick={() => setActiveTeam(team.id)} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTeam === team.id ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
+                                        {team.name}
+                                    </button>
+                                ))}
+                                
+                                {/* Botão para criar nova categoria */}
+                                <button onClick={() => {
+                                    const newName = prompt("Nome da Categoria (ex: Sub-17, Feminino):");
+                                    if(newName) {
+                                        const newId = newName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                        setHeader({...header, extraTeams: [...(header.extraTeams || []), {id: newId, name: newName}]});
+                                    }
+                                }} className="px-2 py-1 rounded text-[9px] font-black uppercase text-slate-400 hover:text-blue-500 transition-all whitespace-nowrap">
+                                    + CAT
                                 </button>
                             </div>
 
