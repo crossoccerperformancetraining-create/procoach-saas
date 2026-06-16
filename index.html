@@ -2887,11 +2887,10 @@ const renderVideoElement = (url) => {
                             </div>
 
                             {/* PORTAL ATLETA DINÂMICO CONFORME O ELENCO ATIVO */}
-                            <button onClick={()=>window.open(`atleta.html?id=${getActiveDocId(user.uid)}`,'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
+                            <button onClick={()=>window.open(`atleta.html?id=${getActiveDocId(user.uid)}&view=coach`,'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
                                 <Icon name="user" size={14}/>
                                 <span className="hidden md:inline">Portal Atleta</span>
                             </button>
-                            
                             <button onClick={()=>setDarkMode(!darkMode)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700">{darkMode ? <Icon name="sun" size={20}/> : <Icon name="moon" size={20}/>}</button>
                             <button onClick={()=>setShowSettings(true)} className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700"><Icon name="settings" size={24}/></button>
                             <button onClick={()=>auth.signOut().then(() => window.location.reload())} className="p-2 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30"><Icon name="logout" size={20}/></button>
