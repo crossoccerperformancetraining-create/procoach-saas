@@ -50,15 +50,14 @@
             document.getElementById('botao-tecnico').style.display = 'block';
         }
     </script>
-
-<script>
-    // Inteligência: Só mostra o botão se a URL tiver o código secreto do treinador
-    if (window.location.href.includes('view=coach')) {
-        document.getElementById('botao-tecnico').style.display = 'block';
-    }
-</script>
-        
-        const urlParams = new URLSearchParams(window.location.search);
+<div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-3 rounded-full shadow-2xl z-[9999] hidden text-xs font-bold text-center"></div>
+    <div id="root" class="h-full w-full flex flex-col"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130" };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+              const urlParams = new URLSearchParams(window.location.search);
         const rawCoachId = urlParams.get('id'); 
         const playerIndex = parseInt(urlParams.get('p')); 
         const activeCoachDocId = rawCoachId;
