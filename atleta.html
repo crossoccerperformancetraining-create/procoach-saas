@@ -46,10 +46,22 @@
     </button>
 </div>
     
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
-        const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130", storageBucket: "prosaude-e9130.firebasestorage.app", messagingSenderId: "999318121562", appId: "1:999318121562:web:1f192d4c0f14a64fb57c63" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+    <div id="botao-tecnico" style="position: absolute; top: 16px; left: 16px; z-index: 9999; display: none;">
+    <button onclick="window.location.href='index.html'" style="background: #1e293b; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #475569; cursor: pointer; font-size: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); transition: background 0.3s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1e293b'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        PAINEL TÉCNICO
+    </button>
+</div>
+
+<script>
+    // Inteligência: Só mostra o botão se a URL tiver o código secreto do treinador
+    if (window.location.href.includes('view=coach')) {
+        document.getElementById('botao-tecnico').style.display = 'block';
+    }
+</script>
         
         const urlParams = new URLSearchParams(window.location.search);
         const rawCoachId = urlParams.get('id'); 
