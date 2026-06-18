@@ -99,6 +99,42 @@
             const team = localStorage.getItem('procoach_active_team') || 'pro';
             return team === 'pro' ? uid : `${uid}_${team}`;
         };
+
+        const AnalysisModal = ({ day, onClose, onUpdate }) => {
+            const [analysisData, setAnalysisData] = useState({ timeTarget: day.plannedMins || '', pseTarget: day.pseTarget || '' });
+
+            const handleSave = () => {
+                onUpdate(day.id, analysisData);
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+                    <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" onClick={e=>e.stopPropagation()}>
+                        <h3 className="text-xl font-black text-white uppercase mb-6 flex items-center gap-2">
+                            <Icon name="brain" className="text-blue-400"/> Análise {day.name}
+                        </h3>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">Tempo Alvo Máx</p>
+                                <input type="number" className="bg-transparent text-xl font-black text-white outline-none w-full" value={analysisData.timeTarget} onChange={(e) => setAnalysisData({...analysisData, timeTarget: e.target.value})} placeholder="0 min" />
+                            </div>
+                            <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">PSE Alvo (1-10)</p>
+                                <input type="number" className={`text-xl font-black outline-none w-full bg-transparent ${analysisData.pseTarget > 8 ? 'text-red-500' : 'text-white'}`} value={analysisData.pseTarget} onChange={(e) => setAnalysisData({...analysisData, pseTarget: e.target.value})} placeholder="0" />
+                            </div>
+                        </div>
+
+                        <div className={`mb-6 p-3 rounded-lg text-[11px] font-bold ${analysisData.timeTarget > 120 || analysisData.pseTarget > 8 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                            {analysisData.timeTarget > 120 || analysisData.pseTarget > 8 ? '⚠️ ALERTA: Carga muito alta. Risco de fadiga elevado!' : '✅ Volume e intensidade dentro dos parâmetros.'}
+                        </div>
+
+                        <button onClick={handleSave} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700">SALVAR E FECHAR</button>
+                    </div>
+                </div>
+            );
+        };
     const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
             const [modalOpen, setModalOpen] = useState(false);
             const [aiModal, setAiModal] = useState(null);
