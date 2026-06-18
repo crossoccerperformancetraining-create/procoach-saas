@@ -1645,8 +1645,12 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     </div>
                                     <div className="flex justify-between mt-1 border-t dark:border-slate-700 pt-2 items-center">
                                         <div className="text-[10px] text-slate-400 font-bold">sRPE: <span className="text-slate-700 dark:text-slate-200 text-lg">{totalDaily || '-'}</span></div>
-                                        {renderMatchReadinessAI(pLog, minsLast7, p.injured, inTransition, dehydration)}
-                                        <div onClick={(e)=>e.stopPropagation()} className="flex items-center gap-1 z-10"><span className="text-[9px] font-bold text-slate-400 uppercase">Min Jogo:</span><input type="number" className="w-12 p-1 border dark:border-slate-600 rounded text-xs text-center dark:bg-slate-700 dark:text-white outline-none" value={matchMinutes?.[monitorDate]?.[i]?.mins || matchMinutes?.[monitorDate]?.[i] || ''} onChange={e=>updateMinutes(i, e.target.value)} /></div>
+                                      {renderMatchReadinessAI(pLog, minsLast7, p.injured, inTransition, dehydration)}
+                                        <div className="flex items-center gap-1.5 z-10 bg-slate-100 dark:bg-slate-700 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm" title="Puxado automaticamente do GameDay">
+                                            <Icon name="activity" size={12} className="text-blue-500" />
+                                            <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">Carga (7d):</span>
+                                            <span className={`text-xs font-black ${minsLast7 >= 90 ? 'text-red-500' : 'text-slate-700 dark:text-white'}`}>{minsLast7}m</span>
+                                        </div>
                                     </div>
                                 </div>
                             ); 
