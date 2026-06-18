@@ -2514,9 +2514,8 @@ const renderVideoElement = (url) => {
             );
         };
        
-  const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user }) => {
-      const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate }) => {
-            const safePlayers = Array.isArray(players) ? players : [];
+const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate }) => {
+            const safePlayers = Array.isArray(players) ? players.filter(p => p) : [];
             const [fieldPlayers, setFieldPlayers] = useState([]);
             const [bench, setBench] = useState(safePlayers.filter(p => !p.injured).map((p,i)=>({ ...p, idx: i })));
             const [isExporting, setIsExporting] = useState(false);
@@ -2581,47 +2580,76 @@ const renderVideoElement = (url) => {
                     <button onClick={onClose} className="md:hidden absolute top-4 right-4 bg-slate-800 text-white p-2 rounded-full z-50"><Icon name="x"/></button>
 
                     <div className="flex-1 flex flex-col items-center justify-center overflow-hidden">
-                        <div id="export-pitch-area" className="w-full max-w-md bg-slate-900 rounded-2xl border-4 p-4 shadow-2xl relative" style={{borderColor: themeColor}}>
+                        <div id="export-pitch-area" className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-5 shadow-2xl relative" style={{borderColor: themeColor}}>
                             
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-5">
                                 <div>
-                                    <h2 className="text-white font-black text-xl uppercase italic">Match Day</h2>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase">vs {opponent || 'Adversário'} | {formatDateBR(matchDate)}</p>
+                                    <h2 className="text-white font-black text-2xl uppercase italic">Match Day</h2>
+                                    <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">vs {opponent || 'Adversário'} | {formatDateBR(matchDate)}</p>
                                 </div>
                                 <div className="text-right">
-                                    <h3 className="text-white font-black text-lg uppercase" style={{color: themeColor}}>Starting XI</h3>
+                                    <h3 className="font-black text-xl uppercase tracking-widest" style={{color: themeColor}}>Starting XI</h3>
                                 </div>
                             </div>
 
+                            {/* CAMPO DE FUTEBOL REALISTA */}
                             <div 
                                 onDragOver={e => e.preventDefault()} 
                                 onDrop={handleDropOnField} 
-                                className="w-full aspect-[3/4] bg-emerald-700 border-2 border-white/40 relative overflow-hidden rounded-md"
+                                className="w-full aspect-[2/3] bg-[#1a6636] relative overflow-hidden rounded-lg shadow-inner"
+                                style={{
+                                    backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 10%, rgba(0,0,0,0.06) 10%, rgba(0,0,0,0.06) 20%)'
+                                }}
                             >
-                                {/* Marcações do Campo */}
-                                <div className="absolute top-1/2 left-0 w-full h-px bg-white/40 -translate-y-1/2"></div>
-                                <div className="absolute top-1/2 left-1/2 w-20 h-20 border-2 border-white/40 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-                                <div className="absolute top-0 left-1/2 w-32 h-16 border-2 border-white/40 -translate-x-1/2"></div>
-                                <div className="absolute bottom-0 left-1/2 w-32 h-16 border-2 border-white/40 -translate-x-1/2"></div>
+                                {/* Linha Lateral (Bordas) */}
+                                <div className="absolute inset-3 border-[3px] border-white/70 pointer-events-none"></div>
+                                
+                                {/* Linha Central */}
+                                <div className="absolute top-1/2 left-3 right-3 h-[3px] bg-white/70 -translate-y-1/2 pointer-events-none"></div>
+                                
+                                {/* Círculo Central */}
+                                <div className="absolute top-1/2 left-1/2 w-24 h-24 border-[3px] border-white/70 rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                                
+                                {/* Grande Área Top */}
+                                <div className="absolute top-3 left-1/2 w-3/5 h-[16%] border-[3px] border-white/70 border-t-0 -translate-x-1/2 pointer-events-none"></div>
+                                {/* Pequena Área Top */}
+                                <div className="absolute top-3 left-1/2 w-1/3 h-[6%] border-[3px] border-white/70 border-t-0 -translate-x-1/2 pointer-events-none"></div>
+                                {/* Meia Lua Top */}
+                                <div className="absolute top-[19%] left-1/2 w-16 h-8 border-[3px] border-white/70 rounded-b-full -translate-x-1/2 border-t-0 pointer-events-none"></div>
+                                
+                                {/* Grande Área Bottom */}
+                                <div className="absolute bottom-3 left-1/2 w-3/5 h-[16%] border-[3px] border-white/70 border-b-0 -translate-x-1/2 pointer-events-none"></div>
+                                {/* Pequena Área Bottom */}
+                                <div className="absolute bottom-3 left-1/2 w-1/3 h-[6%] border-[3px] border-white/70 border-b-0 -translate-x-1/2 pointer-events-none"></div>
+                                {/* Meia Lua Bottom */}
+                                <div className="absolute bottom-[19%] left-1/2 w-16 h-8 border-[3px] border-white/70 rounded-t-full -translate-x-1/2 border-b-0 pointer-events-none"></div>
 
-                                {/* Jogadores no Campo */}
+                                {/* Jogadores no Campo (COM NOVO DESIGN) */}
                                 {fieldPlayers.map(p => (
                                     <div 
                                         key={p.idx} 
                                         draggable 
                                         onDragStart={(e) => handleDragStart(e, p, true)}
-                                        className="absolute w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-lg cursor-grab active:cursor-grabbing -translate-x-1/2 -translate-y-1/2 z-10"
-                                        style={{ left: `${p.x}%`, top: `${p.y}%`, backgroundColor: themeColor }}
+                                        className="absolute flex flex-col items-center justify-center cursor-grab active:cursor-grabbing z-10 -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
+                                        style={{ left: `${p.x}%`, top: `${p.y}%` }}
                                     >
-                                        {p.number || p.name.substring(0,2).toUpperCase()}
-                                        <span className="absolute top-[110%] bg-black/60 px-1 rounded text-[8px] whitespace-nowrap">{p.name.split(' ')[0]}</span>
+                                        <div 
+                                            className="w-10 h-10 rounded-full border-[3px] border-white shadow-[0_4px_10px_rgba(0,0,0,0.5)] flex items-center justify-center text-sm font-black text-white overflow-hidden bg-cover bg-center" 
+                                            style={{ backgroundColor: themeColor, backgroundImage: p.image ? `url(${p.image})` : 'none' }}
+                                        >
+                                            {!p.image && (p.number || (p.name || 'X').substring(0,2).toUpperCase())}
+                                        </div>
+                                        <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider mt-[-6px] z-10 shadow-md border border-slate-700">
+                                            {(p.name || 'Atleta').split(' ')[0]}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    <div className="w-full md:w-80 bg-slate-800 rounded-3xl p-4 flex flex-col border border-slate-700 h-64 md:h-auto shrink-0">
+                    <div className="w-full md:w-80 bg-slate-800 rounded-3xl p-4 flex flex-col border border-slate-700 h-64 md:h-auto shrink-0 shadow-2xl">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-white font-black uppercase text-sm flex items-center gap-2"><Icon name="user"/> Elenco (Arraste)</h3>
                             <button onClick={onClose} className="hidden md:block bg-slate-700 hover:bg-slate-600 text-white p-1.5 rounded-full"><Icon name="x" size={16}/></button>
@@ -2630,7 +2658,7 @@ const renderVideoElement = (url) => {
                         <div 
                             onDragOver={e => e.preventDefault()} 
                             onDrop={handleDropOnBench}
-                            className="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 p-2 rounded-xl border border-slate-700 grid grid-cols-4 md:grid-cols-3 gap-3 content-start"
+                            className="flex-1 overflow-y-auto custom-scroll bg-slate-900/50 p-3 rounded-xl border border-slate-700 grid grid-cols-4 md:grid-cols-3 gap-4 content-start"
                         >
                             {bench.map(p => (
                                 <div 
@@ -2639,13 +2667,13 @@ const renderVideoElement = (url) => {
                                     onDragStart={(e) => handleDragStart(e, p, false)}
                                     className="flex flex-col items-center gap-1 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform"
                                 >
-                                    <div className="w-8 h-8 rounded-full border-2 border-slate-500 bg-slate-700 flex items-center justify-center text-white text-[10px] font-black shadow-md overflow-hidden">
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover pointer-events-none"/> : (p.number || p.name.substring(0,2).toUpperCase())}
+                                    <div className="w-10 h-10 rounded-full border-[3px] border-slate-500 bg-slate-700 flex items-center justify-center text-white text-xs font-black shadow-md overflow-hidden">
+                                        {p.image ? <img src={p.image} className="w-full h-full object-cover pointer-events-none"/> : (p.number || (p.name || 'X').substring(0,2).toUpperCase())}
                                     </div>
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase w-full text-center truncate">{p.name.split(' ')[0]}</span>
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase w-full text-center truncate">{(p.name || 'Atleta').split(' ')[0]}</span>
                                 </div>
                             ))}
-                            {bench.length === 0 && <div className="col-span-4 text-center text-[10px] text-slate-500 font-bold p-4">Todos em campo!</div>}
+                            {bench.length === 0 && <div className="col-span-4 text-center text-xs text-slate-500 font-bold p-4 mt-10">Todos em campo!</div>}
                         </div>
 
                         <button onClick={exportBoard} disabled={isExporting} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl mt-4 flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all text-xs">
@@ -2656,11 +2684,14 @@ const renderVideoElement = (url) => {
                 </div>
             );
         };
+
+    const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user }) => {
             const [matchDate, setMatchDate] = useState(getTodayStr());
             const [opponent, setOpponent] = useState('');
             const [homeScore, setHomeScore] = useState(0);
             const [awayScore, setAwayScore] = useState(0);
             const safePs = safeArray(players);
+            const [showTacticalBoard, setShowTacticalBoard] = useState(false);
 
             const updateStat = (pIdx, stat, val) => {
                 const newPs = [...safePs];
@@ -2739,14 +2770,21 @@ const renderVideoElement = (url) => {
             return (
                 <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 mb-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
-                                <Icon name="target"/> Relatório Pós-Jogo (Scout & Fisiologia)
-                            </h2>
+                        {showTacticalBoard && <TacticalBoardModal players={players} onClose={()=>setShowTacticalBoard(false)} themeColor={themeColor} opponent={opponent} matchDate={matchDate} />}
+                    
+                    <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
+                        <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
+                            <Icon name="target"/> Game Day & Tática
+                        </h2>
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowTacticalBoard(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+                                <Icon name="list" size={14}/> Prancheta (Escalação)
+                            </button>
                             <button onClick={gerarPDFJogo} className="bg-red-600 hover:bg-red-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-                                <Icon name="download" size={14}/> Gerar PDF do Jogo
+                                <Icon name="download" size={14}/> PDF do Jogo
                             </button>
                         </div>
+                    </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700">
                             <div className="flex flex-col gap-2">
