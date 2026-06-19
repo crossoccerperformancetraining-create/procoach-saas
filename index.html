@@ -348,19 +348,34 @@
                     <div id="microcycle-board" className="flex-1 overflow-auto p-4 flex flex-col custom-scroll bg-slate-900">
                         <div className="flex gap-4 min-w-max pb-12 items-stretch">
                             {safeDays.map((day, index) => {
-                                const allEvents = [...(day.am || []), ...(day.pm || [])];
-                                const totalLoad = allEvents.reduce((sum, ev) => sum + (ev.load || 50), 0);
-                                const maxLoad = 240; 
-                                const fillPct = Math.min(100, (totalLoad / maxLoad) * 100);
-                                const thermoClass = getThermoColor(day.md);
+    const allEvents = [...(day.am || []), ...(day.pm || [])];
+    const totalLoad = allEvents.reduce((sum, ev) => sum + (ev.load || 50), 0);
+    const maxLoad = 240; 
+    const fillPct = Math.min(100, (totalLoad / maxLoad) * 100);
+    const thermoClass = getThermoColor(day.md);
 
-                                const intenseKeywords = ['FÍSICO', 'FORÇA', 'ACADEMIA', 'POTÊNCIA', 'VELOCIDADE'];
-                                const hasIntenseBlock = allEvents.some(ev => intenseKeywords.some(kw => ev.type.toUpperCase().includes(kw)));
-                                const isConflict = (day.md === 'MD-1' || day.md === 'MD+1' || day.md === 'JOGO') && hasIntenseBlock;
+    const intenseKeywords = ['FÍSICO', 'FORÇA', 'ACADEMIA', 'POTÊNCIA', 'VELOCIDADE'];
+    const hasIntenseBlock = allEvents.some(ev => intenseKeywords.some(kw => ev.type.toUpperCase().includes(kw)));
+    const isConflict = (day.md === 'MD-1' || day.md === 'MD+1' || day.md === 'JOGO') && hasIntenseBlock;
 
-                                return (
-                                    <div key={day.id} className="w-48 flex flex-col bg-[#1e293b] rounded-2xl overflow-hidden shrink-0 border border-slate-700 shadow-2xl relative">
-                                        
+    // --- NOVA LÓGICA DO SEMÁFORO DE CARGA ---
+    const metaCarga = (Number(day.plannedMins) || 0) * (Number(day.pseTarget) || 0);
+    const cargaRealizada = Object.values(trainingLog[day.date] || {}).reduce((acc, log) => acc + calcDailyLoad(log), 0);
+    
+    let cardBorderClass = "border-slate-700"; // Padrão
+    if (metaCarga > 0) {
+        if (cargaRealizada > metaCarga * 1.1) {
+            cardBorderClass = "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"; // Estourou a carga
+        } else if (cargaRealizada > 0) {
+            cardBorderClass = "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"; // Dentro da meta
+        }
+    }
+    // ----------------------------------------
+
+    return (
+        <div key={day.id} className={`w-48 flex flex-col bg-[#1e293b] rounded-2xl overflow-hidden shrink-0 border-2 relative transition-all duration-300 ${cardBorderClass}`}>
+            
+            {/* TERMÔMETRO HEADER */}
                                         {/* TERMÔMETRO HEADER */}
                                         <div className={`p-3 text-center shrink-0 relative transition-colors ${thermoClass}`}>
                                             <div className="text-[9px] font-black opacity-80 mb-1 uppercase tracking-tighter">{getDayDate(index)}</div>
