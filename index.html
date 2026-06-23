@@ -2979,8 +2979,112 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                 </div>
             );
         };
+      const DashboardView = ({ players, days, trainingLog, dmRecords, themeColor }) => {
+            const todayStr = getTodayStr();
+            const safePs = Array.isArray(players) ? players : [];
+            const activeDM = Array.isArray(dmRecords) ? dmRecords.filter(r => r && r.status === 'Active') : [];
+            
+            const d = new Date();
+            const dayOfWeek = d.getDay(); 
+            const mappedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const todayPlan = days[mappedIndex] || {};
+
+            const riskPlayers = [];
+            safePs.forEach((p, i) => {
+                if(!p || p.injured) return;
+                const chronicDates = getDatesInRange(todayStr, 28);
+                let acuteLoad = 0; let chronicLoadTotal = 0;
+                chronicDates.forEach((date, index) => {
+                    const dailyL = calcDailyLoad(trainingLog[date]?.[i]);
+                    if(dailyL > 0) { 
+                        chronicLoadTotal += dailyL; 
+                        if(index < 7) acuteLoad += dailyL; 
+                    }
+                });
+                const acwrVal = (chronicLoadTotal/4) > 0 ? parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2)) : 0;
+                if (acwrVal >= 1.5) {
+                    riskPlayers.push({ ...p, acwr: acwrVal });
+                }
+            });
+
+            let aiFocus = "";
+            const md = todayPlan.md || "";
+            if(md.includes('MD-4')) aiFocus = "Aquisição (Força/Resistência)";
+            else if(md.includes('MD-3')) aiFocus = "Específico (Tática/Intensidade)";
+            else if(md.includes('MD-2')) aiFocus = "Velocidade / Polimento";
+            else if(md.includes('MD-1')) aiFocus = "Ativação / Bola Parada";
+            else if(md === 'JOGO') aiFocus = "Competição";
+            else aiFocus = "Recuperação / Ajuste";
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
+                    <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
+                        <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
+                            <Icon name="activity"/> Resumo do Dia
+                        </h2>
+                        <span className="bg-white dark:bg-slate-800 border dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-300 shadow-sm">
+                            {formatDateBR(todayStr)}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 flex flex-col" style={{borderColor: themeColor}}>
+                            <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="calendar"/> Planejamento ({todayPlan.name})</h3>
+                            <div className="text-xl font-black dark:text-white uppercase mb-1">{aiFocus}</div>
+                            <div className="text-xs font-bold text-slate-500 uppercase mb-4 bg-slate-100 dark:bg-slate-700 inline-block px-2 py-1 rounded w-max">{todayPlan.md}</div>
+                            
+                            <div className="flex gap-4 mt-auto">
+                                <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl flex-1 border dark:border-slate-700">
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Tempo Alvo</div>
+                                    <div className="text-lg font-black text-blue-500">{todayPlan.plannedMins || '--'} min</div>
+                                </div>
+                                <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl flex-1 border dark:border-slate-700">
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">PSE Alvo</div>
+                                    <div className="text-lg font-black text-orange-500">{todayPlan.pseTarget || '--'}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 border-red-500 flex flex-col">
+                            <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="medkit"/> Depto Médico</h3>
+                            <div className="text-3xl font-black text-red-500 mb-4">{activeDM.length} <span className="text-sm text-slate-400 uppercase">Atletas</span></div>
+                            <div className="space-y-2 flex-1 overflow-y-auto custom-scroll pr-2 min-h-[100px]">
+                                {activeDM.length === 0 ? (
+                                    <div className="text-xs font-bold text-slate-400">Nenhum atleta no DM.</div>
+                                ) : activeDM.map((r, i) => {
+                                    const p = safePs[r.playerId];
+                                    if(!p) return null;
+                                    return (
+                                        <div key={i} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700 p-2 rounded border dark:border-slate-600">
+                                            <span className="font-bold text-xs dark:text-white truncate">{p.name}</span>
+                                            <span className="text-[9px] font-bold text-red-500 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded truncate max-w-[100px]">{r.location}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 border-orange-500 flex flex-col">
+                            <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="alert"/> Risco de Lesão (Carga)</h3>
+                            <div className="text-3xl font-black text-orange-500 mb-4">{riskPlayers.length} <span className="text-sm text-slate-400 uppercase">em Risco</span></div>
+                            <div className="space-y-2 flex-1 overflow-y-auto custom-scroll pr-2 min-h-[100px]">
+                                {riskPlayers.length === 0 ? (
+                                    <div className="text-xs font-bold text-slate-400">Nenhum atleta estourando a carga.</div>
+                                ) : riskPlayers.map((p, i) => (
+                                    <div key={i} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700 p-2 rounded border dark:border-slate-600">
+                                        <span className="font-bold text-xs dark:text-white truncate">{p.name}</span>
+                                        <span className="text-[9px] font-bold text-orange-600 bg-orange-100 dark:bg-orange-900/30 px-1.5 py-0.5 rounded">ACWR: {p.acwr}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const MainApp = ({ user, initialData, activeTeam, setActiveTeam }) => {
-            const [tab, setTab] = useState('squad'); 
+            const [tab, setTab] = useState('home'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
             const [players, setPlayers] = useState(initialData?.players || []);
             const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
@@ -3148,7 +3252,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                         </div>
                         <div className="flex gap-1 items-center">
                             
-                            {/* CHAVEADOR DE ELENCOS DINÂMICO NA BARRA PRINCIPAL */}
                             <div className="flex bg-slate-100 dark:bg-slate-700 rounded p-1 mr-2 border dark:border-slate-600 overflow-x-auto custom-scroll max-w-[45vw] md:max-w-none">
                                 <button onClick={() => setActiveTeam('pro')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTeam === 'pro' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
                                     {header.labelPro || 'PRO'}
@@ -3157,7 +3260,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                                     {header.labelBase || 'BASE'}
                                 </button>
                                 
-                              {/* Renderiza as categorias adicionais com botão de excluir */}
                                 {(header.extraTeams || []).map(team => (
                                     <div key={team.id} className={`flex items-center rounded transition-all border ${activeTeam === team.id ? 'bg-purple-600 border-purple-600 shadow-sm' : 'bg-transparent border-transparent'}`}>
                                         <button onClick={() => setActiveTeam(team.id)} className={`px-2 py-1 text-[9px] font-black uppercase whitespace-nowrap ${activeTeam === team.id ? 'text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
@@ -3176,7 +3278,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                                     </div>
                                 ))}
                                 
-                                {/* Botão para criar nova categoria */}
                                 <button onClick={() => {
                                     const newName = prompt("Nome da Categoria (ex: Sub-17, Feminino):");
                                     if(newName) {
@@ -3188,7 +3289,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                                 </button>
                             </div>
 
-                          {/* PORTAL ATLETA DINÂMICO CONFORME O ELENCO ATIVO */}
                             <button onClick={()=>window.open(`atleta.html?id=${getActiveDocId(user.uid)}&view=coach`,'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
                                 <Icon name="user" size={14}/>
                                 <span className="hidden md:inline">Portal Atleta</span>
@@ -3200,7 +3300,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                     </div>
                     
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                        {['squad','micro','wellness','pse','workout','match','gameday','dm','assessment','library'].map(t => (
+                        {['home','squad','micro','wellness','pse','workout','match','gameday','dm','assessment','library'].map(t => (
                             <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
                         ))}
                     </div>
@@ -3251,6 +3351,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                             </div>
                         )}
                         <div className="h-full">
+                            {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} />}
                             {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
                             {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                             {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
