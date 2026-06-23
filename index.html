@@ -1558,6 +1558,7 @@ const LineChart = ({ data, color, height = 50 }) => {
             }, [trainingLog, monitorDate, safePs]);
 
             // INTELIGÊNCIA ACWR: Painel Consolidado do Elenco
+          // INTELIGÊNCIA ACWR CORRIGIDA: Painel Consolidado do Elenco
             const acwrGroups = useMemo(() => {
                 const groups = { danger: [], optimal: [], under: [] };
                 safePs.forEach((p, i) => {
@@ -1571,11 +1572,20 @@ const LineChart = ({ data, color, height = 50 }) => {
                             if(index < 7) acuteLoad += dailyL; 
                         }
                     });
-                    const acwrVal = (chronicLoadTotal/4) > 0 ? parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2)) : 0;
-                    if(acwrVal === 0) return; // Ignora quem não tem dados suficientes
+                    
+                    let acwrVal = 0;
+                    if (chronicLoadTotal > 0) {
+                        // Se o histórico for só de 7 dias, evita o bug matemático do 4.00
+                        if (chronicLoadTotal === acuteLoad) {
+                            acwrVal = 0; 
+                        } else {
+                            acwrVal = parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2));
+                        }
+                    }
+
+                    if(acwrVal === 0) return; // Ignora quem está em fase de coleta de dados
 
                     const pData = { ...p, idx: i, acwr: acwrVal };
-                    
                     if (acwrVal >= 1.5) groups.danger.push(pData);
                     else if (acwrVal >= 0.8 && acwrVal < 1.5) groups.optimal.push(pData);
                     else if (acwrVal > 0 && acwrVal < 0.8) groups.under.push(pData);
@@ -2989,6 +2999,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
             const mappedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             const todayPlan = days[mappedIndex] || {};
 
+      // Calcular ACWR para Risco de Lesão (Corrigido)
             const riskPlayers = [];
             safePs.forEach((p, i) => {
                 if(!p || p.injured) return;
@@ -3001,7 +3012,12 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                         if(index < 7) acuteLoad += dailyL; 
                     }
                 });
-                const acwrVal = (chronicLoadTotal/4) > 0 ? parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2)) : 0;
+                
+                let acwrVal = 0;
+                if (chronicLoadTotal > 0 && chronicLoadTotal !== acuteLoad) {
+                    acwrVal = parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2));
+                }
+
                 if (acwrVal >= 1.5) {
                     riskPlayers.push({ ...p, acwr: acwrVal });
                 }
@@ -3107,8 +3123,12 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
             const [showSettings, setShowSettings] = useState(false);
             const [syncStatus, setSyncStatus] = useState(''); 
 
+            // NOVO: Trava de Segurança para não apagar dados do atleta!
+            const isSyncing = useRef(false);
+
             useEffect(() => {
                 if (initialData) {
+                    isSyncing.current = true; // Liga a trava de segurança
                     setPlayers(initialData.players || []);
                     setTrainingLog(initialData.trainingLog || {});
                     setAssessments(initialData.assessments || {});
@@ -3136,6 +3156,13 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
 
             useEffect(() => {
                 if(!user || !players || players.length === 0) return;
+                
+                // NOVO: Se o dado acabou de vir da nuvem (Atleta respondeu), ignora o salvamento automático para não dar sobrescrita!
+                if (isSyncing.current) {
+                    isSyncing.current = false;
+                    return;
+                }
+
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
                     const dataToSave = { 
@@ -3155,7 +3182,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                 }, 800);
                 return () => clearTimeout(timeoutId);
             }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam]);
-
            const dispararAlerta = async () => {
                 setLastAlertSent(Date.now());
                 const options = {
