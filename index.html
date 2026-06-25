@@ -161,7 +161,7 @@
                 return monday.toISOString().split('T')[0];
             });
 
-            const safeDays = days.map(d => ({...d, plannedMins: d.plannedMins || ''}));
+            const safeDays = days.map(d => ({...d, plannedMins: d.plannedMins || '', actualMins: d.actualMins || ''}));
 
             const getDayDate = (index) => {
                 const date = new Date(startDate + 'T12:00:00'); 
@@ -213,8 +213,7 @@
                 const user = firebase.auth().currentUser;
                 const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
                 if(user) {
-                    db.collection('coachData').doc(docId).update({ days: newDays })
-                      .catch(err => console.error(err));
+                    db.collection('coachData').doc(docId).update({ days: newDays }).catch(err => console.error(err));
                 }
             };
 
@@ -253,63 +252,63 @@
                 }, 500);
             };
 
-            const renderAiAnalysis = () => {
+          const renderAiAnalysis = () => {
                 if(!aiModal) return null;
                 const md = aiModal.md || "";
-                const mins = Number(aiModal.plannedMins) || 0;
-                let focus = "", advice = "", timeRange = "", pseRange = "", volStatus = "";
-                if(md.includes('MD-4')) { focus = "Aquisição (Força/Resistência)"; advice = "Dia longe do jogo. Ideal para cargas altas."; timeRange = "70 a 90 min"; pseRange = "7 a 8 (Intenso)"; }
-                else if(md.includes('MD-3')) { focus = "Específico (Tática/Intensidade)"; advice = "Dia de 'choque'. Intensidade simil jogo."; timeRange = "60 a 75 min"; pseRange = "8 a 9 (Muito Intenso)"; }
-                else if(md.includes('MD-2')) { focus = "Velocidade / Polimento"; advice = "O Tapering (polimento) começa aqui. O volume deve cair drasticamente (-40%)."; timeRange = "45 a 60 min"; pseRange = "5 a 6 (Moderado)"; }
-                else if(md.includes('MD-1')) { focus = "Ativação / Bola Parada"; advice = "Véspera de jogo. Carga mínima. Apenas ativação neural."; timeRange = "30 a 45 min"; pseRange = "3 a 4 (Fácil)"; }
-                else if(md === 'JOGO') { focus = "Competição"; advice = "Foco total na estratégia e hidratação."; timeRange = "90+ min"; pseRange = "10 (Máximo)"; }
-                else { focus = "Recuperação / Ajuste"; advice = "Foco em remover metabólitos e soltura."; timeRange = "30 a 45 min"; pseRange = "2 a 3 (Muito Fácil)"; }
-                volStatus = mins > 0 ? (mins > 90 ? "Volume ALTO. Risco de fadiga residual." : "Volume dentro dos parâmetros sugeridos.") : "Insira o tempo previsto (min) para receber análise fisiológica de volume sem GPS.";
+                const minsMeta = Number(aiModal.plannedMins) || 0;
+                const minsReal = Number(aiModal.actualMins) || 0;
+
+                // Lógica de Cascata: Se o treino de ontem estourou, a IA sugere teto para hoje
+                const currIdx = safeDays.findIndex(d => d.id === aiModal.id);
+                const yesterday = currIdx > 0 ? safeDays[currIdx - 1] : null;
+                let aviso = null;
+
+                if (yesterday && Number(yesterday.actualMins) > Number(yesterday.plannedMins) && Number(yesterday.plannedMins) > 0) {
+                    const excesso = Number(yesterday.actualMins) - Number(yesterday.plannedMins);
+                    aviso = `A sessão anterior excedeu ${excesso} min. A IA sugere ajustar o volume para compensar a carga.`;
+                }
+
+                const handleUpdate = (field, val) => {
+                    const newDays = days.map(d => d.id === aiModal.id ? { ...d, [field]: val } : d);
+                    setDays(newDays);
+                    setAiModal({ ...aiModal, [field]: val });
+                    const user = firebase.auth().currentUser;
+                    const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
+                    if(user) db.collection('coachData').doc(docId).update({ days: newDays });
+                };
 
                 return (
-                    <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
-                        <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-md border border-slate-700" onClick={e=>e.stopPropagation()}>
-                            <div className="flex flex-col items-center mb-6"><div className="bg-blue-500/20 p-3 rounded-full mb-2"><Icon name="brain" size={32} className="text-blue-400"/></div><h3 className="text-xl font-black text-white uppercase">Análise {aiModal.name} <span className="text-blue-400">({md})</span></h3></div>
-                            <div className="bg-slate-800/50 p-4 rounded-xl mb-4 border border-slate-700"><div className="text-[10px] font-black text-slate-400 uppercase mb-1">Foco Sugerido</div><div className="text-white font-bold">{focus}</div></div>
-                            <p className="text-xs text-slate-300 mb-6 leading-relaxed">{advice}</p>
-                            <div className="grid grid-cols-2 gap-4 mb-6"><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center"><div className="text-[9px] font-black text-slate-500 uppercase mb-1">Tempo Alvo Máx</div><div className="text-blue-400 font-black">{timeRange}</div></div><div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center"><div className="text-[9px] font-black text-slate-500 uppercase mb-1">PSE Alvo</div><div className="text-orange-400 font-black">{pseRange}</div></div></div>
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl mb-6"><div className="text-[9px] font-black text-emerald-400 uppercase mb-1">Análise de Tempo (Sem GPS)</div><div className="text-xs text-emerald-200 font-bold">{volStatus}</div></div>
-                            <button onClick={()=>setAiModal(null)} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700 transition-all">Entendido</button>
+                    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
+                        <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" onClick={e=>e.stopPropagation()}>
+                            <div className="flex flex-col items-center mb-6">
+                                <div className="bg-blue-500/20 p-3 rounded-full mb-2"><Icon name="brain" size={32} className="text-blue-400"/></div>
+                                <h3 className="text-xl font-black text-white uppercase tracking-wider">ANÁLISE {aiModal.name} <span className="text-blue-400">({md})</span></h3>
+                            </div>
+                            
+                            <div className="bg-slate-800/50 p-4 rounded-xl mb-6 border border-slate-700">
+                                <div className="text-[10px] font-black text-slate-400 uppercase mb-1">FOCO SUGERIDO PELA IA</div>
+                                <div className="text-white font-bold text-sm mb-1">{aiModal.md === 'JOGO' ? 'Competição' : 'Controle de Carga'}</div>
+                                <p className="text-xs text-slate-300">{aviso || "Mantenha a integridade física do grupo."}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                    <p className="text-[9px] font-black text-blue-400 uppercase mb-1 flex items-center gap-1"><Icon name="calendar" size={10}/> Tempo Planejado (min)</p>
+                                    <div className="text-3xl font-black text-white">{minsMeta || 0}</div>
+                                </div>
+                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                    <p className="text-[9px] font-black text-orange-500 uppercase mb-1 flex items-center gap-1"><Icon name="activity" size={10}/> Tempo Realizado (min)</p>
+                                    <input type="number" className="bg-transparent text-xl font-black text-white outline-none w-full border-b-2 border-slate-700 focus:border-orange-500" value={aiModal.actualMins || ''} onChange={(e) => handleUpdate('actualMins', e.target.value)} placeholder="Pós-Sessão" />
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-2">PSE ALVO (1-10)</p>
+                                <input type="number" className="w-full bg-slate-900 p-4 rounded-xl text-white font-black text-xl outline-none border border-slate-700 focus:border-blue-500" value={aiModal.pseTarget || ''} onChange={(e) => handleUpdate('pseTarget', e.target.value)} placeholder="Ex: 5" />
+                            </div>
+
+                            <button onClick={()=>setAiModal(null)} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700 transition-all shadow-lg active:scale-95">SALVAR E FECHAR</button>
                         </div>
-                        {/* Bloco de Resumo de Performance Adicionado */}
-    <div className="mt-8 px-4">
-        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <h3 className="text-white font-black uppercase text-xs mb-4">Comparativo de Carga (Meta vs Realizado)</h3>
-            <div className="overflow-x-auto">
-                <table className="w-full text-[10px] text-white">
-                    <thead>
-                        <tr className="text-slate-400">
-                            <th className="text-left py-2">Dia</th>
-                            <th className="text-center">Meta (sRPE)</th>
-                            <th className="text-center">Realizado</th>
-                            <th className="text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {days.map(d => {
-                            const real = Object.values(trainingLog[d.date] || {}).reduce((a, b) => a + calcDailyLoad(b), 0);
-                            const meta = (Number(d.plannedMins) * Number(d.pseTarget)) || 0;
-                            return (
-                                <tr key={d.id} className="border-t border-slate-700">
-                                    <td className="py-2 font-bold">{d.name}</td>
-                                    <td className="text-center">{meta}</td>
-                                    <td className="text-center">{real}</td>
-                                    <td className={`text-center font-bold ${real > meta ? 'text-red-500' : 'text-emerald-500'}`}>
-                                        {real > meta ? 'ACIMA' : 'OK'}
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
                     </div>
                 );
             };
@@ -346,49 +345,42 @@
                     </div>
                     
                     <div id="microcycle-board" className="flex-1 overflow-auto p-4 flex flex-col custom-scroll bg-slate-900">
-                        <div className="flex gap-4 min-w-max pb-12 items-stretch">
+                        <div className="flex gap-4 min-w-max pb-4 items-stretch">
                             {safeDays.map((day, index) => {
-    const allEvents = [...(day.am || []), ...(day.pm || [])];
-    const totalLoad = allEvents.reduce((sum, ev) => sum + (ev.load || 50), 0);
-    const maxLoad = 240; 
-    const fillPct = Math.min(100, (totalLoad / maxLoad) * 100);
-    const thermoClass = getThermoColor(day.md);
+                                const allEvents = [...(day.am || []), ...(day.pm || [])];
+                                const totalLoad = allEvents.reduce((sum, ev) => sum + (ev.load || 50), 0);
+                                const maxLoad = 240; 
+                                const fillPct = Math.min(100, (totalLoad / maxLoad) * 100);
+                                const thermoClass = getThermoColor(day.md);
 
-    const intenseKeywords = ['FÍSICO', 'FORÇA', 'ACADEMIA', 'POTÊNCIA', 'VELOCIDADE'];
-    const hasIntenseBlock = allEvents.some(ev => intenseKeywords.some(kw => ev.type.toUpperCase().includes(kw)));
-    const isConflict = (day.md === 'MD-1' || day.md === 'MD+1' || day.md === 'JOGO') && hasIntenseBlock;
+                                const intenseKeywords = ['FÍSICO', 'FORÇA', 'ACADEMIA', 'POTÊNCIA', 'VELOCIDADE'];
+                                const hasIntenseBlock = allEvents.some(ev => intenseKeywords.some(kw => ev.type.toUpperCase().includes(kw)));
+                                const isConflict = (day.md === 'MD-1' || day.md === 'MD+1' || day.md === 'JOGO') && hasIntenseBlock;
 
-    // --- NOVA LÓGICA DO SEMÁFORO DE CARGA ---
-    const metaCarga = (Number(day.plannedMins) || 0) * (Number(day.pseTarget) || 0);
-    const cargaRealizada = Object.values(trainingLog[day.date] || {}).reduce((acc, log) => acc + calcDailyLoad(log), 0);
-    
-    let cardBorderClass = "border-slate-700"; // Padrão
-    if (metaCarga > 0) {
-        if (cargaRealizada > metaCarga * 1.1) {
-            cardBorderClass = "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"; // Estourou a carga
-        } else if (cargaRealizada > 0) {
-            cardBorderClass = "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"; // Dentro da meta
-        }
-    }
-    // ----------------------------------------
+                                const metaCarga = (Number(day.plannedMins) || 0) * (Number(day.pseTarget) || 0);
+                                const cargaRealizada = Object.values(trainingLog[day.date] || {}).reduce((acc, log) => acc + calcDailyLoad(log), 0);
+                                
+                                let cardBorderClass = "border-slate-700"; 
+                                if (metaCarga > 0) {
+                                    if (cargaRealizada > metaCarga * 1.1) {
+                                        cardBorderClass = "border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"; 
+                                    } else if (cargaRealizada > 0) {
+                                        cardBorderClass = "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"; 
+                                    }
+                                }
 
-    return (
-        <div key={day.id} className={`w-48 flex flex-col bg-[#1e293b] rounded-2xl overflow-hidden shrink-0 border-2 relative transition-all duration-300 ${cardBorderClass}`}>
-            
-            {/* TERMÔMETRO HEADER */}
-                                        {/* TERMÔMETRO HEADER */}
+                                return (
+                                    <div key={day.id} className={`w-48 flex flex-col bg-[#1e293b] rounded-2xl overflow-hidden shrink-0 border-2 relative transition-all duration-300 ${cardBorderClass}`}>
                                         <div className={`p-3 text-center shrink-0 relative transition-colors ${thermoClass}`}>
                                             <div className="text-[9px] font-black opacity-80 mb-1 uppercase tracking-tighter">{getDayDate(index)}</div>
                                             {!isExporting && (
                                                 <button onClick={()=>setAiModal(day)} className="absolute top-1 right-1 opacity-50 hover:opacity-100 transition-opacity"><Icon name="brain" size={16}/></button>
                                             )}
-                                            
                                             {isExporting ? (
                                                 <div className="font-black text-sm uppercase tracking-widest mb-1">{day.name}</div>
                                             ) : (
                                                 <BufferedInput className="bg-transparent text-center font-black text-sm w-full outline-none uppercase tracking-widest mb-1" value={day.name || ''} onSave={(val)=>updateHeader(day.id,'name',val)} />
                                             )}
-
                                             {isExporting ? (
                                                 <div className="text-[11px] font-black uppercase mb-2 bg-black/20 py-0.5 rounded">{day.md}</div>
                                             ) : (
@@ -396,16 +388,23 @@
                                                     {['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}
                                                 </select>
                                             )}
-                                            
-                                            {/* ALERTA DE CONFLITO */}
                                             {isConflict && (
-                                                <div className="absolute -top-2 -left-2 bg-red-600 text-white rounded-full p-1 border-2 border-[#1e293b] shadow-lg animate-bounce" title="Alerta: Treino Intenso em zona de Recuperação/Jogo!">
-                                                    <Icon name="alert" size={14}/>
-                                                </div>
+                                                <div className="absolute -top-2 -left-2 bg-red-600 text-white rounded-full p-1 border-2 border-[#1e293b] shadow-lg animate-bounce" title="Alerta: Treino Intenso em zona de Recuperação/Jogo!"><Icon name="alert" size={14}/></div>
                                             )}
                                         </div>
                                         
-                                        {/* BARRA DE VOLUME (COPO CHEIO) */}
+                                        {/* NOVIDADE: ETIQUETAS DE TEMPO NA CAPA DO CARD */}
+                                        <div className="flex justify-between px-3 pt-2 pb-1 bg-black/20 border-b border-slate-700/50">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[7px] text-slate-400 font-bold uppercase">Meta</span>
+                                                <span className="text-[11px] font-black text-blue-400">{day.plannedMins ? `${day.plannedMins}m` : '-'}</span>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[7px] text-slate-400 font-bold uppercase">Real</span>
+                                                <span className={`text-[11px] font-black ${Number(day.actualMins) > Number(day.plannedMins) ? 'text-red-500' : 'text-emerald-400'}`}>{day.actualMins ? `${day.actualMins}m` : '-'}</span>
+                                            </div>
+                                        </div>
+
                                         <div className="w-full h-1.5 bg-slate-800 relative">
                                             <div className="h-full transition-all duration-700" style={{ width: `${fillPct}%`, backgroundColor: fillPct >= 90 ? '#ef4444' : fillPct >= 60 ? '#3b82f6' : '#10b981' }}></div>
                                         </div>
@@ -416,19 +415,12 @@
                                                     <div className="text-[8px] font-black uppercase text-slate-500 text-center tracking-[0.2em] mb-1">{period==='am'?'Manhã':'Tarde'}</div>
                                                     <div className="flex flex-col gap-1.5 flex-1 min-h-[80px]">
                                                         {(day[period] || []).map(ev => (
-                                                            <div key={ev.id} 
-                                                                 className={`${ev.colorClass || ''} ${ev.textClass} text-[10px] font-black py-3 px-1 rounded-xl shadow-lg text-center relative group/item uppercase tracking-tighter border-b-4 border-black/20`}
-                                                                 style={ev.customColor ? { backgroundColor: ev.customColor } : null}
-                                                            >
+                                                            <div key={ev.id} className={`${ev.colorClass || ''} ${ev.textClass} text-[10px] font-black py-3 px-1 rounded-xl shadow-lg text-center relative group/item uppercase tracking-tighter border-b-4 border-black/20`} style={ev.customColor ? { backgroundColor: ev.customColor } : null}>
                                                                 {ev.type}
-                                                                {!isExporting && (
-                                                                    <button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full w-5 h-5 flex items-center justify-center hidden group-hover/item:flex border border-slate-600 hover:bg-red-600 transition-colors shadow-xl">×</button>
-                                                                )}
+                                                                {!isExporting && (<button onClick={()=>removeEvent(day.id, period, ev.id)} className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white rounded-full w-5 h-5 flex items-center justify-center hidden group-hover/item:flex border border-slate-600 hover:bg-red-600 transition-colors shadow-xl">×</button>)}
                                                             </div>
                                                         ))}
-                                                        {!isExporting && (
-                                                            <button onClick={()=>openModal(day.id, period)} className="mt-auto w-full border-2 border-dashed border-slate-700 text-slate-500 py-2.5 rounded-xl text-[10px] font-black uppercase hover:border-blue-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all">+ Add Bloco</button>
-                                                        )}
+                                                        {!isExporting && (<button onClick={()=>openModal(day.id, period)} className="mt-auto w-full border-2 border-dashed border-slate-700 text-slate-500 py-2.5 rounded-xl text-[10px] font-black uppercase hover:border-blue-500 hover:text-blue-500 hover:bg-blue-500/10 transition-all">+ Add Bloco</button>)}
                                                     </div>
                                                 </div>
                                             ))}
@@ -437,21 +429,51 @@
                                 );
                             })}
                         </div>
+                        
+                        <div className="mt-4 pb-8 min-w-max">
+                            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                                <h3 className="text-white font-black uppercase text-xs mb-4 flex items-center gap-2">
+                                    <Icon name="barChart" className="text-blue-500" size={14} /> Comparativo de Carga (Meta vs Realizado)
+                                </h3>
+                                <div className="overflow-x-auto custom-scroll">
+                                    <table className="w-full text-[10px] text-white">
+                                        <thead>
+                                            <tr className="text-slate-400 border-b border-slate-700">
+                                                <th className="text-left py-2 pr-6">Dia da Semana</th>
+                                                <th className="text-center py-2 px-4">Meta (sRPE)</th>
+                                                <th className="text-center py-2 px-4">Carga Executada</th>
+                                                <th className="text-center py-2 pl-4">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {safeDays.map(d => {
+                                                const real = Object.values(trainingLog[d.date] || {}).reduce((a, b) => a + calcDailyLoad(b), 0);
+                                                const meta = (Number(d.plannedMins) * Number(d.pseTarget)) || 0;
+                                                return (
+                                                    <tr key={d.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                                                        <td className="py-3 font-bold pr-6">{d.name} <span className="text-slate-500 ml-1">({d.md})</span></td>
+                                                        <td className="text-center font-bold text-blue-400 px-4">{meta || '-'}</td>
+                                                        <td className="text-center font-bold px-4">{real || '-'}</td>
+                                                        <td className={`text-center font-black pl-4 ${real > (meta * 1.1) ? 'text-red-500' : real > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                                            {real === 0 ? '-' : real > (meta * 1.1) ? 'ACIMA' : 'OK'}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {modalOpen && (
                         <div className="absolute inset-0 z-[110] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={()=>setModalOpen(false)}>
                             <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700 flex flex-col max-h-[85vh]" onClick={e=>e.stopPropagation()}>
-                                <h3 className="text-center font-black text-white mb-4 text-lg uppercase tracking-tighter flex items-center justify-center gap-2">
-                                    <Icon name="plus" className="text-blue-500"/> Adicionar Evento
-                                </h3>
-                                
+                                <h3 className="text-center font-black text-white mb-4 text-lg uppercase tracking-tighter flex items-center justify-center gap-2"><Icon name="plus" className="text-blue-500"/> Adicionar Evento</h3>
                                 <div className="grid grid-cols-1 gap-2 overflow-y-auto flex-1 custom-scroll pr-2 pb-4 border-b border-slate-700 mb-4">
-                                    {eventTypes.map(t => (
-                                        <button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3.5 rounded-xl font-black shadow-lg ${t.color} ${t.text} text-xs tracking-widest uppercase border-b-4 border-black/20 active:translate-y-1 active:border-b-0 transition-all`}>{t.label}</button>
-                                    ))}
+                                    {eventTypes.map(t => (<button key={t.label} onClick={()=>addEvent(t)} className={`w-full py-3.5 rounded-xl font-black shadow-lg ${t.color} ${t.text} text-xs tracking-widest uppercase border-b-4 border-black/20 active:translate-y-1 active:border-b-0 transition-all`}>{t.label}</button>))}
                                 </div>
-                                
                                 <div className="bg-slate-900 p-4 rounded-2xl shrink-0">
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-wider flex items-center gap-1"><Icon name="edit" size={12}/> Criar Bloco Personalizado</h4>
                                     <div className="flex gap-2 mb-3">
@@ -460,7 +482,6 @@
                                     </div>
                                     <button onClick={() => { if(customLabel.trim()) addEvent(null, true); }} disabled={!customLabel.trim()} className="w-full bg-emerald-600 disabled:bg-slate-700 text-white font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-all border-b-4 border-black/20 active:translate-y-1 active:border-b-0 shadow-lg">+ Adicionar Personalizado</button>
                                 </div>
-
                                 <button onClick={()=>setModalOpen(false)} className="w-full mt-4 py-2 text-slate-400 hover:text-white font-black text-xs uppercase tracking-widest transition-colors">Cancelar</button>
                             </div>
                         </div>
@@ -1185,7 +1206,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                 </div>
             );
         };
-     const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+    const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
             const [viewProfile, setViewProfile] = useState(null);
             const [editPlayer, setEditPlayer] = useState(null); 
             const today = getTodayStr(); 
@@ -1290,10 +1311,18 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     <label className="text-[9px] uppercase font-bold text-slate-400">Nome:</label>
                                     <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
                                 </div>
+                                
+                                {/* ENTRADA DE MÚLTIPLOS VÍDEOS */}
                                 <div>
-                                    <label className="text-[9px] uppercase font-bold text-slate-400">Link de Vídeo Individual:</label>
-                                    <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="https://youtube.com/..." value={localData.videoUrl || ''} onSave={val => setLocalData({...localData, videoUrl: val})} />
+                                    <label className="text-[9px] uppercase font-bold text-slate-400">Links de Vídeo (Cole um por linha):</label>
+                                    <textarea 
+                                        className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-xs custom-scroll h-20 outline-none focus:border-blue-500" 
+                                        placeholder="https://youtube.com/watch?v=...\nhttps://youtube.com/watch?v=..." 
+                                        value={localData.videoUrl || ''} 
+                                        onChange={e => setLocalData({...localData, videoUrl: e.target.value})} 
+                                    />
                                 </div>
+
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
@@ -1333,6 +1362,133 @@ const LineChart = ({ data, color, height = 50 }) => {
                                 <div className="flex gap-2 pt-2">
                                     <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
                                     <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const PlayerProfileModal = ({ player, playerIndex, logs, onClose, themeColor, setPlayers, players }) => {
+                if (!player) return null;
+                const today = getTodayStr(); 
+                const currentLog = logs[today]?.[playerIndex] || {};
+                const wellness = safeObj(currentLog.wellness);
+                const dates = getDatesInRange(today, 7).reverse();
+                
+                const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
+                
+                const getLoad = (d) => { 
+                    const l = logs[d]?.[playerIndex]; 
+                    if(!l) return 0;
+                    const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
+                    const dur = Number(l.duration) || 0;
+                    return dur > 0 ? rpeSum * dur : rpeSum * 60; 
+                };
+
+                const todayLoad = getLoad(today);
+                const historyDates = getDatesInRange(today, 7).slice(1); 
+                let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
+                const avgLoad = (chronicLoad + todayLoad) / 7;
+                
+                const loadHistoryLine = getDatesInRange(today, 14).reverse().map(d => getLoad(d));
+                
+                // NOVIDADE: CURVA DE WELLNESS (SONO E ESTRESSE 7 DIAS)
+                const wellnessHistory = getDatesInRange(today, 7).reverse().map(d => {
+                    const w = safeObj(logs[d]?.[playerIndex]?.wellness);
+                    // Invertendo o valor para o gráfico (no Forms: 1=Excelente, 7=Péssimo. No Gráfico: 7=Excelente, 1=Péssimo)
+                    return w.sleep ? (8 - Number(w.sleep)) * 14.28 : 50; 
+                });
+
+                let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
+                let loadColor = "text-green-500";
+                
+                if (avgLoad > 0) {
+                    if (todayLoad > avgLoad * 1.4) { loadMsg = "Risco Agudo! Sobrecarga detectada. Sugestão: Recuperativo imediato."; loadColor = "text-red-500"; } 
+                    else if (todayLoad < avgLoad * 0.6) { loadMsg = "Carga baixa hoje. Oportunidade para treino de força ou tático intenso."; loadColor = "text-yellow-500"; }
+                }
+
+                const copyAthleteLink = () => {
+                    const user = firebase.auth().currentUser;
+                    if(user) {
+                        const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(link).then(() => {
+                                showToast("Link copiado! Envie no WhatsApp.");
+                            }).catch(() => alert("Copie este link:\n" + link));
+                        } else { alert("Copie este link:\n" + link); }
+                    }
+                };
+
+                return (
+                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
+                            
+                            <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
+                                <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
+                                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
+                                <h2 className="text-2xl font-bold uppercase tracking-tight">{player.name}</h2>
+                                <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
+                                <div className="flex gap-2 mt-3">
+                                    <button onClick={toggleInjury} className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest flex items-center gap-1 shadow-lg ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO (DM)</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
+                                </div>
+                            </div>
+                            
+                            <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll bg-slate-100 dark:bg-slate-900">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* GRÁFICO 1: CARGA DE TREINO */}
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                        <div className="flex justify-between items-end mb-4">
+                                            <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                                                <Icon name="activity" size={14} className="text-blue-500"/> GPS Virtual (14d)
+                                            </h3>
+                                            <span className="text-[9px] font-bold text-slate-400">sRPE</span>
+                                        </div>
+                                        <div className="w-full px-2"><LineChart data={loadHistoryLine} color={themeColor} height={50} /></div>
+                                    </div>
+
+                                    {/* GRÁFICO 2: WELLNESS (BEM ESTAR) */}
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                        <div className="flex justify-between items-end mb-4">
+                                            <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                                                <Icon name="smile" size={14} className="text-emerald-500"/> Índice de Recuperação (7d)
+                                            </h3>
+                                            <span className="text-[9px] font-bold text-slate-400">%</span>
+                                        </div>
+                                        <div className="w-full px-2"><LineChart data={wellnessHistory} color="#10b981" height={50} /></div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-700 pb-2">
+                                        <Icon name="brain" className={loadColor} size={18}/>
+                                        <span className={`text-[10px] font-black uppercase tracking-wider ${loadColor}`}>Assistente de Prontidão IA</span>
+                                    </div>
+                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-snug">{loadMsg}</div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2 tracking-widest"><Icon name="smile"/> Estado Hoje ({formatDateBR(today)})</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {Object.entries({Sono:wellness.sleep, Estresse:wellness.stress, Fadiga:wellness.fatigue, Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(
+                                            <div key={k} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                <div className="flex justify-between text-xs font-bold mb-2">
+                                                    <span className="text-slate-500 dark:text-slate-400">{k}</span>
+                                                    <span className="dark:text-white font-black">{v||'-'}</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-col gap-2 mt-4">
+                                    <button onClick={copyAthleteLink} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs tracking-widest uppercase py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 border-b-4 border-black/30">
+                                        <Icon name="copy"/> Copiar Link do App do Atleta
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -2551,13 +2707,23 @@ const renderVideoElement = (url) => {
                                 </div>
                             </div>
 
-                            {trainingType === 'academia' ? (
-                                <div className="md:col-span-12 grid grid-cols-3 gap-3 mt-2">
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Séries</label><input type="text" placeholder="Ex: 3" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Reps</label><input type="text" placeholder="Ex: 10-12" className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-700 dark:text-white outline-none focus:border-blue-500" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Desc (s)</label><input type="number" placeholder="Ex: 60" className="w-full border rounded p-3 text-center font-black text-lg text-yellow-500 dark:bg-slate-700 outline-none focus:border-yellow-500" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} /></div>
+                            {/* DIFERENCIAÇÃO CAMPO VS ACADEMIA */}
+                            <div className="md:col-span-12 grid grid-cols-3 gap-3 mt-2 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">{trainingType === 'academia' ? 'Séries' : 'Blocos (Séries)'}</label>
+                                    <input type="text" placeholder={trainingType === 'academia' ? "Ex: 3" : "Ex: 4"} className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-800 dark:text-white outline-none focus:border-blue-500" value={form.sets} onChange={e=>setForm({...form, sets: e.target.value})} />
                                 </div>
-                            ) : (
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">{trainingType === 'academia' ? 'Reps' : 'Tempo (min)'}</label>
+                                    <input type="text" placeholder={trainingType === 'academia' ? "Ex: 10-12" : "Ex: 4 min"} className="w-full border rounded p-3 text-center font-black text-lg dark:bg-slate-800 dark:text-white outline-none focus:border-blue-500" value={form.reps} onChange={e=>setForm({...form, reps: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Descanso</label>
+                                    <input type="text" placeholder={trainingType === 'academia' ? "Ex: 60s" : "Ex: 2 min"} className="w-full border rounded p-3 text-center font-black text-lg text-yellow-500 dark:bg-slate-800 outline-none focus:border-yellow-500" value={form.rest} onChange={e=>setForm({...form, rest: e.target.value})} />
+                                </div>
+                            </div>
+
+                            {trainingType === 'campo' && (
                                 <div className="md:col-span-12 mt-2">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Regras e Dinâmica do Bloco (Opcional)</label>
                                     <textarea placeholder="Ex: Máximo 2 toques, foco em transição rápida..." className="w-full border rounded p-3 text-xs dark:bg-slate-700 dark:text-white h-20 outline-none focus:border-emerald-500 custom-scroll" value={form.description} onChange={e=>setForm({...form, description: e.target.value})}></textarea>
@@ -2595,6 +2761,12 @@ const renderVideoElement = (url) => {
                                             )}
                                         </div>
                                         <div className="font-bold text-slate-800 dark:text-white uppercase leading-tight">{ex.title} <span className="text-[10px] text-slate-400 font-normal ml-1">({ex.target})</span></div>
+                                        
+                                        {/* EXIBIÇÃO DA CARGA DO BLOCO NA LISTA */}
+                                        <div className="text-[10px] text-slate-500 font-bold mt-1 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded inline-block">
+                                            {ex.type === 'campo' ? `Blocos: ${ex.sets || '-'} | Tempo: ${ex.reps || '-'} | Descanso: ${ex.rest || '-'}` : `Séries: ${ex.sets || '-'} | Reps: ${ex.reps || '-'} | Descanso: ${ex.rest || '-'}`}
+                                        </div>
+
                                         {ex.type === 'campo' && ex.description && <div className="text-[10px] text-slate-500 truncate max-w-xs mt-1">{ex.description}</div>}
                                     </div>
                                 </div>
