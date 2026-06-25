@@ -252,67 +252,56 @@
                 }, 500);
             };
 
-          const renderAiAnalysis = () => {
-                if(!aiModal) return null;
-                const md = aiModal.md || "";
-                const minsMeta = Number(aiModal.plannedMins) || 0;
-                const minsReal = Number(aiModal.actualMins) || 0;
+         const renderAiAnalysis = () => {
+    if(!aiModal) return null;
+    const md = aiModal.md || "";
+    const minsMeta = Number(aiModal.plannedMins) || 0;
+    const minsReal = Number(aiModal.actualMins) || 0;
 
-                // Lógica de Cascata: Se o treino de ontem estourou, a IA sugere teto para hoje
-                const currIdx = safeDays.findIndex(d => d.id === aiModal.id);
-                const yesterday = currIdx > 0 ? safeDays[currIdx - 1] : null;
-                let aviso = null;
+    // Lógica de Cascata: Analisa se o dia anterior excedeu o planejado
+    const currIdx = safeDays.findIndex(d => d.id === aiModal.id);
+    const yesterday = currIdx > 0 ? safeDays[currIdx - 1] : null;
+    let aviso = null;
+    let tetoSugestao = minsMeta;
 
-                if (yesterday && Number(yesterday.actualMins) > Number(yesterday.plannedMins) && Number(yesterday.plannedMins) > 0) {
-                    const excesso = Number(yesterday.actualMins) - Number(yesterday.plannedMins);
-                    aviso = `A sessão anterior excedeu ${excesso} min. A IA sugere ajustar o volume para compensar a carga.`;
-                }
+    if (yesterday && Number(yesterday.actualMins) > Number(yesterday.plannedMins) && Number(yesterday.plannedMins) > 0) {
+        const excesso = Number(yesterday.actualMins) - Number(yesterday.plannedMins);
+        tetoSugestao = Math.max(20, minsMeta - excesso);
+        aviso = `⚠️ Carga anterior excedeu ${excesso} min. A IA sugere ajustar o volume para [${tetoSugestao} min] para compensar a fadiga residual.`;
+    }
 
-                const handleUpdate = (field, val) => {
-                    const newDays = days.map(d => d.id === aiModal.id ? { ...d, [field]: val } : d);
-                    setDays(newDays);
-                    setAiModal({ ...aiModal, [field]: val });
-                    const user = firebase.auth().currentUser;
-                    const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
-                    if(user) db.collection('coachData').doc(docId).update({ days: newDays });
-                };
+    const handleUpdate = (field, val) => {
+        const newDays = days.map(d => d.id === aiModal.id ? { ...d, [field]: val } : d);
+        setDays(newDays);
+        setAiModal({ ...aiModal, [field]: val });
+        const user = firebase.auth().currentUser;
+        if(user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ days: newDays });
+    };
 
-                return (
-                    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
-                        <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" onClick={e=>e.stopPropagation()}>
-                            <div className="flex flex-col items-center mb-6">
-                                <div className="bg-blue-500/20 p-3 rounded-full mb-2"><Icon name="brain" size={32} className="text-blue-400"/></div>
-                                <h3 className="text-xl font-black text-white uppercase tracking-wider">ANÁLISE {aiModal.name} <span className="text-blue-400">({md})</span></h3>
-                            </div>
-                            
-                            <div className="bg-slate-800/50 p-4 rounded-xl mb-6 border border-slate-700">
-                                <div className="text-[10px] font-black text-slate-400 uppercase mb-1">FOCO SUGERIDO PELA IA</div>
-                                <div className="text-white font-bold text-sm mb-1">{aiModal.md === 'JOGO' ? 'Competição' : 'Controle de Carga'}</div>
-                                <p className="text-xs text-slate-300">{aviso || "Mantenha a integridade física do grupo."}</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                                    <p className="text-[9px] font-black text-blue-400 uppercase mb-1 flex items-center gap-1"><Icon name="calendar" size={10}/> Tempo Planejado (min)</p>
-                                    <div className="text-3xl font-black text-white">{minsMeta || 0}</div>
-                                </div>
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                                    <p className="text-[9px] font-black text-orange-500 uppercase mb-1 flex items-center gap-1"><Icon name="activity" size={10}/> Tempo Realizado (min)</p>
-                                    <input type="number" className="bg-transparent text-xl font-black text-white outline-none w-full border-b-2 border-slate-700 focus:border-orange-500" value={aiModal.actualMins || ''} onChange={(e) => handleUpdate('actualMins', e.target.value)} placeholder="Pós-Sessão" />
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <p className="text-[9px] font-black text-slate-400 uppercase mb-2">PSE ALVO (1-10)</p>
-                                <input type="number" className="w-full bg-slate-900 p-4 rounded-xl text-white font-black text-xl outline-none border border-slate-700 focus:border-blue-500" value={aiModal.pseTarget || ''} onChange={(e) => handleUpdate('pseTarget', e.target.value)} placeholder="Ex: 5" />
-                            </div>
-
-                            <button onClick={()=>setAiModal(null)} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700 transition-all shadow-lg active:scale-95">SALVAR E FECHAR</button>
-                        </div>
+    return (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={()=>setAiModal(null)}>
+            <div className="bg-[#1e293b] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" onClick={e=>e.stopPropagation()}>
+                <div className="flex flex-col items-center mb-6">
+                    <div className="bg-blue-500/20 p-3 rounded-full mb-2"><Icon name="brain" size={32} className="text-blue-400"/></div>
+                    <h3 className="text-xl font-black text-white uppercase tracking-wider">ANÁLISE {aiModal.name} ({md})</h3>
+                </div>
+                {aviso && <div className="bg-orange-500/20 border-2 border-orange-500 text-orange-200 p-3 rounded-xl mb-4 text-xs font-bold shadow-lg animate-pulse">{aviso}</div>}
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                        <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">Planejado (min)</p>
+                        <input type="number" className="bg-transparent text-2xl font-black text-white outline-none w-full" value={aiModal.plannedMins || ''} onChange={(e) => handleUpdate('plannedMins', e.target.value)} />
                     </div>
-                );
-            };
-
+                    <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                        <p className="text-[9px] text-orange-500 font-bold uppercase mb-1">Realizado (min)</p>
+                        <input type="number" className={`bg-transparent text-2xl font-black outline-none w-full ${Number(aiModal.actualMins) > Number(aiModal.plannedMins) ? 'text-red-500' : 'text-emerald-400'}`} value={aiModal.actualMins || ''} onChange={(e) => handleUpdate('actualMins', e.target.value)} />
+                    </div>
+                </div>
+                <button onClick={()=>setAiModal(null)} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700 transition-all shadow-lg">SALVAR E FECHAR</button>
+            </div>
+        </div>
+    );
+};
             const getThermoColor = (md) => {
                 if(md === 'MD-3') return 'bg-red-600 text-white';
                 if(md === 'MD-4') return 'bg-orange-600 text-white';
