@@ -1720,39 +1720,37 @@ const LineChart = ({ data, color, height = 50 }) => {
 
             // INTELIGÊNCIA ACWR: Painel Consolidado do Elenco
           // INTELIGÊNCIA ACWR CORRIGIDA: Painel Consolidado do Elenco
-            const acwrGroups = useMemo(() => {
-                const groups = { danger: [], optimal: [], under: [] };
-                safePs.forEach((p, i) => {
-                    if(!p || p.injured) return;
-                    const chronicDates = getDatesInRange(monitorDate, 28);
-                    let acuteLoad = 0; let chronicLoadTotal = 0;
-                    chronicDates.forEach((d, index) => {
-                        const dailyL = calcDailyLoad(trainingLog[d]?.[i]);
-                        if(dailyL > 0) { 
-                            chronicLoadTotal += dailyL; 
-                            if(index < 7) acuteLoad += dailyL; 
-                        }
-                    });
-                    
-                    let acwrVal = 0;
-                    if (chronicLoadTotal > 0) {
-                        // Se o histórico for só de 7 dias, evita o bug matemático do 4.00
-                        if (chronicLoadTotal === acuteLoad) {
-                            acwrVal = 0; 
-                        } else {
-                            acwrVal = parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2));
-                        }
-                    }
+           // INTELIGÊNCIA ACWR CORRIGIDA: Painel Consolidado do Elenco
+const acwrGroups = useMemo(() => {
+    const groups = { danger: [], optimal: [], under: [] };
+    safePs.forEach((p, i) => {
+        if(!p || p.injured) return;
+        const chronicDates = getDatesInRange(monitorDate, 28);
+        let acuteLoad = 0; 
+        let chronicLoadTotal = 0;
+        let daysWithLoad = 0; // Contador de trava de segurança
 
-                    if(acwrVal === 0) return; // Ignora quem está em fase de coleta de dados
-
-                    const pData = { ...p, idx: i, acwr: acwrVal };
-                    if (acwrVal >= 1.5) groups.danger.push(pData);
-                    else if (acwrVal >= 0.8 && acwrVal < 1.5) groups.optimal.push(pData);
-                    else if (acwrVal > 0 && acwrVal < 0.8) groups.under.push(pData);
-                });
-                return groups;
-            }, [trainingLog, monitorDate, safePs]);
+        chronicDates.forEach((d, index) => {
+            const dailyL = calcDailyLoad(trainingLog[d]?.[i]);
+            if(dailyL > 0) { 
+                chronicLoadTotal += dailyL; 
+                daysWithLoad++; // Conta apenas dias com treino registrado
+                if(index < 7) acuteLoad += dailyL; 
+            }
+        });
+        
+        // Só calculamos se o atleta tiver ao menos 14 dias de histórico real
+        if (daysWithLoad >= 14 && chronicLoadTotal > 0) {
+            const acwrVal = parseFloat((acuteLoad / (chronicLoadTotal / 4)).toFixed(2));
+            const pData = { ...p, idx: i, acwr: acwrVal };
+            
+            if (acwrVal >= 1.5) groups.danger.push(pData);
+            else if (acwrVal >= 0.8) groups.optimal.push(pData);
+            else groups.under.push(pData);
+        }
+    });
+    return groups;
+}, [trainingLog, monitorDate, safePs]);
 
             const activePlayersIndices = [];
             safePs.forEach((p, i) => { if(p && safeObj(dailyData[i]?.wellness).sleep) activePlayersIndices.push(i); });
@@ -3082,7 +3080,56 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
         const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
         if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
     };
+const generateMatchReport = () => {
+        showToast("Gerando Relatório de Partida...", "#3b82f6");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
 
+        // Cabeçalho
+        doc.setFontSize(18);
+        doc.setTextColor(30, 58, 138); // Azul Marinho
+        doc.text("MATCH REPORT - PÓS JOGO", 14, 20);
+        doc.setFontSize(12);
+        doc.text(`Adversário: ${opponent || 'Não definido'} | Data: ${formatDateBR(matchDate)}`, 14, 28);
+        doc.text(`Placar: ${homeScore} x ${awayScore}`, 14, 34);
+        doc.line(14, 38, 196, 38);
+
+        // Tabela de Performance
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        let y = 48;
+
+        doc.setFont(undefined, 'bold');
+        doc.text("ATLETA", 14, y);
+        doc.text("MIN", 80, y);
+        doc.text("G/A", 100, y);
+        doc.text("CARGA", 125, y);
+        doc.text("DESIDR.", 155, y);
+        doc.setFont(undefined, 'normal');
+        y += 8;
+
+        safePs.forEach((p, i) => {
+            const mData = matchMinutes[matchDate]?.[i] || {};
+            const minJ = parseInt(mData.mins) || 0;
+            if (minJ > 0) {
+                const stats = p.stats || { g: 0, a: 0 };
+                const load = calcDailyLoad(trainingLog[matchDate]?.[i]);
+                const wPre = parseFloat(mData.preW) || 0;
+                const wPost = parseFloat(mData.postW) || 0;
+                const perc = wPre > 0 && wPost > 0 && wPre > wPost ? (((wPre - wPost) / wPre) * 100).toFixed(1) : 0;
+
+                doc.text(p.name.substring(0, 20), 14, y);
+                doc.text(minJ.toString(), 80, y);
+                doc.text(`${stats.g || 0}/${stats.a || 0}`, 100, y);
+                doc.text(load.toString(), 125, y);
+                doc.text(`${perc}%`, 155, y);
+                y += 6;
+                if (y > 270) { doc.addPage(); y = 20; }
+            }
+        });
+
+        doc.save(`MatchReport_${opponent || 'Jogo'}_${matchDate}.pdf`);
+    };
     // NOVA FUNÇÃO DE DOSSIÊ TÁTICO
     const gerarDossieTatico = async () => {
         if(!opponent) return showToast("Digite o nome do adversário!", "#ef4444");
@@ -3142,14 +3189,17 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                     <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
                         <Icon name="target"/> Game Day & Tática
                     </h2>
-                    <div className="flex gap-2">
-                        <button onClick={() => setShowTacticalBoard(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-                            <Icon name="list" size={14}/> Prancheta
-                        </button>
-                        <button onClick={gerarDossieTatico} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-                            <Icon name="brain" size={14}/> DOSSIÊ TÁTICO
-                        </button>
-                    </div>
+                 <div className="flex gap-2">
+    <button onClick={() => setShowTacticalBoard(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+        <Icon name="list" size={14}/> Prancheta
+    </button>
+    <button onClick={gerarDossieTatico} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+        <Icon name="brain" size={14}/> DOSSIÊ TÁTICO
+    </button>
+    <button onClick={generateMatchReport} className="bg-purple-600 hover:bg-purple-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+        <Icon name="download" size={14}/> PDF RELATÓRIO
+    </button>
+</div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700">
@@ -3236,31 +3286,34 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
             const mappedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             const todayPlan = days[mappedIndex] || {};
 
-      // Calcular ACWR para Risco de Lesão (Corrigido)
-            const riskPlayers = [];
-            safePs.forEach((p, i) => {
-                if(!p || p.injured) return;
-                const chronicDates = getDatesInRange(todayStr, 28);
-                let acuteLoad = 0; let chronicLoadTotal = 0;
-                chronicDates.forEach((date, index) => {
-                    const dailyL = calcDailyLoad(trainingLog[date]?.[i]);
-                    if(dailyL > 0) { 
-                        chronicLoadTotal += dailyL; 
-                        if(index < 7) acuteLoad += dailyL; 
-                    }
-                });
-                
-                let acwrVal = 0;
-                if (chronicLoadTotal > 0 && chronicLoadTotal !== acuteLoad) {
-                    acwrVal = parseFloat((acuteLoad / (chronicLoadTotal/4)).toFixed(2));
-                }
+// Calcular ACWR para Risco de Lesão (Corrigido com Trava de Segurança)
+        const riskPlayers = [];
+        safePs.forEach((p, i) => {
+            if(!p || p.injured) return;
+            const chronicDates = getDatesInRange(todayStr, 28);
+            let acuteLoad = 0; 
+            let chronicLoadTotal = 0;
+            let daysWithLoad = 0; // Trava: contador de dias reais de treino
 
-                if (acwrVal >= 1.5) {
-                    riskPlayers.push({ ...p, acwr: acwrVal });
+            chronicDates.forEach((date, index) => {
+                const dailyL = calcDailyLoad(trainingLog[date]?.[i]);
+                if(dailyL > 0) { 
+                    chronicLoadTotal += dailyL; 
+                    daysWithLoad++; // Conta apenas dias com treino registrado
+                    if(index < 7) acuteLoad += dailyL; 
                 }
             });
 
-            let aiFocus = "";
+            // Só calculamos se o atleta tiver ao menos 14 dias de histórico real
+            if (daysWithLoad >= 14 && chronicLoadTotal > 0) {
+                const acwrVal = parseFloat((acuteLoad / (chronicLoadTotal / 4)).toFixed(2));
+                if (acwrVal >= 1.5) {
+                    riskPlayers.push({ ...p, acwr: acwrVal });
+                }
+            }
+        });
+                
+          let aiFocus = "";
             const md = todayPlan.md || "";
             if(md.includes('MD-4')) aiFocus = "Aquisição (Força/Resistência)";
             else if(md.includes('MD-3')) aiFocus = "Específico (Tática/Intensidade)";
