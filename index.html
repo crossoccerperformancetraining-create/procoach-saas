@@ -164,17 +164,31 @@
         const safeDays = days.map(d => ({...d, plannedMins: d.plannedMins || '', actualMins: d.actualMins || ''}));
 
         // 1. CÉREBRO DA IA: Calcula a meta baseada no MD
+        // 1. CÉREBRO DA IA: Calcula a meta baseada na fase
         const calcularMetaIA = (md) => {
             if (!md) return '-';
+            
+            // Padrão MD (Semana Competitiva)
+            if (md.includes('MD-5')) return '85';
             if (md.includes('MD-4')) return '75';
             if (md.includes('MD-3')) return '65';
             if (md.includes('MD-2')) return '45';
             if (md.includes('MD-1')) return '35';
             if (md.includes('JOGO')) return '90';
             if (md.includes('MD+1') || md.includes('MD+2')) return '40';
+            
+            // Semana Sem Jogo (Aquisitiva)
+            if (md.includes('Resistência')) return '90'; // Alto Volume
+            if (md.includes('Tático')) return '80';      // Volume Moderado/Alto
+            if (md.includes('Força')) return '65';       // Volume Moderado, Alta Tensão
+            if (md.includes('Velocidade')) return '45';  // Baixo Volume, Altíssima Intensidade
+            
+            // Pré-Temporada
+            if (md.includes('PRÉ')) return '100'; // Volume alto característico
+            if (md.includes('FOLGA')) return '0';
+            
             return '55'; // Padrão
         };
-
         const getDayDate = (index) => {
             const date = new Date(startDate + 'T12:00:00'); 
             date.setDate(date.getDate() + index);
@@ -312,14 +326,26 @@
             );
         };
 
+       // Define as cores dos cards baseadas no foco fisiológico
         const getThermoColor = (md) => {
-            if(md === 'MD-3') return 'bg-red-600 text-white';
-            if(md === 'MD-4') return 'bg-orange-600 text-white';
-            if(md === 'MD-2') return 'bg-yellow-500 text-slate-900';
-            if(md === 'MD-1') return 'bg-emerald-500 text-white';
-            if(md === 'JOGO') return 'bg-slate-950 text-yellow-400 border-b-2 border-yellow-500';
-            if(md === 'MD+1') return 'bg-blue-500 text-white';
-            if(md === 'MD+2') return 'bg-blue-400 text-white';
+            if (!md) return 'bg-[#1a4a3e] text-white';
+            
+            // Vermelho/Laranja: Alta Carga Fisiológica
+            if(md.includes('MD-3') || md.includes('Resistência')) return 'bg-red-600 text-white';
+            if(md.includes('MD-4') || md.includes('MD-5') || md.includes('Força')) return 'bg-orange-600 text-white';
+            
+            // Amarelo: Carga Moderada / Alerta de Velocidade
+            if(md.includes('MD-2') || md.includes('Velocidade')) return 'bg-yellow-500 text-slate-900';
+            
+            // Verde/Azul: Tático e Recuperação
+            if(md.includes('MD-1') || md.includes('Tático')) return 'bg-emerald-500 text-white';
+            if(md.includes('MD+1') || md.includes('MD+2')) return 'bg-blue-500 text-white';
+            
+            // Especiais
+            if(md.includes('JOGO')) return 'bg-slate-950 text-yellow-400 border-b-2 border-yellow-500';
+            if(md.includes('PRÉ')) return 'bg-purple-700 text-white'; // Roxo para Pré-Temporada
+            if(md.includes('FOLGA')) return 'bg-slate-500 text-white'; // Cinza para Folga
+            
             return 'bg-[#1a4a3e] text-white';
         };
 
@@ -389,7 +415,7 @@
                                             <div className="text-[11px] font-black uppercase mb-2 bg-black/20 py-0.5 rounded">{day.md}</div>
                                         ) : (
                                             <select className="bg-black/20 rounded text-center text-[10px] w-full outline-none font-black uppercase mb-2 border-none appearance-none cursor-pointer" value={day.md || ''} onChange={(e)=>updateHeader(day.id,'md',e.target.value)}>
-                                                {['MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}
+                                                {['MD-5','MD-4','MD-3','MD-2','MD-1','JOGO','MD+1','MD+2', 'PRÉ D1', 'PRÉ D2', 'PRÉ D3', 'PRÉ D4', 'PRÉ D5', 'PRÉ D6', 'PRÉ D7', 'S/J (Força)', 'S/J (Resistência)', 'S/J (Velocidade)', 'S/J (Tático)', 'FOLGA'].map(o=><option key={o} value={o} className="text-black">{o}</option>)}
                                             </select>
                                         )}
                                         {isConflict && (
