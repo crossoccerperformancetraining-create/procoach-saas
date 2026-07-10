@@ -625,6 +625,7 @@
                 trainingLog: safeObj(data.trainingLog),
                 assessments: safeObj(data.assessments),
                 dmRecords: safeArray(data.dmRecords),
+                attendanceLog: safeObj(data.attendanceLog),
                 matchMinutes: safeObj(data.matchMinutes),
                 header: safeObj(data.header),
                 logo: typeof data.logo === 'string' ? data.logo : null,
@@ -3425,7 +3426,92 @@ const generateMatchReport = () => {
                 </div>
             );
         };
+const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, dmRecords }) => {
+            const [date, setDate] = useState(getTodayStr());
+            const safePs = safeArray(players);
 
+            // Auto-detecta se o atleta está no DM hoje
+            const isPlayerInDM = (pId) => {
+                const activeDm = safeArray(dmRecords).find(r => r && r.playerId == pId && r.status === 'Active');
+                return !!activeDm;
+            };
+
+            // Puxa o status salvo ou define um padrão inteligente
+            const getStatus = (i) => {
+                if (attendanceLog[date] && attendanceLog[date][i]) return attendanceLog[date][i];
+                if (isPlayerInDM(i)) return 'DM';
+                return 'P'; // Padrão: Presente
+            };
+
+            const setStatus = (i, status) => {
+                const newLog = { ...attendanceLog };
+                if (!newLog[date]) newLog[date] = {};
+                newLog[date][i] = status;
+                setAttendanceLog(newLog);
+            };
+
+            // Calcula a estatística do dia
+            const stats = { P: 0, A: 0, J: 0, DM: 0 };
+            safePs.forEach((p, i) => { if(p) stats[getStatus(i)]++; });
+
+            return (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
+                    <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
+                        <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
+                            <Icon name="check"/> Controle de Frequência
+                        </h2>
+                        <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-white outline-none shadow-sm"/>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-3 mb-6">
+                        <div className="bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 p-3 rounded-xl text-center shadow-sm">
+                            <div className="text-2xl font-black text-green-600 dark:text-green-400">{stats.P}</div>
+                            <div className="text-[9px] font-bold text-green-700 dark:text-green-500 uppercase mt-1">Presentes</div>
+                        </div>
+                        <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-xl text-center shadow-sm">
+                            <div className="text-2xl font-black text-red-600 dark:text-red-400">{stats.A}</div>
+                            <div className="text-[9px] font-bold text-red-700 dark:text-red-500 uppercase mt-1">Faltas</div>
+                        </div>
+                        <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 p-3 rounded-xl text-center shadow-sm">
+                            <div className="text-2xl font-black text-yellow-600 dark:text-yellow-400">{stats.J}</div>
+                            <div className="text-[9px] font-bold text-yellow-700 dark:text-yellow-500 uppercase mt-1">Licença/Just.</div>
+                        </div>
+                        <div className="bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 p-3 rounded-xl text-center shadow-sm">
+                            <div className="text-2xl font-black text-slate-600 dark:text-slate-400">{stats.DM}</div>
+                            <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">DM</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {safePs.map((p, i) => {
+                                if(!p) return null;
+                                const status = getStatus(i);
+                                return (
+                                    <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
+                                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase truncate">{p.name}</div>
+                                                <div className="text-[9px] font-bold text-slate-400">{p.pos || 'Atleta'}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 border dark:border-slate-600">
+                                            <button onClick={()=>setStatus(i, 'P')} className={`flex-1 md:w-20 py-1.5 text-[10px] font-black uppercase rounded transition-colors ${status === 'P' ? 'bg-green-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Pres</button>
+                                            <button onClick={()=>setStatus(i, 'A')} className={`flex-1 md:w-20 py-1.5 text-[10px] font-black uppercase rounded transition-colors ${status === 'A' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Falta</button>
+                                            <button onClick={()=>setStatus(i, 'J')} className={`flex-1 md:w-20 py-1.5 text-[10px] font-black uppercase rounded transition-colors ${status === 'J' ? 'bg-yellow-500 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Just</button>
+                                            <button onClick={()=>setStatus(i, 'DM')} className={`flex-1 md:w-20 py-1.5 text-[10px] font-black uppercase rounded transition-colors ${status === 'DM' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>DM</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
         const MainApp = ({ user, initialData, activeTeam, setActiveTeam }) => {
             const [tab, setTab] = useState('home'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
@@ -3433,6 +3519,7 @@ const generateMatchReport = () => {
             const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
             const [assessments, setAssessments] = useState(initialData?.assessments || {});
             const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
+            const [attendanceLog, setAttendanceLog] = useState(initialData?.attendanceLog || {});
             const [matchMinutes, setMatchMinutes] = useState(initialData?.matchMinutes || {});
             const [header, setHeader] = useState(initialData?.header || {});
             const [logo, setLogo] = useState(initialData?.logo || null);
@@ -3460,6 +3547,7 @@ const generateMatchReport = () => {
                     setTrainingLog(initialData.trainingLog || {});
                     setAssessments(initialData.assessments || {});
                     setDmRecords(initialData.dmRecords || []);
+                    setAttendanceLog(initialData.attendanceLog || {});
                     setMatchMinutes(initialData.matchMinutes || {});
                     setDays(initialData.days || DEFAULT_DAYS);
                     setExercises(initialData.exercises || []);
@@ -3494,7 +3582,7 @@ const generateMatchReport = () => {
                     setSyncStatus('A Guardar...');
                     const dataToSave = { 
                         themeColor, players, trainingLog, assessments, 
-                        dmRecords, matchMinutes, header, logo, 
+                        dmRecords, matchMinutes, header, logo, attendanceLog,
                         darkMode, days, exercises, library, 
                         postWorkout, coachMsg, videoUrl, nextGame,
                         lastAlertSent
@@ -3653,7 +3741,7 @@ const generateMatchReport = () => {
                     </div>
                     
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                        {['home','squad','micro','wellness','pse','workout','match','gameday','dm','assessment','library'].map(t => (
+                       {['home','squad','micro','wellness','pse','workout','freq','match','gameday','dm','assessment','library'].map(t => (
                             <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
                         ))}
                     </div>
@@ -3715,6 +3803,7 @@ const generateMatchReport = () => {
                             {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
                             {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
                             {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} initialData={initialData} user={user} />}
+                            {tab === 'freq' && <AttendanceView players={players} themeColor={themeColor} attendanceLog={attendanceLog} setAttendanceLog={setAttendanceLog} dmRecords={dmRecords} />}
                         </div>
                     </div>
                 </div>
