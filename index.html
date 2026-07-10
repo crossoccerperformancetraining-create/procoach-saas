@@ -2589,70 +2589,133 @@ const renderVideoElement = (url) => {
         });
     };
 
-    const exportarPDF = () => {
-        showToast("Gerando Ficha de Campo...", "#3b82f6");
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        doc.setFontSize(22);
-        doc.setTextColor(30, 58, 138);
-        doc.text("FICHA DE CAMPO - SESSÃO DE TREINO", 14, 20);
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Data da Sessão: ${formatDateBR(sessionDate)}`, 14, 28);
-        doc.line(14, 32, 196, 32);
-
-        let y = 42;
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-
-        if (exercises.length === 0) {
-            doc.text("Nenhuma atividade registrada para esta sessão.", 14, y);
-        } else {
-            exercises.forEach((ex, i) => {
-                if (y > 240) { doc.addPage(); y = 20; }
-                doc.setFont(undefined, 'bold');
-                doc.text(`${ex.order || i+1}. ${ex.title.toUpperCase()} [${ex.type === 'campo' ? 'Campo' : 'Academia'}]`, 14, y);
-                doc.setFont(undefined, 'normal');
-                y += 6;
-                doc.setFontSize(10);
-                doc.setTextColor(50, 50, 50);
-                const desc = ex.type === 'campo' ? `Foco: ${ex.target} | Blocos: ${ex.sets} | Tempo: ${ex.reps} | Pausa: ${ex.rest}` : `Foco: ${ex.target} | Séries: ${ex.sets} | Reps: ${ex.reps} | Pausa: ${ex.rest}`;
-                doc.text(desc, 14, y);
-                y += 6;
+  const exportarPDF = async () => {
+                showToast("Gerando Ficha de Campo...", "#3b82f6");
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
                 
-                if(ex.description) {
-                    const splitDesc = doc.splitTextToSize(`Regra/Dinâmica: ${ex.description}`, 180);
-                    doc.text(splitDesc, 14, y);
-                    y += (splitDesc.length * 5);
+                const teamName = initialData?.header?.teamName || "PROCOACH MAX";
+                const logoUrl = initialData?.logo;
+                let y = 20;
+
+                // MÁGICA DO CABEÇALHO PROFISSIONAL COM LOGO
+                if (logoUrl) {
+                    try {
+                        const imgLogo = new Image();
+                        imgLogo.crossOrigin = "Anonymous";
+                        imgLogo.src = logoUrl;
+                        await new Promise((resolve) => {
+                            imgLogo.onload = resolve;
+                            imgLogo.onerror = resolve;
+                        });
+                        if (imgLogo.complete && imgLogo.naturalWidth > 0) {
+                            // Adiciona a logo no canto superior direito
+                            doc.addImage(imgLogo, 'PNG', 170, 8, 26, 26);
+                        }
+                    } catch(e) { console.log("Erro ao carregar logo no cabeçalho"); }
                 }
-                y += 6;
+
+                // Textos do Cabeçalho
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(30, 58, 138); // Azul Marinho
+                doc.text(teamName.toUpperCase(), 14, y);
+                y += 8;
+                
                 doc.setFontSize(12);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(80, 80, 80);
+                doc.text("FICHA DE CAMPO - SESSÃO DE TREINO", 14, y);
+                y += 6;
+
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Data da Sessão: ${formatDateBR(sessionDate)}`, 14, y);
+                y += 6;
+
+                // Linha divisória fina
+                doc.setDrawColor(200, 200, 200);
+                doc.line(14, y, 196, y);
+                y += 10;
+
+                if (exercises.length === 0) {
+                    doc.text("Nenhuma atividade registrada para esta sessão.", 14, y);
+                } else {
+                    // Loop Assíncrono para dar tempo de desenhar as imagens táticas
+                    for (let i = 0; i < exercises.length; i++) {
+                        const ex = exercises[i];
+                        
+                        if (y > 240) { doc.addPage(); y = 20; }
+                        
+                        doc.setFontSize(12);
+                        doc.setFont(undefined, 'bold');
+                        doc.setTextColor(0, 0, 0);
+                        doc.text(`${ex.order || i+1}. ${ex.title.toUpperCase()} [${ex.type === 'campo' ? 'Campo' : 'Academia'}]`, 14, y);
+                        doc.setFont(undefined, 'normal');
+                        y += 6;
+                        
+                        doc.setFontSize(10);
+                        doc.setTextColor(50, 50, 50);
+                        const desc = ex.type === 'campo' ? `Foco: ${ex.target} | Blocos: ${ex.sets} | Tempo: ${ex.reps} | Pausa: ${ex.rest}` : `Foco: ${ex.target} | Séries: ${ex.sets} | Reps: ${ex.reps} | Pausa: ${ex.rest}`;
+                        doc.text(desc, 14, y);
+                        y += 6;
+                        
+                        if(ex.description) {
+                            const splitDesc = doc.splitTextToSize(`Regra/Dinâmica: ${ex.description}`, 180);
+                            doc.text(splitDesc, 14, y);
+                            y += (splitDesc.length * 5) + 2;
+                        } else {
+                            y += 2;
+                        }
+
+                        // Renderização da Imagem/Prancheta do Exercício
+                        if (ex.gifUrl && !ex.gifUrl.includes('youtube')) {
+                            try {
+                                if (y > 190) { doc.addPage(); y = 20; } 
+                                
+                                const img = new Image();
+                                img.crossOrigin = "Anonymous"; 
+                                img.src = ex.gifUrl;
+                                
+                                await new Promise((resolve) => {
+                                    img.onload = resolve;
+                                    img.onerror = resolve;
+                                });
+
+                                if(img.complete && img.naturalWidth > 0) {
+                                    doc.addImage(img, 'JPEG', 14, y, 80, 50);
+                                    y += 55; 
+                                }
+                            } catch(err) {
+                                console.log("Erro ao renderizar imagem tática no PDF");
+                            }
+                        }
+                        
+                        y += 4;
+                    }
+                }
+
+                if (y > 220) { doc.addPage(); y = 20; } else { y += 10; }
+                
+                // Caixa de Observações Táticas
+                doc.setDrawColor(30, 58, 138);
+                doc.setFillColor(240, 248, 255);
+                doc.rect(14, y, 182, 40, 'FD'); 
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(30, 58, 138);
+                doc.text("PONTO CHAVE / AJUSTE TÁTICO:", 18, y + 8);
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
                 doc.setTextColor(0, 0, 0);
-            });
-        }
+                const splitText = doc.splitTextToSize(pontoChave || "Nenhuma observação tática para esta sessão.", 174);
+                doc.text(splitText, 18, y + 16);
 
-        if (y > 220) { doc.addPage(); y = 20; } else { y += 10; }
-        doc.setDrawColor(30, 58, 138);
-        doc.setFillColor(240, 248, 255);
-        doc.rect(14, y, 182, 40, 'FD'); 
-        
-        doc.setFontSize(12);
-        doc.setFont(undefined, 'bold');
-        doc.setTextColor(30, 58, 138);
-        doc.text("PONTO CHAVE / AJUSTE TÁTICO:", 18, y + 8);
-        
-        doc.setFontSize(10);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(0, 0, 0);
-        const splitText = doc.splitTextToSize(pontoChave || "Nenhuma observação tática para esta sessão.", 174);
-        doc.text(splitText, 18, y + 16);
-
-        doc.save(`Ficha_Treino_${sessionDate}.pdf`);
-        showToast("Ficha gerada com sucesso!", "#10b981");
-    };
-
+                doc.save(`Ficha_Treino_${sessionDate}.pdf`);
+                showToast("Ficha gerada com sucesso!", "#10b981");
+            };
     const notificarTreino = () => {
         const linkApp = user ? `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}` : "Link do App";
         const dataFormatada = formatDateBR(sessionDate);
