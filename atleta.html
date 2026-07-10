@@ -57,9 +57,10 @@
         const { useState, useEffect, useMemo, useRef } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
-              const urlParams = new URLSearchParams(window.location.search);
+            const urlParams = new URLSearchParams(window.location.search);
         const rawCoachId = urlParams.get('id'); 
         const playerIndex = parseInt(urlParams.get('p')); 
+        const playerUid = urlParams.get('uid'); // NOVO V145: Captura o ID Fixo
         const activeCoachDocId = rawCoachId;
 
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
@@ -196,17 +197,28 @@
                         const d = doc.data();
                         setData({ players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], lastAlertSent: d.lastAlertSent || 0 });
                         
-                        if(idx === null && !isNaN(playerIndex)) {
-                            setIdx(playerIndex);
-                            setIsPriv(true);
-                        } else if (isNaN(playerIndex)) {
-                            setIsPriv(false);
-                        }
+                      if (idx === null) {
+                    let foundIndex = -1;
+                    if (playerUid) {
+                        // NOVO V145 MAX: Busca o atleta pelo ID Fixo para a fila nunca mais errar
+                        foundIndex = (d.players || []).findIndex(p => p && p.id === playerUid);
+                    } else if (!isNaN(playerIndex)) {
+                        // LEGADO: Mantido para os links velhos não quebrarem imediatamente
+                        foundIndex = playerIndex;
                     }
-                    setLoading(false);
-                }, () => { setLoading(false); });
-                return () => unsubscribe();
-            }, [activeCoachDocId, playerIndex]);
+
+                    if (foundIndex !== -1 && d.players && d.players[foundIndex]) {
+                        setIdx(foundIndex);
+                        setIsPriv(true);
+                    } else {
+                        setIsPriv(false);
+                    }
+                }
+            }
+            setLoading(false);
+        }, () => { setLoading(false); });
+        return () => unsubscribe();
+    }, [activeCoachDocId, playerIndex, playerUid]); 
 
             useEffect(() => {
                 if (idx !== null) {
