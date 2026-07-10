@@ -591,7 +591,11 @@
             if (!data || typeof data !== 'object') return {};
             return {
                 themeColor: typeof data.themeColor === 'string' ? data.themeColor : '#1e3a8a',
-                players: safeArray(data.players).map(p => safeObj(p)),
+               players: safeArray(data.players).map(p => {
+                    const sp = safeObj(p);
+                    if (!sp.id) sp.id = "atl_" + Math.random().toString(36).substr(2, 9);
+                    return sp;
+                }),
                 trainingLog: safeObj(data.trainingLog),
                 assessments: safeObj(data.assessments),
                 dmRecords: safeArray(data.dmRecords),
@@ -1152,7 +1156,7 @@ const LineChart = ({ data, color, height = 50 }) => {
             const copyAthleteLink = () => {
                 const user = firebase.auth().currentUser;
                 if(user) {
-                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
+                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&uid=${player.id}`;
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(link).then(() => {
                             showToast("Link copiado! Envie no WhatsApp.");
@@ -1217,8 +1221,9 @@ const LineChart = ({ data, color, height = 50 }) => {
             const today = getTodayStr(); 
             const safePlayers = safeArray(players);
             
-            const addP = () => {
-                const newPlayers = [...safePlayers, { name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
+           const addP = () => {
+                const uniqueId = "atl_" + Date.now();
+                const newPlayers = [...safePlayers, { id: uniqueId, name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
                 setPlayers(newPlayers);
                 const user = firebase.auth().currentUser;
                 if (user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ players: newPlayers });
@@ -1867,10 +1872,16 @@ const acwrGroups = useMemo(() => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {safePs.map((p, i) => { 
-                            if(!p) return null; 
-                            const pLog = dailyData[i] || {}; 
-                            const totalHooper = getWSum(pLog.wellness); 
+        {safePs.map((p, i) => {
+            if(!p) return null;
+            
+            // --- ADICIONE ESTA LINHA AQUI ---
+            // Substitua 'variavelDaAba' pelo nome do estado que controla o botão lá do topo (ex: activeTeam, currentCategory)
+            // if(p.categoria !== variavelDaAba) return null;
+            // -------------------------------
+
+            const pLog = dailyData[i] || {};
+            const totalHooper = getWSum(pLog.wellness);
                             const totalDaily = calcDailyLoad(pLog); 
                             const painAlert = (Number(safeObj(pLog.wellness).soreness) || 0) >= 5; 
                             const inTransition = !p.injured && isPlayerInTransition(i, dmRecords);
