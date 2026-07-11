@@ -162,6 +162,12 @@
         });
 
         const safeDays = days.map(d => ({...d, plannedMins: d.plannedMins || '', actualMins: d.actualMins || ''}));
+      
+       // CÉREBRO: Calcula a carga real somando os blocos do dia
+    const calculateDailyLoad = (dayIndex) => {
+        if (!days || !days[dayIndex] || !days[dayIndex].blocks) return 0;
+        return days[dayIndex].blocks.reduce((sum, b) => sum + (parseInt(b.duration) || 0), 0);
+    };
 
         // 1. CÉREBRO DA IA: Calcula a meta baseada no MD
         // 1. CÉREBRO DA IA: Calcula a meta baseada na fase
@@ -476,21 +482,33 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {safeDays.map(d => {
-                                            const real = Object.values(trainingLog[d.date] || {}).reduce((a, b) => a + calcDailyLoad(b), 0);
-                                            const metaSugestao = calcularMetaIA(d.md);
-                                            const meta = (Number(metaSugestao) * Number(d.pseTarget)) || 0;
-                                            return (
-                                                <tr key={d.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                                                    <td className="py-3 font-bold pr-6">{d.name} <span className="text-slate-500 ml-1">({d.md})</span></td>
-                                                    <td className="text-center font-bold text-blue-400 px-4">{meta || '-'}</td>
-                                                    <td className="text-center font-bold px-4">{real || '-'}</td>
-                                                    <td className={`text-center font-black pl-4 ${real > (meta * 1.1) ? 'text-red-500' : real > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
-                                                        {real === 0 ? '-' : real > (meta * 1.1) ? 'ACIMA' : 'OK'}
-                                                    </td>
-                                                </tr>
-                                            )
-                                        })}
+                                     {safeDays.map((d, index) => {
+                                // MÁGICA BLINDADA: Tenta ler a soma dos blocos ou pega o valor direto do card
+                                const somaBlocos = (d.blocks || []).reduce((acc, b) => acc + (parseInt(b.duration) || parseInt(b.mins) || 0), 0);
+                                const real = somaBlocos > 0 ? somaBlocos : (parseInt(d.actualMins) || 0);
+                                
+                                const metaSugestao = calcularMetaIA(d.md);
+                                const meta = (Number(metaSugestao) * Number(d.pseTarget)) || 0;
+                                
+                                return (
+                                    <tr key={d.id || index} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                                        <td className="py-3 font-bold pr-6 text-white">{d.name} <span className="text-slate-500 ml-1">({d.md})</span></td>
+                                        
+                                        <td className="text-center font-bold text-blue-400 px-4">
+                                            {meta > 0 ? meta : '-'}
+                                        </td>
+                                        
+                                        {/* Coluna REAL atualizada */}
+                                        <td className="text-center font-black text-emerald-400 px-4">
+                                            {real > 0 ? `${real}m` : '-'}
+                                        </td>
+                                        
+                                        <td className={`text-center font-black pl-4 ${meta > 0 && real > (meta * 1.1) ? 'text-red-500' : real > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                            {real === 0 ? '-' : (meta > 0 && real > (meta * 1.1)) ? 'ACIMA' : 'OK'}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                                     </tbody>
                                 </table>
                             </div>
@@ -1186,6 +1204,29 @@ const LineChart = ({ data, color, height = 50 }) => {
                 return null;
             };
 
+           // TIMELINE VISUAL DE WELLNESS (ÚLTIMOS 5 DIAS)
+    const WellnessTimeline = () => {
+        // Pega os 5 dias mais recentes do histórico
+        const last5 = dates.slice(0, 5).reverse(); 
+        return (
+            <div className="mb-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3">
+                    <i className="fa-solid fa-heart-pulse text-violet-500 mr-2"></i> 
+                    Histórico de Dor (Últimos 5 dias)
+                </h4>
+                <div className="flex gap-2">
+                    {last5.map(d => {
+                        const dor = Number(logs[d]?.[playerIndex]?.wellness?.soreness) || 0;
+                        // Define a cor com base no nível de dor
+                        let cor = dor === 0 ? "bg-slate-700" : dor > 6 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" : dor > 3 ? "bg-yellow-500" : "bg-emerald-500";
+                        return (
+                            <div key={d} className={`flex-1 h-3 rounded-full ${cor}`} title={`${d} - Nível de Dor: ${dor}`}></div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
             const copyAthleteLink = () => {
                 const user = firebase.auth().currentUser;
                 if(user) {
@@ -1236,6 +1277,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                                 <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{loadMsg}</div>
                             </div>
                             <HistoryAI />
+                            <WellnessTimeline />
                             <div>
                                 <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2"><Icon name="smile"/> Status ({formatDateBR(today)})</h3>
                                 <div className="grid grid-cols-2 gap-4">{Object.entries({Sono:wellness.sleep,Estresse:wellness.stress,Fadiga:wellness.fatigue,Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(<div key={k} className="bg-slate-50 dark:bg-slate-700 p-2 rounded border border-slate-100 dark:border-slate-600"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-500 dark:text-slate-400">{k}</span><span className="dark:text-white">{v||'-'}</span></div><div className="h-2 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div></div></div>))}</div>
@@ -3225,8 +3267,25 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                 </div>
             );
         };
-
-  const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user, exercises, library }) => {
+// Verifica os últimos 3 dias de Wellness
+const checkProntidao = (index) => {
+    const hoje = new Date();
+    let queixas = 0;
+    
+    // Varre os últimos 3 dias
+    for(let i = 1; i <= 3; i++) {
+        let d = new Date();
+        d.setDate(hoje.getDate() - i);
+        let dataStr = d.toISOString().split('T')[0];
+        
+        // Se o atleta registrou dor (soreness) acima de 6
+        if(wellnessLog[dataStr] && wellnessLog[dataStr][index]?.soreness > 6) {
+            queixas++;
+        }
+    }
+    return queixas >= 2; // Alerta se houve queixa em pelo menos 2 dos últimos 3 dias
+};
+ const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user, exercises, library, trainingLog }) => {
     const [matchDate, setMatchDate] = useState(getTodayStr());
     const [opponent, setOpponent] = useState('');
     const [homeScore, setHomeScore] = useState(0);
@@ -3239,8 +3298,23 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
         if (!newPs[pIdx].stats) newPs[pIdx].stats = { g: 0, a: 0, yc: 0, rc: 0 };
         newPs[pIdx].stats[stat] = val === '' ? '' : Math.max(0, parseInt(val) || 0);
         setPlayers(newPs);
-        const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
-        if(user) db.collection('coachData').doc(docId).update({ players: newPs });
+    };
+
+       // FUNÇÃO DE INTELIGÊNCIA (ALERTA DE LESÃO)
+    const checkProntidao = (index) => {
+        let queixas = 0;
+        const hoje = new Date();
+        for(let i = 1; i <= 3; i++) {
+            let d = new Date();
+            d.setDate(hoje.getDate() - i);
+            let dataStr = d.toISOString().split('T')[0];
+            
+            // Agora ele busca a dor (soreness) dentro do trainingLog correto
+            if(trainingLog && trainingLog[dataStr] && trainingLog[dataStr][index]?.soreness > 6) {
+                queixas++;
+            }
+        }
+        return queixas >= 2;
     };
 
     const updateMins = (pIdx, val) => {
@@ -3252,15 +3326,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
         if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
     };
 
-    const updateWeight = (pIdx, type, val) => {
-        const newMins = {...matchMinutes};
-        if(!newMins[matchDate]) newMins[matchDate] = {};
-        if(!newMins[matchDate][pIdx]) newMins[matchDate][pIdx] = {};
-        newMins[matchDate][pIdx][type] = parseFloat(val) || '';
-        setMatchMinutes(newMins);
-        const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
-        if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
-    };
 const generateMatchReport = () => {
         showToast("Gerando Relatório de Partida...", "#3b82f6");
         const { jsPDF } = window.jspdf;
@@ -3532,7 +3597,7 @@ const generateMatchReport = () => {
                 </div>
             );
         };
-      const DashboardView = ({ players, days, trainingLog, dmRecords, themeColor }) => {
+     const DashboardView = ({ players, days, trainingLog, dmRecords, themeColor, attendanceLog }) => {
             const todayStr = getTodayStr();
             const safePs = Array.isArray(players) ? players : [];
             const activeDM = Array.isArray(dmRecords) ? dmRecords.filter(r => r && r.status === 'Active') : [];
@@ -3541,7 +3606,36 @@ const generateMatchReport = () => {
             const dayOfWeek = d.getDay(); 
             const mappedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             const todayPlan = days[mappedIndex] || {};
+// --- INÍCIO DA INTELIGÊNCIA DA HOME (NOVO) ---
+    const hojeDashboard = new Date().toISOString().split('T')[0];
+    const elencoTotal = players || [];
+    
+    // 1. CÁLCULO DE WELLNESS PENDENTE
+    const atletasResponderam = elencoTotal.filter((p, i) => trainingLog && trainingLog[hojeDashboard] && trainingLog[hojeDashboard][i]?.wellness).length;
+    const wellnessPendente = elencoTotal.length - atletasResponderam;
 
+  // 2. CÁLCULO DE ELENCO DISPONÍVEL (Sem DM e Sem Falta)
+    const elencoDisponivel = elencoTotal.filter((p, i) => {
+        if (p.injured) return false; // Está no DM pela chave principal
+        
+        // Verifica na lista de frequência se hoje ele tem 'A' (Ausente), 'J' (Justificado) ou 'DM'
+        if (attendanceLog && attendanceLog[hojeDashboard]) {
+            const status = attendanceLog[hojeDashboard][i];
+            if (status === 'A' || status === 'J' || status === 'DM') return false; 
+        }
+        return true; // Se não caiu em nenhuma das restrições acima, está no campo!
+    }).length;
+
+    // 3. PRÓXIMO COMPROMISSO E METAS (Salvando no navegador para ser rápido)
+    const [proximoJogo, setProximoJogo] = useState(localStorage.getItem('ac_prox_jogo') || 'vs Adversário (Sábado)');
+    const [metaPrincipal, setMetaPrincipal] = useState(localStorage.getItem('ac_meta') || 'Classificação na Copa do Nordeste');
+    const [recadoComissao, setRecadoComissao] = useState(localStorage.getItem('ac_recado') || '');
+
+    const salvarProxJogo = (val) => { setProximoJogo(val); localStorage.setItem('ac_prox_jogo', val); };
+    const salvarMeta = (val) => { setMetaPrincipal(val); localStorage.setItem('ac_meta', val); };
+    const salvarRecado = (val) => { setRecadoComissao(val); localStorage.setItem('ac_recado', val); };
+    // --- FIM DA INTELIGÊNCIA DA HOME ---
+          
 // Calcular ACWR para Risco de Lesão (Corrigido com Trava de Segurança)
         const riskPlayers = [];
         safePs.forEach((p, i) => {
@@ -3588,7 +3682,74 @@ const generateMatchReport = () => {
                             {formatDateBR(todayStr)}
                         </span>
                     </div>
+{/* ================= PAINEL DE COMANDO AC NOVA GERAÇÃO ================= */}
+            <div className="space-y-4 mb-8">
+                
+                {/* 1. AGENDA E META (Foco Direcional) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-800 p-4 rounded-xl border-l-4 border-blue-500 shadow-md">
+                        <span className="text-[10px] text-blue-400 font-black uppercase flex items-center gap-1"><i className="fa-solid fa-crosshairs"></i> Foco Principal</span>
+                        <input value={metaPrincipal} onChange={(e) => salvarMeta(e.target.value)} className="w-full bg-transparent text-white font-bold mt-1 text-sm outline-none" placeholder="Ex: Alcançar 70% de aproveitamento..." />
+                    </div>
+                    <div className="bg-slate-800 p-4 rounded-xl border-l-4 border-orange-500 shadow-md">
+                        <span className="text-[10px] text-orange-400 font-black uppercase flex items-center gap-1"><i className="fa-solid fa-calendar-day"></i> Próximo Jogo</span>
+                        <input value={proximoJogo} onChange={(e) => salvarProxJogo(e.target.value)} className="w-full bg-transparent text-white font-bold mt-1 text-sm outline-none" placeholder="Ex: vs Adversário em 3 dias..." />
+                    </div>
+                </div>
 
+                {/* 2. DISPONIBILIDADE E COBRANÇA */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Elenco Disponível */}
+                    <div className={`p-4 rounded-xl shadow-md border-2 transition-all ${elencoDisponivel < 22 ? 'bg-yellow-900/30 border-yellow-500' : 'bg-emerald-900/30 border-emerald-500'}`}>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className={`text-[10px] font-black uppercase ${elencoDisponivel < 22 ? 'text-yellow-400' : 'text-emerald-400'}`}>Status do Elenco (Campo)</span>
+                                <h3 className="text-3xl font-black text-white mt-1">{elencoDisponivel} <span className="text-sm font-bold text-slate-500">/ {elencoTotal.length}</span></h3>
+                            </div>
+                            <i className="fa-solid fa-users text-3xl text-slate-500 opacity-50"></i>
+                        </div>
+                        {elencoDisponivel < 22 ? (
+                            <p className="text-[10px] text-yellow-300 font-bold uppercase mt-2 flex items-center gap-1"><i className="fa-solid fa-triangle-exclamation"></i> Atenção: Elenco reduzido para 11x11</p>
+                        ) : (
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-2 flex items-center gap-1"><i className="fa-solid fa-check"></i> Número ideal para coletivo</p>
+                        )}
+                    </div>
+
+                    {/* Robô de Cobrança (Wellness) */}
+                    <div className={`p-4 rounded-xl shadow-md border-2 transition-all ${wellnessPendente > 0 ? 'bg-red-900/40 border-red-500 animate-pulse' : 'bg-slate-800 border-slate-700'}`}>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className={`text-[10px] font-black uppercase ${wellnessPendente > 0 ? 'text-red-400' : 'text-slate-400'}`}>Wellness Pendente</span>
+                                <h3 className="text-3xl font-black text-white mt-1">{wellnessPendente}</h3>
+                            </div>
+                            <i className="fa-solid fa-mobile-screen-button text-3xl text-slate-500 opacity-50"></i>
+                        </div>
+                        {wellnessPendente > 0 ? (
+                            <p className="text-[10px] text-red-300 font-bold uppercase mt-2 flex items-center gap-1"><i className="fa-solid fa-bullhorn"></i> Cobrança imediata no vestiário</p>
+                        ) : (
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-2 flex items-center gap-1"><i className="fa-solid fa-check-double"></i> 100% Preenchido</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. POST-IT / RECADO PARA COMISSÃO */}
+                <div className="bg-yellow-600/10 border border-yellow-600/30 p-4 rounded-xl">
+                    <span className="text-[10px] text-yellow-500 font-black uppercase flex items-center gap-2 mb-2">
+                        <i className="fa-solid fa-note-sticky"></i> Recado Rápido da Comissão
+                    </span>
+                    <textarea 
+                        value={recadoComissao} 
+                        onChange={(e) => salvarRecado(e.target.value)} 
+                        placeholder="Ex: Atenção: Chuva forte prevista, treino vai para o sintético..."
+                        className="w-full bg-transparent text-yellow-200 placeholder-yellow-700/50 text-sm font-bold resize-none outline-none border-b border-transparent focus:border-yellow-600/50 pb-1"
+                        rows="2"
+                    ></textarea>
+                </div>
+
+            </div>
+            {/* ================================================================= */}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 flex flex-col" style={{borderColor: themeColor}}>
                             <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="calendar"/> Planejamento ({todayPlan.name})</h3>
@@ -3644,7 +3805,7 @@ const generateMatchReport = () => {
                 </div>
             );
         };
-const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, dmRecords }) => {
+const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, dmRecords, user }) => {
             const [date, setDate] = useState(getTodayStr());
             const safePs = safeArray(players);
 
@@ -3661,12 +3822,28 @@ const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, 
                 return 'P'; // Padrão: Presente
             };
 
-            const setStatus = (i, status) => {
-                const newLog = { ...attendanceLog };
-                if (!newLog[date]) newLog[date] = {};
-                newLog[date][i] = status;
-                setAttendanceLog(newLog);
-            };
+           const setStatus = (i, status) => {
+        const newLog = { ...attendanceLog };
+        if (!newLog[date]) newLog[date] = {};
+        newLog[date][i] = status;
+        setAttendanceLog(newLog); // Atualiza a tela
+    };
+
+    // MOTOR: Envia a falta direto para o banco de dados e avisa a Home
+    const salvarFrequencia = () => {
+        if (!user) return;
+        const docId = typeof getActiveDocId === 'function' && getActiveDocId(user.uid) ? getActiveDocId(user.uid) : user.uid;
+        
+        db.collection('coachData').doc(docId).update({ attendanceLog })
+            .then(() => {
+                if(typeof showToast === 'function') {
+                    showToast("Frequência salva e sincronizada com o Elenco!", "#10b981");
+                } else {
+                    alert("Frequência salva com sucesso!");
+                }
+            })
+            .catch(error => console.error("Erro ao salvar frequência:", error));
+    };
 
             // Calcula a estatística do dia
             const stats = { P: 0, A: 0, J: 0, DM: 0 };
@@ -3742,6 +3919,16 @@ const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, 
                             })}
                         </div>
                     </div>
+                    {/* BOTÃO DE SALVAR E SINCRONIZAR */}
+            <div className="mt-8 mb-4 px-2">
+                <button 
+                    onClick={salvarFrequencia} 
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black py-4 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 transition-all uppercase tracking-wider"
+                >
+                    <i className="fa-solid fa-cloud-arrow-up text-lg"></i> 
+                    Salvar Frequência e Atualizar Home
+                </button>
+            </div>
                 </div>
             );
         };
@@ -4049,19 +4236,19 @@ const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, 
                             </div>
                         )}
                         <div className="h-full">
-                            {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} />}
+                           {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} />}
                             {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
                             {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
                             {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                             {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
                             {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
-                            {tab === 'gameday' && <GameDayView players={players} setPlayers={setPlayers} themeColor={themeColor} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} user={user} />}
+                            {tab === 'gameday' && <GameDayView players={players} setPlayers={setPlayers} themeColor={themeColor} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} user={user} exercises={exercises} library={library} trainingLog={trainingLog} />}
                             {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                             {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
                             {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
                             {tab === 'macro' && <MacrocycleView themeColor={themeColor} macrocycle={macrocycle} setMacrocycle={setMacrocycle} user={user} />}
                             {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} initialData={initialData} user={user} />}
-                            {tab === 'freq' && <AttendanceView players={players} themeColor={themeColor} attendanceLog={attendanceLog} setAttendanceLog={setAttendanceLog} dmRecords={dmRecords} />}
+                            {tab === 'freq' && <AttendanceView players={players} themeColor={themeColor} attendanceLog={attendanceLog} setAttendanceLog={setAttendanceLog} dmRecords={dmRecords} user={user} />}
                         </div>
                     </div>
                 </div>
