@@ -476,34 +476,50 @@
                 </div>
             );
 
-            if(step===2) {
-                const p = data.players[idx];
-                return (
-                    <div className="h-full flex flex-col animate-fade-in relative bg-slate-900 pb-20">
-                        <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between shadow-lg shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div>
-                                <div>
-                                    <div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div>
-                                    <h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2>
-                                </div>
-                            </div>
-                            {!isPriv && (
-                                <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm">
-                                    <Icon name="arrowLeft" size={12}/> VOLTAR
-                                </button>
-                            )}
-                        </div>
-                        {DateSelectorUI}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
-                            {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
-                            <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
-                        </div>
-                        <div className="fixed bottom-0 left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md z-50 border-t border-slate-800"><button onClick={subData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl" style={{backgroundColor:data.color}}>{submitting ? <Icon name="refresh" className="animate-spin"/> : <><Icon name="send"/> ENVIAR PRONTIDÃO</>}</button></div>
-                        {alertModalUI}
+         if(step===2) {
+    const p = data.players[idx];
+    const batInfo = calcBat(scores); // Calcula a bateria com base nas notas do atleta
+    
+    return (
+        <div className="h-full flex flex-col animate-fade-in relative bg-slate-900 pb-20">
+            <div className="bg-slate-800 p-4 border-b border-slate-700 flex items-center justify-between shadow-lg shrink-0">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-slate-700 overflow-hidden shrink-0 border-2" style={{borderColor:data.color}}>{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user"/>}</div>
+                    <div>
+                        <div className="text-[10px] font-bold uppercase" style={{color:data.color}}>Prontidão Diária</div>
+                        <h2 className="text-lg font-black text-white">{getGreeting()}, {(p.name || 'Atleta').split(' ')[0]}!</h2>
                     </div>
-                );
-            }
+                </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scroll">
+                {/* ANEL DE PRONTIDÃO (READINESS RING) */}
+                <div className="flex flex-col items-center justify-center mb-2">
+                    <div className="relative w-32 h-32 flex items-center justify-center">
+                        <svg className="w-full h-full -rotate-90">
+                            <circle cx="64" cy="64" r="58" stroke="#1e293b" strokeWidth="8" fill="none" />
+                            <circle cx="64" cy="64" r="58" stroke={batInfo.p < 40 ? '#ef4444' : batInfo.p < 75 ? '#eab308' : '#22c55e'} 
+                                    strokeWidth="8" fill="none" strokeDasharray={`${batInfo.p * 3.64} 364`} strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute text-center">
+                            <div className="text-3xl font-black">{batInfo.p}%</div>
+                            <div className="text-[9px] uppercase font-bold text-slate-500">Prontidão</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SLIDERS DE WELLNESS */}
+                {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
+                
+                {/* DORES FOCAIS */}
+                <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
+            </div>
+            
+            {/* BOTÃO DE ENVIO */}
+            <div className="fixed bottom-0 left-0 w-full p-4 bg-slate-900/95 backdrop-blur-md z-50 border-t border-slate-800"><button onClick={subData} disabled={submitting} className="w-full text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl" style={{backgroundColor:data.color}}>{submitting ? <Icon name="refresh" className="animate-spin"/> : <><Icon name="send"/> ENVIAR PRONTIDÃO</>}</button></div>
+        </div>
+    );
+}
 
             const p = data.players[idx]; 
             const isSuspended = p.suspended === true; const isHighlight = p.highlight === true;
