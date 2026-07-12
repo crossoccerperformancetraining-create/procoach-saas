@@ -3835,11 +3835,17 @@ const generateMatchReport = () => {
     // 3. PRÓXIMO COMPROMISSO E METAS (Salvando no navegador para ser rápido)
     const [proximoJogo, setProximoJogo] = useState(localStorage.getItem('ac_prox_jogo') || 'vs Adversário (Sábado)');
     const [metaPrincipal, setMetaPrincipal] = useState(localStorage.getItem('ac_meta') || 'Classificação na Copa do Nordeste');
-    const [recadoComissao, setRecadoComissao] = useState(localStorage.getItem('ac_recado') || '');
+  // Substitua de 3838 até 3842 por isto:
+const [recadoComissao, setRecadoComissao] = useState(localStorage.getItem('ac_recado') || '');
 
-    const salvarProxJogo = (val) => { setProximoJogo(val); localStorage.setItem('ac_prox_jogo', val); };
-    const salvarMeta = (val) => { setMetaPrincipal(val); localStorage.setItem('ac_meta', val); };
-    const salvarRecado = (val) => { setRecadoComissao(val); localStorage.setItem('ac_recado', val); };
+const salvarRecado = (val) => { 
+    setRecadoComissao(val); 
+    localStorage.setItem('ac_recado', val);
+    // Atualiza o banco de dados para o App do Atleta ler
+    db.collection('coachData').doc(activeCoachDocId).update({
+        dailyMotivation: val
+    }).then(() => console.log("Recado sincronizado!"));
+};
     // --- FIM DA INTELIGÊNCIA DA HOME ---
           
 // Calcular ACWR para Risco de Lesão (Corrigido com Trava de Segurança)
@@ -4422,11 +4428,21 @@ const AttendanceView = ({ players, themeColor, attendanceLog, setAttendanceLog, 
 
                                     <div>
                                         <label className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 uppercase flex gap-1 items-center mb-2 tracking-wider"><Icon name="trophy" size={14}/> Logística de Convocação (App Atleta)</label>
-                                        <textarea 
-                                            className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-3 rounded-lg text-sm font-bold outline-none h-[88px] custom-scroll placeholder-slate-400 dark:placeholder-slate-500" 
-                                            placeholder="🚌 Digite a logística de viagem para os atletas convocados... (Ex: Saída sexta às 13h, Traje de viagem, etc.)" 
-                                            value={nextGame.logistics || ''} 
-                                            onChange={e => setNextGame({ ...nextGame, logistics: e.target.value })}
+                                       <label className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 uppercase flex gap-1 items-center mb-2 tracking-widest">
+   <Icon name="bell" size={12}/> RITUAL DO DESPERTAR (MENSAGEM DO DIA)
+</label>
+<textarea 
+    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-3 rounded-lg text-xs custom-scroll h-20"
+    placeholder="Ex: Bom dia, time! Hoje o foco total é na transição defensiva. Vamos com tudo!"
+    defaultValue={data.dailyMotivation || ''}
+    onBlur={(e) => {
+        db.collection('coachData').doc(activeCoachDocId).update({
+            dailyMotivation: e.target.value
+        }).then(() => {
+            console.log("Recado do dia salvo!");
+        });
+    }}
+/>
                                         ></textarea>
                                     </div>
 
