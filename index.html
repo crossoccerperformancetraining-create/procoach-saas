@@ -144,7 +144,7 @@
     );
 };
         };
-   const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog }) => {
+  const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog, library }) => {
         const [modalOpen, setModalOpen] = useState(false);
         const [aiModal, setAiModal] = useState(null);
         const [activeSlot, setActiveSlot] = useState({ dayId: null, period: null });
@@ -221,20 +221,36 @@
 
         const openModal = (dayId, period) => { setActiveSlot({ dayId, period }); setModalOpen(true); };
         
-        const addEvent = (typeObj, isCustom = false) => {
-            const newDays = safeDays.map(d => {
-                if(d.id === activeSlot.dayId) {
-                    const currentEvents = Array.isArray(d[activeSlot.period]) ? d[activeSlot.period] : [];
-                    const newEvent = { 
-                        id: Date.now(), 
-                        type: isCustom ? customLabel.toUpperCase() : typeObj.label, 
-                        colorClass: isCustom ? '' : typeObj.color, 
-                        textClass: isCustom ? 'text-white' : typeObj.text,
-                        customColor: isCustom ? customColor : null,
-                        load: isCustom ? 50 : typeObj.load
-                    };
-                    return { ...d, [activeSlot.period]: [...currentEvents, newEvent] };
+       const addEvent = (typeObj, isCustom = false) => {
+        const newDays = safeDays.map(d => {
+            if(d.id === activeSlot.dayId) {
+                const currentEvents = Array.isArray(d[activeSlot.period]) ? d[activeSlot.period] : [];
+                
+                // MÁGICA DA INTEGRAÇÃO: Busca o Tempo e a PSE na Biblioteca
+                let autoDuration = '';
+                let autoPse = '';
+                if(isCustom && library) {
+                    // Procura na biblioteca um treino com o nome exato digitado ou selecionado
+                    const treinoSalvo = library.find(item => item.title.toUpperCase() === customLabel.trim().toUpperCase());
+                    if(treinoSalvo) {
+                        autoDuration = treinoSalvo.duration || '';
+                        autoPse = treinoSalvo.pse || '';
+                    }
                 }
+
+                const newEvent = {
+                    id: Date.now(),
+                    type: isCustom ? customLabel.toUpperCase() : typeObj.label,
+                    colorClass: isCustom ? '' : typeObj.color,
+                    textClass: isCustom ? 'text-white' : typeObj.text,
+                    customColor: isCustom ? customColor : null,
+                    load: isCustom ? 50 : typeObj.load,
+                    duration: autoDuration, // Preenchimento Automático do Tempo!
+                    pse: autoPse            // Preenchimento Automático da PSE!
+                };
+                return { ...d, [activeSlot.period]: [...currentEvents, newEvent] };
+            }
+            return d;
                 return d;
             });
             
@@ -526,6 +542,32 @@
                             <div className="bg-slate-900 p-4 rounded-2xl shrink-0">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-wider flex items-center gap-1"><Icon name="edit" size={12}/> Criar Bloco Personalizado</h4>
                                 <div className="flex gap-2 mb-3">
+                                    {/* INTEGRAÇÃO COM A BIBLIOTECA TÁTICA */}
+            {library && library.length > 0 && (
+                <div className="mb-3">
+                    <label className="text-[10px] font-black text-blue-400 uppercase block mb-2 flex items-center gap-1">
+                        <i className="fa-solid fa-download"></i> Puxar da Biblioteca Tática
+                    </label>
+                    <select 
+                        onChange={e => {
+                            const selected = library.find(x => x.id === e.target.value);
+                            if(selected) {
+                                setCustomLabel(selected.title);
+                                // O pulo do gato para o Tempo e PSE virá a seguir!
+                            }
+                        }}
+                        className="w-full bg-slate-800 border border-slate-700 text-slate-200 p-3 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                    >
+                        <option value="">Escolha um treino salvo...</option>
+                        {library.map(item => (
+                            <option key={item.id} value={item.id}>
+                                {item.title} {item.duration ? `(${item.duration} min)` : ''} {item.pse ? `| PSE: ${item.pse}` : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="w-full h-[1px] bg-slate-800 my-3"></div>
+                </div>
+            )}
                                     <input type="text" placeholder="Nome (ex: FINALIZAÇÃO)" value={customLabel} onChange={e => setCustomLabel(e.target.value)} className="flex-1 bg-slate-800 border border-slate-600 rounded-xl p-3 text-xs text-white uppercase font-bold outline-none focus:border-blue-500" />
                                     <input type="color" value={customColor} onChange={e => setCustomColor(e.target.value)} className="w-12 h-10 mt-0.5 rounded cursor-pointer bg-transparent border-none" />
                                 </div>
