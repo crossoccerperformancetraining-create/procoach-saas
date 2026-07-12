@@ -2939,7 +2939,16 @@ const exportarPDF = async () => {
             y += 85; 
         }
 
+        // ... (resto do bloco do balanço com as linhas pautadas)
+        for (let L = 1; L <= 5; L++) {
+            let linhaY = y + 8 + (L * 7.5);
+            doc.line(20, linhaY, pageWidth - 20, linhaY);
+        }
+
         doc.save(`Ficha_de_Treino_${today.replace(/\//g, '-')}.pdf`);
+        showToast("Ficha gerada com sucesso!", "#10b981");
+    }
+    doc.save(`Ficha_de_Treino_${today.replace(/\//g, '-')}.pdf`);
         showToast("Ficha gerada com sucesso!", "#10b981");
     }
     const notificarTreino = () => {
