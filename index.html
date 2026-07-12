@@ -390,6 +390,46 @@
                         </button>
                     </div>
                 </div>
+                {/* PAINEL DE CONTROLE DE CARGA ONDULATÓRIA */}
+            <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 mx-4 mt-2 shrink-0">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                    <Icon name="bar-chart-2" size={14}/> Carga Total Diária (U.A. = Tempo x PSE)
+                </h3>
+                <div className="flex items-end justify-between gap-3 h-28">
+                    {safeDays.map((day, i) => {
+                        // Calcula a Carga: Soma de (Tempo * PSE) de todos os blocos do dia
+                        const dayEvents = [...(day.am || []), ...(day.pm || [])];
+                        const dayLoad = dayEvents.reduce((sum, ev) => {
+                            const dur = parseInt(ev.duration) || 0;
+                            const pse = parseInt(ev.pse) || 0;
+                            return sum + (dur * pse); 
+                        }, 0);
+                        
+                        // Define a altura da barra (Teto estimado de 800 U.A. para 100% da barra)
+                        const heightPercent = Math.min((dayLoad / 800) * 100, 100); 
+                        const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+                        
+                        // Define a cor da barra baseada na intensidade
+                        let corBarra = 'bg-transparent';
+                        if (dayLoad > 600) corBarra = 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'; // Vermelho (Carga Alta)
+                        else if (dayLoad > 400) corBarra = 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]'; // Laranja (Carga Média/Alta)
+                        else if (dayLoad > 0) corBarra = 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'; // Verde (Recuperação/Ativação)
+                        
+                        return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-300">{dayLoad > 0 ? dayLoad : '-'}</span>
+                                <div className="w-full max-w-[50px] bg-slate-700/50 rounded-t-md h-full flex flex-col justify-end overflow-hidden">
+                                    <div 
+                                        className={`w-full rounded-t-md transition-all duration-700 ${corBarra}`} 
+                                        style={{ height: `${heightPercent}%` }}
+                                    ></div>
+                                </div>
+                                <span className="text-[9px] font-black text-slate-500 uppercase">{diasSemana[i]}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
                 
                 <div id="microcycle-board" className="flex-1 overflow-auto p-4 flex flex-col custom-scroll bg-slate-900">
                     <div className="flex gap-4 min-w-max pb-4 items-stretch">
