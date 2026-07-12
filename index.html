@@ -3064,7 +3064,12 @@ const renderVideoElement = (url) => {
                 if(selected) {
                     setForm({
                         ...form, 
+                        // TÁTICA INFALÍVEL: Dispara o nome para todos os alvos possíveis!
                         target: selected.title || selected.name || '',
+                        title: selected.title || selected.name || '',
+                        name: selected.title || selected.name || '',
+                        label: selected.title || selected.name || '',
+                        
                         gifUrl: selected.gifUrl || '',
                         videoUrl: selected.videoUrl || '',
                         duration: selected.duration || '',
