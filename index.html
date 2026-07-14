@@ -3399,7 +3399,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
     const [fieldPlayers, setFieldPlayers] = useState([]);
     const [bench, setBench] = useState(safePlayers.filter(p => !p.injured).map((p,i)=>({ ...p, idx: `own_${i}`, isOpp: false })));
     
-    // NOVIDADE: Adversários e Escudo
+    // Adversários e Escudo
     const [oppLogo, setOppLogo] = useState('');
     const [oppBench, setOppBench] = useState(Array.from({length: 11}, (_, i) => ({
         idx: `opp_${i}`,
@@ -3449,7 +3449,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
 
     const exportBoard = async () => {
         setIsExporting(true);
-        setSelectedFieldPlayer(null); // Esconde modal de edição antes do print
+        setSelectedFieldPlayer(null); 
         const el = document.getElementById('export-pitch-area');
         if(!el) return setIsExporting(false);
         try {
@@ -3497,7 +3497,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                     
                     <div className="flex justify-between items-center mb-5">
                         <div className="flex items-center gap-4">
-                            {/* ESCUDO DO ADVERSÁRIO */}
                             {!isExporting && (
                                 <div className="w-16 h-16 rounded-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center cursor-pointer overflow-hidden shadow-inner group relative" onClick={() => {const u = prompt('URL do Escudo do Adversário (Imagem):'); if(u) setOppLogo(u);}}>
                                     {oppLogo ? <img src={oppLogo} className="w-full h-full object-contain p-1" /> : <Icon name="image" size={24} className="text-slate-500"/>}
@@ -3517,7 +3516,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                         </div>
                     </div>
 
-                    {/* CAMPO HORIZONTAL MELHORADO (Textura Premium) */}
+                    {/* CAMPO HORIZONTAL MELHORADO */}
                     <div 
                         onDragOver={e => e.preventDefault()} 
                         onDrop={handleDropOnField} 
@@ -3525,7 +3524,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                         className="w-full aspect-[1.6/1] bg-[#228B22] relative overflow-hidden rounded-lg shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] border-2 border-white/20"
                         style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 10%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.08) 20%)' }}
                     >
-                        {/* Linhas do Campo via SVG para máxima precisão e beleza */}
                         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-80" viewBox="0 0 120 80" preserveAspectRatio="none">
                             <rect x="4" y="4" width="112" height="72" fill="none" stroke="white" strokeWidth="0.5"/>
                             <line x1="60" y1="4" x2="60" y2="76" stroke="white" strokeWidth="0.5"/>
@@ -3543,7 +3541,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                             <circle cx="105" cy="40" r="0.5" fill="white"/>
                         </svg>
 
-                        {/* Jogadores no Campo */}
                         {fieldPlayers.map(p => {
                             const isSelected = selectedFieldPlayer === p.idx;
                             const g = p.stats?.g || 0;
@@ -3572,7 +3569,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                                         {(p.name || 'Atleta').split(' ')[0]}
                                     </span>
 
-                                    {/* ETIQUETAS DE STATUS (Gols, Cartões, Nota) */}
                                     {(g > 0 || a > 0 || yc > 0 || rc > 0 || rating) && (
                                         <div className="absolute top-full mt-5 flex gap-1 bg-black/80 backdrop-blur-md rounded-full px-2 py-1 items-center shadow-lg border border-white/10 whitespace-nowrap">
                                             {g > 0 && <span className="text-[10px] drop-shadow-md">⚽{g > 1 ? g : ''}</span>}
@@ -3583,7 +3579,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                                         </div>
                                     )}
 
-                                    {/* MODAL DE EDIÇÃO RÁPIDA (Quando Clicado) */}
                                     {isSelected && !isExporting && (
                                         <div className="absolute top-full mt-10 w-48 bg-slate-800 rounded-xl p-3 shadow-2xl border border-slate-600 z-50 flex flex-col gap-2" onClick={e => e.stopPropagation()}>
                                             <div className="text-[10px] font-black text-slate-400 uppercase border-b border-slate-700 pb-1 mb-1 text-center">Editar Performance</div>
@@ -3617,8 +3612,8 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                 </div>
             </div>
 
-            {/* PAINEL LATERAL DE JOGADORES (MEU ELENCO / ADVERSÁRIO) */}
-            <div className="w-full xl:w-80 bg-slate-800 rounded-3xl flex flex-col border border-slate-700 h-64 xl:h-auto shrink-0 shadow-2xl overflow-hidden">
+            {/* PAINEL LATERAL DE JOGADORES COM BOTÃO VOLTAR */}
+            <div className="w-full xl:w-80 bg-slate-800 rounded-3xl flex flex-col border border-slate-700 h-64 xl:h-auto shrink-0 shadow-2xl overflow-hidden relative">
                 
                 <div className="flex w-full bg-slate-900 shrink-0">
                     <button onClick={() => setActiveTab('own')} className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors border-b-4 ${activeTab === 'own' ? 'border-blue-500 text-white bg-slate-800' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
@@ -3675,10 +3670,14 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
                     )}
                 </div>
 
-                <div className="p-4 bg-slate-900 shrink-0">
+                <div className="p-4 bg-slate-900 shrink-0 flex flex-col gap-2">
                     <button onClick={exportBoard} disabled={isExporting} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all text-xs">
                         {isExporting ? <Icon name="refresh" className="animate-spin"/> : <Icon name="share"/>}
                         {isExporting ? 'GERANDO MATCH REPORT...' : 'EXPORTAR RELATÓRIO PDF/IMG'}
+                    </button>
+                    {/* BOTAO RETORNAR */}
+                    <button onClick={onClose} className="w-full bg-slate-700 hover:bg-slate-600 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 uppercase tracking-widest shadow-lg active:scale-95 transition-all text-xs">
+                        ← VOLTAR AO PAINEL
                     </button>
                 </div>
             </div>
@@ -3711,6 +3710,18 @@ const checkProntidao = (index) => {
     const safePs = safeArray(players);
     const [showTacticalBoard, setShowTacticalBoard] = useState(false);
 
+    // NOVIDADE: Estado para as observações (salva atrelado à data do jogo)
+    const currentNotes = matchMinutes[matchDate]?.notes || '';
+    
+    const updateNotes = (val) => {
+        const newMins = {...matchMinutes};
+        if(!newMins[matchDate]) newMins[matchDate] = {};
+        newMins[matchDate].notes = val;
+        setMatchMinutes(newMins);
+        const docId = typeof getActiveDocId === 'function' ? getActiveDocId(user?.uid) : user?.uid;
+        if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
+    };
+
     const updateStatDirect = (pIdx, stat, val) => {
         const newPs = [...safePs];
         if (!newPs[pIdx].stats) newPs[pIdx].stats = { g: 0, a: 0, yc: 0, rc: 0 };
@@ -3718,7 +3729,6 @@ const checkProntidao = (index) => {
         setPlayers(newPs);
     };
 
-       // FUNÇÃO DE INTELIGÊNCIA (ALERTA DE LESÃO)
     const checkProntidao = (index) => {
         let queixas = 0;
         const hoje = new Date();
@@ -3726,8 +3736,6 @@ const checkProntidao = (index) => {
             let d = new Date();
             d.setDate(hoje.getDate() - i);
             let dataStr = d.toISOString().split('T')[0];
-            
-            // Agora ele busca a dor (soreness) dentro do trainingLog correto
             if(trainingLog && trainingLog[dataStr] && trainingLog[dataStr][index]?.soreness > 6) {
                 queixas++;
             }
@@ -3740,61 +3748,113 @@ const checkProntidao = (index) => {
         if(!newMins[matchDate]) newMins[matchDate] = {};
         newMins[matchDate][pIdx] = { ...newMins[matchDate][pIdx], mins: parseInt(val) || 0 };
         setMatchMinutes(newMins);
-        const docId = getActiveDocId ? getActiveDocId(user?.uid) : user?.uid;
+        const docId = typeof getActiveDocId === 'function' ? getActiveDocId(user?.uid) : user?.uid;
         if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
     };
 
-const generateMatchReport = () => {
-        showToast("Gerando Relatório de Partida...", "#3b82f6");
+    const updateWeight = (pIdx, field, val) => {
+        const newMins = {...matchMinutes};
+        if(!newMins[matchDate]) newMins[matchDate] = {};
+        newMins[matchDate][pIdx] = { ...newMins[matchDate][pIdx], [field]: val };
+        setMatchMinutes(newMins);
+        const docId = typeof getActiveDocId === 'function' ? getActiveDocId(user?.uid) : user?.uid;
+        if(user) db.collection('coachData').doc(docId).update({ matchMinutes: newMins });
+    };
+
+    // NOVIDADE: Relatório de Jogo com Cabeçalho Premium e Observações
+    const generateMatchReport = () => {
+        showToast("Gerando Relatório Padrão Europeu...", "#3b82f6");
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        // Cabeçalho
-        doc.setFontSize(18);
-        doc.setTextColor(30, 58, 138); // Azul Marinho
-        doc.text("MATCH REPORT - PÓS JOGO", 14, 20);
-        doc.setFontSize(12);
-        doc.text(`Adversário: ${opponent || 'Não definido'} | Data: ${formatDateBR(matchDate)}`, 14, 28);
-        doc.text(`Placar: ${homeScore} x ${awayScore}`, 14, 34);
-        doc.line(14, 38, 196, 38);
-
-        // Tabela de Performance
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        
+        // 1. Cabeçalho Premium
+        doc.setFillColor(themeColor); 
+        doc.rect(0, 0, pageWidth, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("MATCH REPORT", 20, 20);
+        
         doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        let y = 48;
+        doc.setFont("helvetica", "normal");
+        doc.text(`ADVERSÁRIO: ${opponent.toUpperCase() || 'NÃO DEFINIDO'} | DATA: ${formatDateBR(matchDate)}`, 20, 28);
+        doc.text(`PLACAR FINAL: ${homeScore} x ${awayScore}`, 20, 34);
 
-        doc.setFont(undefined, 'bold');
-        doc.text("ATLETA", 14, y);
-        doc.text("MIN", 80, y);
-        doc.text("G/A", 100, y);
-        doc.text("CARGA", 125, y);
-        doc.text("DESIDR.", 155, y);
-        doc.setFont(undefined, 'normal');
-        y += 8;
+        let y = 55;
+
+        // 2. Observações Estratégicas
+        if (currentNotes) {
+            doc.setTextColor(themeColor);
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("OBSERVAÇÕES ESTRATÉGICAS / RESUMO DO JOGO", 20, y);
+            
+            doc.setTextColor(50, 50, 50);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            const splitNotes = doc.splitTextToSize(currentNotes, pageWidth - 40);
+            doc.text(splitNotes, 20, y + 8);
+            y += 15 + (splitNotes.length * 5);
+        }
+
+        // 3. Tabela de Atletas
+        if (y > 240) { doc.addPage(); y = 20; }
+        
+        doc.setFillColor(240, 240, 240);
+        doc.rect(15, y, pageWidth - 30, 10, 'F');
+        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("ATLETA", 20, y + 7);
+        doc.text("MIN", 90, y + 7);
+        doc.text("G/A", 110, y + 7);
+        doc.text("CARGA", 135, y + 7);
+        doc.text("DESIDR.", 160, y + 7);
+        
+        y += 16;
+        doc.setFont("helvetica", "normal");
 
         safePs.forEach((p, i) => {
             const mData = matchMinutes[matchDate]?.[i] || {};
             const minJ = parseInt(mData.mins) || 0;
-            if (minJ > 0) {
+            
+            // Só exibe quem jogou ou quem fez gol/assistência
+            if (minJ > 0 || (p.stats?.g > 0) || (p.stats?.a > 0)) {
+                if (y > 270) { doc.addPage(); y = 20; }
                 const stats = p.stats || { g: 0, a: 0 };
                 const load = calcDailyLoad(trainingLog[matchDate]?.[i]);
                 const wPre = parseFloat(mData.preW) || 0;
                 const wPost = parseFloat(mData.postW) || 0;
                 const perc = wPre > 0 && wPost > 0 && wPre > wPost ? (((wPre - wPost) / wPre) * 100).toFixed(1) : 0;
 
-                doc.text(p.name.substring(0, 20), 14, y);
-                doc.text(minJ.toString(), 80, y);
-                doc.text(`${stats.g || 0}/${stats.a || 0}`, 100, y);
-                doc.text(load.toString(), 125, y);
-                doc.text(`${perc}%`, 155, y);
-                y += 6;
-                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFont("helvetica", "bold");
+                doc.text(p.name.substring(0, 25).toUpperCase(), 20, y);
+                doc.setFont("helvetica", "normal");
+                
+                doc.text(minJ.toString(), 90, y);
+                doc.text(`${stats.g || 0}/${stats.a || 0}`, 110, y);
+                doc.text(load > 0 ? load.toString() : '-', 135, y);
+                
+                if (perc > 2) {
+                    doc.setTextColor(220, 38, 38);
+                    doc.setFont("helvetica", "bold");
+                }
+                doc.text(perc > 0 ? `-${perc}%` : '-', 160, y);
+                doc.setTextColor(50, 50, 50);
+                doc.setFont("helvetica", "normal");
+                
+                doc.setDrawColor(230, 230, 230);
+                doc.line(15, y + 4, pageWidth - 15, y + 4);
+                y += 10;
             }
         });
 
         doc.save(`MatchReport_${opponent || 'Jogo'}_${matchDate}.pdf`);
+        showToast("Relatório gerado com sucesso!", "#10b981");
     };
-    // NOVA FUNÇÃO DE DOSSIÊ TÁTICO
+
     const gerarDossieTatico = async () => {
         if(!opponent) return showToast("Digite o nome do adversário!", "#ef4444");
         showToast("Gerando Dossiê Tático...", "#3b82f6");
@@ -3853,43 +3913,57 @@ const generateMatchReport = () => {
                     <h2 className="text-2xl font-black uppercase flex items-center gap-2 dark:text-white" style={{color: themeColor}}>
                         <Icon name="target"/> Game Day & Tática
                     </h2>
-                 <div className="flex gap-2">
-    <button onClick={() => setShowTacticalBoard(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-        <Icon name="list" size={14}/> Prancheta
-    </button>
-    <button onClick={gerarDossieTatico} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-        <Icon name="brain" size={14}/> DOSSIÊ TÁTICO
-    </button>
-    <button onClick={generateMatchReport} className="bg-purple-600 hover:bg-purple-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
-        <Icon name="download" size={14}/> PDF RELATÓRIO
-    </button>
-</div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowTacticalBoard(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+                            <Icon name="list" size={14}/> Prancheta
+                        </button>
+                        <button onClick={gerarDossieTatico} className="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px] hidden md:flex">
+                            <Icon name="brain" size={14}/> DOSSIÊ PRÉ-JOGO
+                        </button>
+                        <button onClick={generateMatchReport} className="bg-purple-600 hover:bg-purple-500 text-white font-black px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg uppercase text-[10px]">
+                            <Icon name="download" size={14}/> PDF PÓS-JOGO
+                        </button>
+                    </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700">
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase text-slate-500">Data da Partida</label>
-                        <input type="date" value={matchDate} onChange={e=>setMatchDate(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold"/>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase text-slate-500">Adversário</label>
-                        <input type="text" placeholder="Nome do Clube..." value={opponent} onChange={e=>setOpponent(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold uppercase"/>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-[10px] font-black uppercase text-slate-500 text-center">Placar Final</label>
-                        <div className="flex justify-center items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <button onClick={()=>setHomeScore(Math.max(0, homeScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">-</button>
-                                <span className="text-3xl font-black dark:text-white w-8 text-center">{homeScore}</span>
-                                <button onClick={()=>setHomeScore(homeScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">+</button>
-                            </div>
-                            <span className="font-black text-slate-400">X</span>
-                            <div className="flex items-center gap-2">
-                                <button onClick={()=>setAwayScore(Math.max(0, awayScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">-</button>
-                                <span className="text-3xl font-black dark:text-white w-8 text-center">{awayScore}</span>
-                                <button onClick={()=>setAwayScore(awayScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">+</button>
+                {/* O NOVO LAYOUT DO CABEÇALHO DO JOGO E OBSERVAÇÕES */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border dark:border-slate-700 mb-6">
+                    
+                    <div className="md:col-span-1 flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-black uppercase text-slate-500">Data da Partida</label>
+                            <input type="date" value={matchDate} onChange={e=>setMatchDate(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold"/>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-black uppercase text-slate-500">Adversário</label>
+                            <input type="text" placeholder="Nome do Clube..." value={opponent} onChange={e=>setOpponent(e.target.value)} className="p-3 rounded-lg dark:bg-slate-800 dark:text-white border dark:border-slate-600 outline-none font-bold uppercase"/>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-black uppercase text-slate-500 text-center">Placar Final</label>
+                            <div className="flex justify-center items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={()=>setHomeScore(Math.max(0, homeScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">-</button>
+                                    <span className="text-3xl font-black dark:text-white w-8 text-center">{homeScore}</span>
+                                    <button onClick={()=>setHomeScore(homeScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">+</button>
+                                </div>
+                                <span className="font-black text-slate-400">X</span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={()=>setAwayScore(Math.max(0, awayScore-1))} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">-</button>
+                                    <span className="text-3xl font-black dark:text-white w-8 text-center">{awayScore}</span>
+                                    <button onClick={()=>setAwayScore(awayScore+1)} className="bg-slate-300 dark:bg-slate-700 w-8 h-8 rounded-full font-black dark:text-white">+</button>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div className="md:col-span-2 flex flex-col h-full">
+                        <label className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2 mb-2"><Icon name="edit" size={12}/> Observações Táticas & Relatório do Jogo</label>
+                        <textarea 
+                            className="w-full flex-1 min-h-[180px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 text-sm font-medium dark:text-white outline-none focus:border-blue-500 custom-scroll resize-none"
+                            placeholder="Cole aqui o seu relatório. Destaques positivos/negativos, quem foi bem, correções para o próximo treino, esquema tático utilizado..."
+                            value={currentNotes}
+                            onChange={e => updateNotes(e.target.value)}
+                        ></textarea>
                     </div>
                 </div>
             </div>
