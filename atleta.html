@@ -591,6 +591,14 @@
             const isMatchDay = todayMicrocycle.md === 'JOGO';
             const headerGradient = isMatchDay ? 'linear-gradient(135deg, #b45309, #7f1d1d, #020617)' : `linear-gradient(135deg, ${data.color}, #020617)`;
             
+           // --- CÉREBRO QUE LÊ O MICROCICLO ---
+            const microAM = safeArray(todayMicrocycle.am);
+            const microPM = safeArray(todayMicrocycle.pm);
+            const nonTrainingTypes = ['FOLGA', 'RECUPERAÇÃO']; // Blocos que NÃO exigem PSE
+            
+            let hasAM = microAM.some(b => !nonTrainingTypes.includes(b.type));
+            let hasPM = microPM.some(b => !nonTrainingTypes.includes(b.type));
+
             const blocksAM = exData.gen.filter(e => e.period !== 'pm').reduce((acc, ex) => {
                 const t = ex.target && ex.target !== 'Geral' ? ex.target : 'TREINO PRINCIPAL';
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
@@ -601,8 +609,12 @@
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
             }, {});
 
-            const hasAM = exData.act.length > 0 || exData.prev.length > 0 || Object.keys(blocksAM).length > 0;
-            const hasPM = Object.keys(blocksPM).length > 0;
+            // Se o treinador não preencheu o Microciclo hoje, a IA olha se tem exercícios cadastrados na sessão (Fallback de Segurança)
+            if (microAM.length === 0 && microPM.length === 0) {
+                hasAM = exData.act.length > 0 || exData.prev.length > 0 || Object.keys(blocksAM).length > 0;
+                hasPM = Object.keys(blocksPM).length > 0;
+            }
+            // -------------------------------------
 
             const isAmDone = logToday.rpe_am_submitted === true;
             const isPmDone = logToday.rpe_pm_submitted === true;
