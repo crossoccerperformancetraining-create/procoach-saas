@@ -1378,7 +1378,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                 </div>
             );
         };
-    const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+  const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
             const [viewProfile, setViewProfile] = useState(null);
             const [editPlayer, setEditPlayer] = useState(null); 
             const today = getTodayStr(); 
@@ -1386,7 +1386,7 @@ const LineChart = ({ data, color, height = 50 }) => {
             
            const addP = () => {
                 const uniqueId = "atl_" + Date.now();
-                const newPlayers = [...safePlayers, { id: uniqueId, name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
+                const newPlayers = [...safePlayers, { id: uniqueId, name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "", contractEnd: "" }];
                 setPlayers(newPlayers);
                 const user = firebase.auth().currentUser;
                 if (user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ players: newPlayers });
@@ -1485,7 +1485,6 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
                                 </div>
                                 
-                                {/* ENTRADA DE MÚLTIPLOS VÍDEOS */}
                                 <div>
                                     <label className="text-[9px] uppercase font-bold text-slate-400">Links de Vídeo (Cole um por linha):</label>
                                     <textarea 
@@ -1496,6 +1495,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     />
                                 </div>
 
+                                {/* CAMPOS DE POSIÇÃO E CONTRATO */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
@@ -1507,6 +1507,10 @@ const LineChart = ({ data, color, height = 50 }) => {
                                             <option value="">-</option>
                                             {["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}
                                         </select>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-[9px] uppercase font-bold text-slate-400">Fim do Contrato:</label>
+                                        <input type="date" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={localData.contractEnd || ''} onChange={e=>setLocalData({...localData, contractEnd: e.target.value})}/>
                                     </div>
                                 </div>
                                 
@@ -1565,11 +1569,8 @@ const LineChart = ({ data, color, height = 50 }) => {
                 const avgLoad = (chronicLoad + todayLoad) / 7;
                 
                 const loadHistoryLine = getDatesInRange(today, 14).reverse().map(d => getLoad(d));
-                
-                // NOVIDADE: CURVA DE WELLNESS (SONO E ESTRESSE 7 DIAS)
                 const wellnessHistory = getDatesInRange(today, 7).reverse().map(d => {
                     const w = safeObj(logs[d]?.[playerIndex]?.wellness);
-                    // Invertendo o valor para o gráfico (no Forms: 1=Excelente, 7=Péssimo. No Gráfico: 7=Excelente, 1=Péssimo)
                     return w.sleep ? (8 - Number(w.sleep)) * 14.28 : 50; 
                 });
 
@@ -1602,15 +1603,23 @@ const LineChart = ({ data, color, height = 50 }) => {
                                 <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
                                 <h2 className="text-2xl font-bold uppercase tracking-tight">{player.name}</h2>
                                 <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
+                                
+                                {/* SELO DO CONTRATO NA FOTO */}
+                                {player.contractEnd && (
+                                    <div className="bg-black/30 px-3 py-1 rounded-full mt-2 border border-white/10">
+                                        <span className="text-[10px] text-yellow-400 font-bold uppercase flex items-center gap-1">
+                                            <Icon name="calendar" size={12}/> Contrato: {formatDateBR(player.contractEnd)}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-2 mt-3">
                                     <button onClick={toggleInjury} className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest flex items-center gap-1 shadow-lg ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO (DM)</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
                                 </div>
                             </div>
                             
                             <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll bg-slate-100 dark:bg-slate-900">
-                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* GRÁFICO 1: CARGA DE TREINO */}
                                     <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                         <div className="flex justify-between items-end mb-4">
                                             <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
@@ -1621,7 +1630,6 @@ const LineChart = ({ data, color, height = 50 }) => {
                                         <div className="w-full px-2"><LineChart data={loadHistoryLine} color={themeColor} height={50} /></div>
                                     </div>
 
-                                    {/* GRÁFICO 2: WELLNESS (BEM ESTAR) */}
                                     <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
                                         <div className="flex justify-between items-end mb-4">
                                             <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
@@ -4099,7 +4107,6 @@ const checkProntidao = (index) => {
     const mappedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const todayPlan = days[mappedIndex] || {};
 
-    // === CÉREBROS DE IA NA HOME ===
     const calcularMetaIA = (md) => {
         if (!md) return 0;
         if (md.includes('MD-5')) return 85;
@@ -4142,12 +4149,11 @@ const checkProntidao = (index) => {
     const hojeDashboard = new Date().toISOString().split('T')[0];
     const elencoTotal = players || [];
     
-    // Calcula quem está pendente baseado no status do treino (pré ou pós)
     const pendentes = elencoTotal.filter((p, i) => {
         const log = trainingLog[hojeDashboard]?.[i] || {};
-        if (trainingStatus === 'pre') return !log.wellness?.sleep; // Se não tem sono, não fez wellness
-        if (trainingStatus === 'pos') return !log.rpe_am && !log.rpe_pm; // Se não tem nota, não fez PSE
-        return false; // Se estiver encerrado, ninguém deve (ou zera a cobrança)
+        if (trainingStatus === 'pre') return !log.wellness?.sleep; 
+        if (trainingStatus === 'pos') return !log.rpe_am && !log.rpe_pm; 
+        return false; 
     });
     const wellnessPendente = pendentes.length;
 
@@ -4168,7 +4174,6 @@ const checkProntidao = (index) => {
     const salvarMeta = (val) => { setMetaPrincipal(val); localStorage.setItem('ac_meta', val); };
     const salvarRecado = (val) => { setRecadoComissao(val); localStorage.setItem('ac_recado', val); };
 
-    // FUNÇÃO DE CONTROLE DE TREINO
     const updateTrainingStatus = async (status) => {
         const user = firebase.auth().currentUser;
         if (!user) return alert("Erro: Usuário não logado");
@@ -4208,6 +4213,23 @@ const checkProntidao = (index) => {
         }
     });
 
+    // NOVIDADE: ALERTA DE FIM DE CONTRATO (LÓGICA)
+    const contractAlerts = [];
+    safePs.forEach(p => {
+        if (p && p.contractEnd) {
+            const endDate = new Date(p.contractEnd);
+            const todayDate = new Date(hojeDashboard);
+            const diffTime = endDate - todayDate;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays <= 30 && diffDays >= 0) {
+                contractAlerts.push({ name: p.name, days: diffDays, status: 'warning' });
+            } else if (diffDays < 0) {
+                contractAlerts.push({ name: p.name, days: Math.abs(diffDays), status: 'expired' });
+            }
+        }
+    });
+
     let aiFocus = "";
     const md = todayPlan.md || "";
     if(md.includes('MD-4')) aiFocus = "Aquisição (Força/Resistência)";
@@ -4229,7 +4251,6 @@ const checkProntidao = (index) => {
             </div>
 
             <div className="space-y-4 mb-8">
-                {/* 1. AGENDA E META */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-slate-800 p-4 rounded-xl border-l-4 border-blue-500 shadow-md">
                         <span className="text-[10px] text-blue-400 font-black uppercase flex items-center gap-1"><i className="fa-solid fa-crosshairs"></i> Foco Principal</span>
@@ -4241,7 +4262,6 @@ const checkProntidao = (index) => {
                     </div>
                 </div>
 
-                {/* 2. PAINEL DE CONTROLE DE TREINO */}
                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-xl mt-4">
                     <h3 className="text-white text-xs font-bold uppercase mb-3 flex items-center gap-2">
                         <i className="fa-solid fa-clock text-blue-500"></i> Status da Operação (App Atleta)
@@ -4253,9 +4273,7 @@ const checkProntidao = (index) => {
                     </div>
                 </div>
 
-                {/* 3. BLOCOS DE DISPONIBILIDADE E COBRANÇA */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Elenco Disponível (Devolvido ao seu formato original) */}
                     <div className={`p-4 rounded-xl shadow-md border-2 transition-all ${elencoDisponivel < 22 ? 'bg-emerald-900/30 border-emerald-500' : 'bg-emerald-900/30 border-emerald-500'}`}>
                         <div className="flex justify-between items-center">
                             <div>
@@ -4271,7 +4289,6 @@ const checkProntidao = (index) => {
                         )}
                     </div>
 
-                    {/* Bloco Vermelho de Pendências com a lista fundida */}
                     <div className={`p-4 rounded-xl shadow-md border-2 transition-all flex flex-col ${wellnessPendente > 0 && trainingStatus !== 'encerrado' ? 'bg-red-900/40 border-red-500' : 'bg-slate-800 border-slate-700'}`}>
                         <div className="flex justify-between items-start mb-2">
                             <div>
@@ -4280,14 +4297,12 @@ const checkProntidao = (index) => {
                             </div>
                         </div>
                         
-                        {/* Se tem gente pendente, mostra a lista e o botão */}
                         {wellnessPendente > 0 && trainingStatus !== 'encerrado' ? (
                             <div className="mt-2 flex-1 flex flex-col">
                                 <ul className="space-y-1 mb-3 flex-1 overflow-y-auto max-h-24 custom-scroll">
                                     {pendentes.map((p, i) => (
                                         <li key={i} className="text-white text-[10px] font-medium py-1 border-b border-red-500/20 flex justify-between">
                                             <span>▪️ {p.name ? p.name.toUpperCase() : 'ATLETA'}</span>
-                                            {/* O HORÁRIO ENTRA AQUI FUTURAMENTE */}
                                             {trainingLog[hojeDashboard]?.[p.idx]?.timestamp && (
                                                 <span className="text-slate-400 opacity-60">
                                                     {new Date(trainingLog[hojeDashboard][p.idx].timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -4311,8 +4326,28 @@ const checkProntidao = (index) => {
                     </div>
                 </div>
 
-                {/* 4. RECADO RÁPIDO DA COMISSÃO (RESTORED) */}
-                <div className="bg-yellow-600/10 border border-yellow-600/30 p-4 rounded-xl shadow-md">
+                {/* NOVIDADE: ALERTAS DE CONTRATO RENDERIZADOS */}
+                {contractAlerts.length > 0 && (
+                    <div className="bg-slate-900 p-4 rounded-xl border border-yellow-500/30 mt-4 shadow-lg animate-fade-in">
+                        <h3 className="text-yellow-500 font-bold mb-3 flex items-center gap-2 text-xs uppercase tracking-widest">
+                            <Icon name="alert" size={14}/> Gestão de Contratos
+                        </h3>
+                        <ul className="space-y-2 max-h-32 overflow-y-auto custom-scroll">
+                            {contractAlerts.map((c, i) => (
+                                <li key={i} className="flex justify-between items-center bg-slate-800 p-2 rounded border border-slate-700">
+                                    <span className="text-white text-xs font-bold truncate">{c.name}</span>
+                                    {c.status === 'warning' ? (
+                                        <span className="text-[9px] font-black bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded border border-yellow-500/50">Vence em {c.days} dias</span>
+                                    ) : (
+                                        <span className="text-[9px] font-black bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/50">Vencido há {c.days} dias</span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                <div className="bg-yellow-600/10 border border-yellow-600/30 p-4 rounded-xl shadow-md mt-4">
                     <span className="text-[10px] text-yellow-500 font-black uppercase flex items-center gap-2 mb-2">
                         <i className="fa-solid fa-note-sticky"></i> Recado Rápido da Comissão
                     </span>
@@ -4324,11 +4359,9 @@ const checkProntidao = (index) => {
                         rows="2"
                     ></textarea>
                 </div>
-
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                {/* PLANEJAMENTO DO DIA COM INTELIGÊNCIA ARTIFICIAL */}
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 flex flex-col" style={{borderColor: themeColor}}>
                     <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="calendar"/> Planejamento ({todayPlan.name})</h3>
                     <div className="text-xl font-black dark:text-white uppercase mb-1">{aiFocus}</div>
@@ -4346,7 +4379,6 @@ const checkProntidao = (index) => {
                     </div>
                 </div>
 
-                {/* DEPTO MÉDICO */}
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 border-red-500 flex flex-col">
                     <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="medkit"/> Depto Médico</h3>
                     <div className="text-3xl font-black text-red-500 mb-4">{activeDM.length} <span className="text-sm text-slate-400 uppercase">Atletas</span></div>
@@ -4366,7 +4398,6 @@ const checkProntidao = (index) => {
                     </div>
                 </div>
 
-                {/* RISCO DE LESÃO */}
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-md border-t-4 border-orange-500 flex flex-col">
                     <h3 className="text-sm font-black text-slate-400 uppercase mb-4 flex items-center gap-2"><Icon name="alert"/> Risco de Lesão (Carga)</h3>
                     <div className="text-3xl font-black text-orange-500 mb-4">{riskPlayers.length} <span className="text-sm text-slate-400 uppercase">em Risco</span></div>
