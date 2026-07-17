@@ -39,7 +39,7 @@
         <button onclick="window.location.href='index.html'" style="background: #1e293b; color: white; padding: 8px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #475569; cursor: pointer; font-size: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); transition: background 0.3s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1e293b'">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
+                <polyline points="12 19 5 12 12 5"/>
             </svg>
             PAINEL TÉCNICO
         </button>
@@ -67,7 +67,7 @@
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
-        const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
+        const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; t.style.display = 'block'; setTimeout(() => { t.style.opacity = '0'; t.style.display = 'none'; }, 3000); } };
         
         const safeArray = (arr) => Array.isArray(arr) ? arr : [];
         const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
@@ -168,7 +168,7 @@
             const rpeVal = Math.max(rpeAm, rpePm);
 
             if(rpeVal >= 9) return { t: "Desgaste Máximo!", d: "Atenção à janela anabólica! Reponha carboidratos rápidos (ex: suco, frutas) imediatamente e hidrate-se bem.", ic: "🆘" };
-            if(rpeVal >= 7) return { t: "Desgaste Alto", d: "Níveis de glicogênio baixos. Priorize carboidratos e eletrólitos nas próximas 2 horas.", ic: "🍎" };
+            if(rpeVal >= 7) return { t: "Desgaste Alto", d: "Níveis de glicogênio baixos. Priorize carboidratos e eletrólitos nas próximas 2 hours.", ic: "🍎" };
             if(rpeVal >= 5) return { t: "Treino Intenso e Proveitoso", d: "Priorize uma refeição com boas proteínas e carboidratos complexos para reconstruir a fibra muscular.", ic: "🍗" };
             if(rpeVal >= 3) return { t: "Esforço Moderado", d: "Esforço bem controlado. A sua alimentação padrão (equilibrada) já é suficiente.", ic: "🥗" };
             if(rpeVal > 0) return { t: "Regenerativo Ativo", d: "Treino leve. O foco agora é beber muita água para ajudar na remoção de metabólitos.", ic: "💧" };
@@ -203,6 +203,10 @@
             const [rpe, setRpe] = useState(5); 
             const [rpePeriod, setRpePeriod] = useState('am');
             const [dur, setDur] = useState(60);
+
+            // NOVIDADE: Estados para digitação manual simplificada da Hora do treino
+            const [userHour, setUserHour] = useState(new Date().getHours().toString().padStart(2, '0'));
+            const [userMin, setUserMin] = useState(new Date().getMinutes().toString().padStart(2, '0'));
             
             const [feedbackMsg, setFeedbackMsg] = useState(""); const [showStats, setShowStats] = useState(false);
             const [expandedDay, setExpandedDay] = useState(null); const [viewMode, setViewMode] = useState('finished');
@@ -229,7 +233,7 @@
                             color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, 
                             teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], 
                             lastAlertSent: d.lastAlertSent || 0,
-                            trainingStatus: d.trainingStatus || 'pre' // Puxa a Trava do Treinador
+                            trainingStatus: d.trainingStatus || 'pre'
                         });
                         
                       if (idx === null) {
@@ -315,18 +319,33 @@
             const selectP = (i) => { setIdx(i); initAudio(); };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
-            // NOVIDADE V145 MAX: REGISTRO DE HORÁRIO NA PRONTIDÃO
+            // CONSTRUTOR DE DATA/HORA DIGITADA MANUALMENTE PELO ATLETA
+            const buildCustomTimestamp = () => {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const day = now.getDate().toString().padStart(2, '0');
+                
+                const hh = userHour.padStart(2, '0');
+                const mm = userMin.padStart(2, '0');
+                
+                // Retorna a string exata no padrão ISO gravada na nuvem
+                return `${year}-${month}-${day}T${hh}:${mm}:00.000Z`;
+            };
+
             const subData = () => {
                 setSubmitting(true); const td = selectedDate; 
+                const stampedTime = buildCustomTimestamp();
+
                 const updateObj = {
                     [`trainingLog.${td}.${idx}.wellness`]: scores,
                     [`trainingLog.${td}.${idx}.painZones`]: pain,
-                    [`trainingLog.${td}.${idx}.timestamp`]: new Date().toISOString() // RELÓGIO CARIMBADO AQUI
+                    [`trainingLog.${td}.${idx}.timestamp`]: stampedTime 
                 };
                 db.collection('coachData').doc(data.id).update(updateObj).then(()=>{
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
                     nl[td][idx].wellness = scores; nl[td][idx].painZones = pain;
-                    nl[td][idx].timestamp = new Date().toISOString();
+                    nl[td][idx].timestamp = stampedTime;
                     setData({...data, log:nl}); setStep(3); setSubmitting(false); window.scrollTo(0,0);
                 }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
             };
@@ -349,7 +368,6 @@
                 const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast(`+250ml 💧 (Meta: ${waterGoal}L)`, "💧"); 
             };
 
-            // NOVIDADE V145 MAX: REGISTRO DE HORÁRIO NA CARGA
             const saveRPE = async () => {
                 try {
                     if(submitting) return; 
@@ -373,17 +391,19 @@
                         updateData[`trainingLog.${td}.${idx}.rpe_pm`] = 0;
                     }
                     
+                    const stampedTime = buildCustomTimestamp();
+
                     updateData[`trainingLog.${td}.${idx}.duration`] = dur;
                     updateData[`trainingLog.${td}.${idx}.feedback`] = feedbackMsg;
                     updateData[`trainingLog.${td}.${idx}.exercisesDone`] = doneExsNames;
                     updateData[`trainingLog.${td}.${idx}.exercisesSkipped`] = skippedInfo;
-                    updateData[`trainingLog.${td}.${idx}.timestamp`] = new Date().toISOString(); // RELÓGIO CARIMBADO AQUI
+                    updateData[`trainingLog.${td}.${idx}.timestamp`] = stampedTime; // RELÓGIO CARIMBADO AQUI
 
                     await db.collection('coachData').doc(data.id).update(updateData);
                     
                     setSubmitting(false); 
                     setRpeMod(false); 
-                    showToast(rpePeriod === 'rest' ? "Descanso Registrado! 🔋" : `Registro da ${rpePeriod === 'am'?'Manhã':'Tarde'} Concluído! 🚀`, "🔥"); 
+                    showToast(rpePeriod === 'rest' ? "Descanso Registrado! 🔋" : `Registro Concluído! 🚀`, "🔥"); 
                     if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 99999 }); vibrate([100, 50, 100]);
                     
                     const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; 
@@ -392,7 +412,7 @@
                     else { nl[td][idx].rpeSubmitted = true; nl[td][idx].rpe_am = 0; }
                     
                     nl[td][idx].duration = dur; nl[td][idx].exercisesDone = doneExsNames; nl[td][idx].exercisesSkipped = skippedInfo; 
-                    nl[td][idx].timestamp = new Date().toISOString();
+                    nl[td][idx].timestamp = stampedTime;
                     setData({...data, log:nl}); window.scrollTo(0,0);
 
                 } catch (err) {
@@ -440,7 +460,7 @@
                 const fms = (Number(pAss.fms_total)||0) * 4.7; 
                 const force = (Number(pAss.squat_rm)||0); 
                 const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); 
-                const tech = Number(pAss.scout_tech) || 75; // Lê o Scout Técnico da Base se existir
+                const tech = Number(pAss.scout_tech) || 75; 
                 return { force: Math.min(99, force), speed: Math.max(30, speed), power: Number(pAss.sj)||50, prev: Math.min(99, fms), tech: tech, endurance: Number(pAss.soccer_test) ? Math.min(99, Number(pAss.soccer_test)/30) : 70 }; 
             };
             const getRpeEmoji = (val) => { if(val <= 3) return '😌'; if(val <= 6) return '😅'; if(val <= 8) return '🥵'; return '💀'; };
@@ -465,7 +485,7 @@
                     <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full transition-transform active:scale-95"><Icon name="arrowLeft" size={16}/></button>
                     <div className="flex flex-col items-center">
                         <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Data do Treino</span>
-                        <input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="bg-transparent text-white font-black text-sm outline-none text-center" style={{colorScheme: 'dark'}} />
+                        <input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="bg-transparent text-white font-black text-sm outline-none text-center" style={{colorScheme: 'dark'))} />
                     </div>
                     <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full rotate-180 transition-transform active:scale-95"><Icon name="arrowLeft" size={16}/></button>
                 </div>
@@ -474,7 +494,7 @@
             if(loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/20"></div>
-                    <div className="text-2xl font-black italic tracking-wider animate-pulse"><span style={{color: data.color || '#3b82f6'}}>PRO</span>COACH</div>
+                    <div className="text-2xl font-black italic tracking-wider animate-pulse"><span style={{color: data.color || '#3b82f6'}}>PROCOACH</span></div>
                     <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Sincronizando Atleta...</div>
                 </div>
             );
@@ -519,7 +539,7 @@
             const p = data.players[idx];
             const batInfo = calcBat(scores); 
             
-            // NOVIDADE V145 MAX: TRAVA TÉCNICA - PRÉ-TREINO
+            // TRAVA TÉCNICA - PRÉ-TREINO
             if (data.trainingStatus !== 'pre') {
                 return (
                     <div className="h-[100dvh] flex flex-col items-center justify-center p-6 bg-slate-950 text-center animate-fade-in relative z-50">
@@ -569,6 +589,17 @@
                         {/* SLIDERS DE WELLNESS */}
                         {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                         
+                        {/* NOVIDADE V145 MAX: DIGITAÇÃO FACILITADA DE HORÁRIO DE ENVIO */}
+                        <div className="bg-slate-800/80 p-4 rounded-xl border border-blue-500/30">
+                            <label className="text-[10px] font-black text-blue-400 uppercase block mb-2 text-center tracking-widest">⏰ Registro de Horário do Treino</label>
+                            <div className="flex justify-center items-center gap-3 bg-slate-950 p-3 rounded-2xl border border-slate-700">
+                                <input type="number" min="0" max="23" placeholder="Hora" value={userHour} onChange={e=>setUserHour(e.target.value)} className="w-16 bg-slate-900 border border-slate-600 text-center font-black text-2xl text-white py-1 rounded-xl outline-none"/>
+                                <span className="font-black text-white text-2xl animate-pulse">:</span>
+                                <input type="number" min="0" max="59" placeholder="Min" value={userMin} onChange={e=>setUserMin(e.target.value)} className="w-16 bg-slate-900 border border-slate-600 text-center font-black text-2xl text-white py-1 rounded-xl outline-none"/>
+                            </div>
+                            <p className="text-[9px] text-slate-500 text-center mt-2 uppercase font-bold">Digite a hora aproximada da coleta</p>
+                        </div>
+
                         {/* DORES FOCAIS */}
                         <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
                     </div>
@@ -591,10 +622,10 @@
             const isMatchDay = todayMicrocycle.md === 'JOGO';
             const headerGradient = isMatchDay ? 'linear-gradient(135deg, #b45309, #7f1d1d, #020617)' : `linear-gradient(135deg, ${data.color}, #020617)`;
             
-           // --- CÉREBRO QUE LÊ O MICROCICLO ---
+            // --- SINC MICROCICLO AUTOMÁTICO TURNO DA MANHÃ/TARDE ---
             const microAM = safeArray(todayMicrocycle.am);
             const microPM = safeArray(todayMicrocycle.pm);
-            const nonTrainingTypes = ['FOLGA', 'RECUPERAÇÃO']; // Blocos que NÃO exigem PSE
+            const nonTrainingTypes = ['FOLGA', 'RECUPERAÇÃO']; 
             
             let hasAM = microAM.some(b => !nonTrainingTypes.includes(b.type));
             let hasPM = microPM.some(b => !nonTrainingTypes.includes(b.type));
@@ -609,12 +640,10 @@
                 if(!acc[t]) acc[t] = []; acc[t].push(ex); return acc;
             }, {});
 
-            // Se o treinador não preencheu o Microciclo hoje, a IA olha se tem exercícios cadastrados na sessão (Fallback de Segurança)
             if (microAM.length === 0 && microPM.length === 0) {
                 hasAM = exData.act.length > 0 || exData.prev.length > 0 || Object.keys(blocksAM).length > 0;
                 hasPM = Object.keys(blocksPM).length > 0;
             }
-            // -------------------------------------
 
             const isAmDone = logToday.rpe_am_submitted === true;
             const isPmDone = logToday.rpe_pm_submitted === true;
@@ -764,13 +793,23 @@
                                         </div>
                                     )}
 
+                                    {/* NOVIDADE: FEEDBACK DO PROFESSOR (VISÍVEL APENAS APÓS O JOGO NA SUA ABA) */}
+                                    {data.matchM?.[selectedDate]?.notes && viewMode !== 'review' && (
+                                        <div className="bg-yellow-600/10 border border-yellow-500/30 p-4 rounded-3xl flex flex-col gap-2 shadow-lg relative overflow-hidden">
+                                            <div className="absolute top-0 left-0 w-2 h-full bg-yellow-500"></div>
+                                            <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-1.5"><Icon name="trophy" size={14}/> Relatório Técnico Pós-Jogo</div>
+                                            <p className="text-sm font-bold text-yellow-100 leading-relaxed whitespace-pre-line">{data.matchM[selectedDate].notes}</p>
+                                            <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-1 text-right">Análise Geral da Comissão</p>
+                                        </div>
+                                    )}
+
                                     <div className="bg-blue-950/40 border border-blue-900 p-5 rounded-[32px] flex flex-col gap-3 relative shadow-inner">
                                         <div className="flex justify-between items-center"><h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">💧 Hidratação Diária</h3><span className="text-[10px] font-bold text-blue-300 bg-blue-900/50 px-2 py-0.5 rounded">{water.toFixed(2)}L / {waterGoal.toFixed(1)}L</span></div>
                                         <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700"><div className="h-full bg-blue-500 transition-all duration-700" style={{width: `${Math.min(100, (water/waterGoal)*100)}%`}}></div></div>
                                         <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
                                     </div>
 
-                                    {!hasAM && !hasPM && !isFinished && viewMode !== 'review' && (
+                                    {!hasAM && !hasPM && !isRestDayDone && (
                                         <div className="bg-slate-900/80 border border-slate-700 p-8 rounded-[32px] flex flex-col items-center text-center mt-6 shadow-inner">
                                             <div className="text-6xl mb-4 animate-bounce">🔋</div>
                                             <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">Dia de Recuperação</h3>
@@ -820,7 +859,7 @@
                                                 <div className="h-16 w-px bg-slate-700 mx-2"></div>
                                                 <div className="text-center flex flex-col justify-center w-1/2">
                                                     <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Duração</span>
-                                                    <span className="text-3xl font-black text-white mt-1">{data.log[selectedDate]?.[idx]?.duration || 0}<span className="text-xs text-slate-400 ml-1">min</span></span>
+                                                    <span className="text-2xl font-black text-white">{data.log[selectedDate]?.[idx]?.duration || 0}<span className="text-sm text-slate-400 ml-1">min</span></span>
                                                 </div>
                                             </div>
 
@@ -992,7 +1031,7 @@
                                                 </div>
                                             )}
 
-                                            {/* NOVIDADE V145 MAX: TRAVA TÉCNICA DO PÓS-TREINO */}
+                                            {/* TRAVA TÉCNICA DO PÓS-TREINO */}
                                             {!isFinished && viewMode !== 'review' && selectedDate === getTodayStr() && (
                                                 <div className="mt-8 flex flex-col gap-2 w-full px-2">
                                                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center mb-1">Finalização do Dia</h3>
@@ -1049,7 +1088,6 @@
                                 </div>
                             )}
 
-                            {/* ABA AGENDA: LOGÍSTICA E PROGRAMAÇÃO SEMANAL */}
                             {tab === 'agenda' && (
                                 <div className="animate-fade-in space-y-6">
                                     {/* STATUS E LOGÍSTICA */}
@@ -1339,7 +1377,7 @@
                                                     } else { 
                                                         goToNextEx(id); 
                                                     }
-                                                }} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-[20px] shadow-xl flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest border-b-4 border-blue-800">
+                                                }} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-[20px] shadow-xl flex justify-center items-center gap-2 text-lg active:scale-95 transition-transform uppercase tracking-widest border-b-4 border-blue-800">
                                                     <Icon name="check" size={24}/> CONCLUIR SÉRIE
                                                 </button>
                                             </div>
@@ -1462,6 +1500,7 @@
                             <div className="text-[10px] font-black text-slate-600 tracking-widest uppercase z-10">POWERED BY PROCOACH MAX</div>
                         </div>
                     </div>
+                    {alertModalUI}
                 </React.Fragment>
             );
         };
@@ -1471,7 +1510,7 @@
             static getDerivedStateFromError(error) { return { hasError: true, errorMsg: error.toString() }; }
             render() {
                 if (this.state.hasError) return (
-                    <div style={{padding: '20px', color: 'white', backgroundColor: '#0f172a', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center'}}>
+                    <div style={{padding: '20px', color: 'white', backgroundColor: '#0f172a', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifycontent: 'center', textAlign: 'center'}}>
                         <h1 style={{color: '#ef4444', fontSize: '24px', marginBottom: '10px', fontWeight: 'bold'}}>Erro Encontrado</h1>
                         <p style={{fontSize: '12px', opacity: 0.7, marginBottom: '20px'}}>{this.state.errorMsg}</p>
                         <button onClick={()=>window.location.reload()} style={{backgroundColor: '#3b82f6', padding: '10px 20px', borderRadius: '8px', color: 'white', fontWeight: 'bold'}}>Recarregar</button>
