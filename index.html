@@ -1379,364 +1379,359 @@ const LineChart = ({ data, color, height = 50 }) => {
             );
         };
   const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
-            const [viewProfile, setViewProfile] = useState(null);
-            const [editPlayer, setEditPlayer] = useState(null); 
-            const today = getTodayStr(); 
-            const safePlayers = safeArray(players);
-            
-           const addP = () => {
-                const uniqueId = "atl_" + Date.now();
-                const newPlayers = [...safePlayers, { id: uniqueId, name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "", contractEnd: "" }];
-                setPlayers(newPlayers);
-                const user = firebase.auth().currentUser;
-                if (user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ players: newPlayers });
-            };
+    const [viewProfile, setViewProfile] = useState(null);
+    const [editPlayer, setEditPlayer] = useState(null); 
+    const today = getTodayStr(); 
+    const safePlayers = safeArray(players);
+    
+    const addP = () => {
+        const uniqueId = "atl_" + Date.now();
+        const newPlayers = [...safePlayers, { id: uniqueId, name: "Novo Atleta", image: null, injured: false, position: 'Atleta', number: "", videoUrl: "" }];
+        setPlayers(newPlayers);
+        const user = firebase.auth().currentUser;
+        if (user) db.collection('coachData').doc(getActiveDocId(user.uid)).update({ players: newPlayers });
+    };
 
-            const fileInputRef = useRef(null); 
-            const [localData, setLocalData] = useState({});
-            
-            const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
-            const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
-            
-            const generateExecutiveDossier = () => {
-                showToast("Gerando Dossiê Executivo...", "#3b82f6");
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                doc.setFontSize(22);
-                doc.setTextColor(30, 58, 138); 
-                doc.text("DOSSIE EXECUTIVO DE PERFORMANCE", 14, 20);
-                
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Gerado em: ${formatDateBR(today)}`, 14, 28);
-                doc.line(14, 32, 196, 32);
+    const fileInputRef = useRef(null); 
+    const [localData, setLocalData] = useState({});
+    
+    const getWeeklyLoad = (playerIndex) => { const dates = getDatesInRange(today, 7); let sum = 0; dates.forEach(d => { sum += calcDailyLoad(trainingLog[d]?.[playerIndex]); }); return Math.min(100, sum/2000*100); };
+    const getPlayerDMStatus = (playerId) => { const dmRecs = safeArray(dmRecords); return dmRecs.find(r => r && r.playerId == playerId && r.status === 'Active'); };
+    
+    const generateExecutiveDossier = () => {
+        showToast("Gerando Dossiê Executivo...", "#3b82f6");
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(22);
+        doc.setTextColor(30, 58, 138); 
+        doc.text("DOSSIE EXECUTIVO DE PERFORMANCE", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Gerado em: ${formatDateBR(today)}`, 14, 28);
+        doc.line(14, 32, 196, 32);
 
-                const dms = safePlayers.filter(p => p && p.injured);
-                doc.setFontSize(14);
-                doc.setTextColor(220, 38, 38);
-                doc.text(`DEPARTAMENTO MEDICO: ${dms.length} atleta(s)`, 14, 45);
-                doc.setFontSize(10);
-                doc.setTextColor(50, 50, 50);
-                let y = 52;
-                if(dms.length === 0) { doc.text("- Nenhum atleta no DM atualmente. Elenco 100% livre.", 14, y); y+=8; }
-                else {
-                    dms.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
-                    y+=4;
-                }
+        const dms = safePlayers.filter(p => p && p.injured);
+        doc.setFontSize(14);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`DEPARTAMENTO MEDICO: ${dms.length} atleta(s)`, 14, 45);
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        let y = 52;
+        if(dms.length === 0) { doc.text("- Nenhum atleta no DM atualmente. Elenco 100% livre.", 14, y); y+=8; }
+        else {
+            dms.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
+            y+=4;
+        }
 
-                const scorers = [...safePlayers].filter(p => p && p.stats && p.stats.g > 0).sort((a,b) => b.stats.g - a.stats.g).slice(0,5);
-                doc.setFontSize(14);
-                doc.setTextColor(34, 197, 94);
-                doc.text("DESTAQUES (ARTILHARIA)", 14, y+5);
-                y += 12;
-                doc.setFontSize(10);
-                doc.setTextColor(50, 50, 50);
-                if(scorers.length === 0) { doc.text("- Sem dados de gols registrados na plataforma.", 14, y); y+=8; }
-                else {
-                    scorers.forEach(p => { doc.text(`- ${p.name}: ${p.stats.g} gol(s)`, 14, y); y += 6; });
-                    y+=4;
-                }
+        const scorers = [...safePlayers].filter(p => p && p.stats && p.stats.g > 0).sort((a,b) => b.stats.g - a.stats.g).slice(0,5);
+        doc.setFontSize(14);
+        doc.setTextColor(34, 197, 94);
+        doc.text("DESTAQUES (ARTILHARIA)", 14, y+5);
+        y += 12;
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        if(scorers.length === 0) { doc.text("- Sem dados de gols registrados na plataforma.", 14, y); y+=8; }
+        else {
+            scorers.forEach(p => { doc.text(`- ${p.name}: ${p.stats.g} gol(s)`, 14, y); y += 6; });
+            y+=4;
+        }
 
-                doc.setFontSize(14);
-                doc.setTextColor(234, 179, 8);
-                doc.text("SINTESE DE CARGA (RISCO DE LESAO)", 14, y+5);
-                y += 12;
-                doc.setFontSize(10);
-                doc.setTextColor(50, 50, 50);
-                const risks = safePlayers.filter((p, i) => getWeeklyLoad(i) >= 80);
-                if(risks.length === 0) {
-                    doc.text("- Nenhum atleta em zona critica de sobrecarga (ACWR controlado).", 14, y);
-                } else {
-                    doc.text(`Atletas necessitando de controle de carga: ${risks.length}`, 14, y);
-                    y += 6;
-                    risks.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
-                }
+        doc.setFontSize(14);
+        doc.setTextColor(234, 179, 8);
+        doc.text("SINTESE DE CARGA (RISCO DE LESAO)", 14, y+5);
+        y += 12;
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        const risks = safePlayers.filter((p, i) => getWeeklyLoad(i) >= 80);
+        if(risks.length === 0) {
+            doc.text("- Nenhum atleta em zona critica de sobrecarga (ACWR controlado).", 14, y);
+        } else {
+            doc.text(`Atletas necessitando de controle de carga: ${risks.length}`, 14, y);
+            y += 6;
+            risks.forEach(p => { doc.text(`- ${p.name}`, 14, y); y += 6; });
+        }
 
-                doc.setFontSize(10);
-                doc.setTextColor(150, 150, 150);
-                doc.text("ProCoach MAX - Sistema de Inteligencia Esportiva", 105, 290, null, null, "center");
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text("ProCoach MAX - Sistema de Inteligencia Esportiva", 105, 290, null, null, "center");
 
-                doc.save(`Dossie_Executivo_ProCoach_${today}.pdf`);
-            };
+        doc.save(`Dossie_Executivo_ProCoach_${today}.pdf`);
+    };
 
-            const Editor = () => { 
-                if(editPlayer === null) return null; 
-                const p = safePlayers[editPlayer]; 
-                if(!p) return null; 
-                const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; 
-                return (
-                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3 max-h-[90vh] overflow-y-auto custom-scroll" onClick={e=>e.stopPropagation()}>
-                            <h3 className="font-bold dark:text-white text-center text-lg">Editar Atleta</h3>
-                            <div className="flex justify-center flex-col items-center gap-2">
-                                <div onClick={()=>fileInputRef.current.click()} className="w-24 h-24 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">
-                                    {localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
-                                </div>
-                                <input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/>
-                                <div className="w-full">
-                                    <label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label>
-                                    <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1.5 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div>
-                                    <label className="text-[9px] uppercase font-bold text-slate-400">Nome:</label>
-                                    <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[9px] uppercase font-bold text-slate-400">Links de Vídeo (Cole um por linha):</label>
-                                    <textarea 
-                                        className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-xs custom-scroll h-20 outline-none focus:border-blue-500" 
-                                        placeholder="https://youtube.com/watch?v=...\nhttps://youtube.com/watch?v=..." 
-                                        value={localData.videoUrl || ''} 
-                                        onChange={e => setLocalData({...localData, videoUrl: e.target.value})} 
-                                    />
-                                </div>
-
-                                {/* CAMPOS DE POSIÇÃO E CONTRATO */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
-                                        <BufferedInput type="number" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="Nº" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/>
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] uppercase font-bold text-slate-400">Posição:</label>
-                                        <select className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}>
-                                            <option value="">-</option>
-                                            {["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-[9px] uppercase font-bold text-slate-400">Fim do Contrato:</label>
-                                        <input type="date" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm outline-none" value={localData.contractEnd || ''} onChange={e=>setLocalData({...localData, contractEnd: e.target.value})}/>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
-                                    <div>
-                                        <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
-                                        <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.g) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, g: e.target.value}})} placeholder="0"/>
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] uppercase font-bold text-slate-500">👟 Assistências:</label>
-                                        <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.a) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, a: e.target.value}})} placeholder="0"/>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-2">
-                                    <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
-                                        <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
-                                        <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">🚫 Suspenso</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 rounded cursor-pointer transition-colors hover:bg-yellow-100">
-                                        <input type="checkbox" checked={localData.highlight || false} onChange={e=>setLocalData({...localData, highlight: e.target.checked})} className="w-4 h-4 accent-yellow-500"/>
-                                        <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 uppercase">🏆 Destaque</span>
-                                    </label>
-                                </div>
-
-                                <div className="flex gap-2 pt-2">
-                                    <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
-                                    <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
-                                </div>
-                            </div>
+    const Editor = () => { 
+        if(editPlayer === null) return null; 
+        const p = safePlayers[editPlayer]; 
+        if(!p) return null; 
+        const handleImg = async (e) => { const f=e.target.files[0]; if(f){ try{const c=await compressImage(f,80,0.4); setLocalData({...localData, image:c});}catch(e){} } }; 
+        return (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setEditPlayer(null)}>
+                <div className="bg-white dark:bg-slate-800 rounded-xl p-4 w-full max-w-sm space-y-3 max-h-[90vh] overflow-y-auto custom-scroll" onClick={e=>e.stopPropagation()}>
+                    <h3 className="font-bold dark:text-white text-center text-lg">Editar Atleta</h3>
+                    <div className="flex justify-center flex-col items-center gap-2">
+                        <div onClick={()=>fileInputRef.current.click()} className="w-24 h-24 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">
+                            {localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
+                        </div>
+                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/>
+                        <div className="w-full">
+                            <label className="text-[9px] uppercase font-bold text-slate-400">Ou cole URL da Imagem:</label>
+                            <BufferedInput className="w-full text-xs border dark:border-slate-600 rounded p-1.5 dark:bg-slate-700 dark:text-white" placeholder="https://..." value={localData.image && localData.image.startsWith('http') ? localData.image : ''} onSave={(val)=>setLocalData({...localData, image:val})} />
                         </div>
                     </div>
-                );
-            };
+                    <div className="space-y-2">
+                        <div>
+                            <label className="text-[9px] uppercase font-bold text-slate-400">Nome:</label>
+                            <BufferedInput className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm font-bold" value={localData.name} onSave={val=>setLocalData({...localData, name:val})}/>
+                        </div>
+                        
+                        <div>
+                            <label className="text-[9px] uppercase font-bold text-slate-400">Links de Vídeo (Cole um por linha):</label>
+                            <textarea 
+                                className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-xs custom-scroll h-20 outline-none focus:border-blue-500" 
+                                placeholder="https://youtube.com/watch?v=...\nhttps://youtube.com/watch?v=..." 
+                                value={localData.videoUrl || ''} 
+                                onChange={e => setLocalData({...localData, videoUrl: e.target.value})} 
+                            />
+                        </div>
 
-            const PlayerProfileModal = ({ player, playerIndex, logs, onClose, themeColor, setPlayers, players }) => {
-                if (!player) return null;
-                const today = getTodayStr(); 
-                const currentLog = logs[today]?.[playerIndex] || {};
-                const wellness = safeObj(currentLog.wellness);
-                const dates = getDatesInRange(today, 7).reverse();
-                
-                const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
-                
-                const getLoad = (d) => { 
-                    const l = logs[d]?.[playerIndex]; 
-                    if(!l) return 0;
-                    const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
-                    const dur = Number(l.duration) || 0;
-                    return dur > 0 ? rpeSum * dur : rpeSum * 60; 
-                };
-
-                const todayLoad = getLoad(today);
-                const historyDates = getDatesInRange(today, 7).slice(1); 
-                let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
-                const avgLoad = (chronicLoad + todayLoad) / 7;
-                
-                const loadHistoryLine = getDatesInRange(today, 14).reverse().map(d => getLoad(d));
-                const wellnessHistory = getDatesInRange(today, 7).reverse().map(d => {
-                    const w = safeObj(logs[d]?.[playerIndex]?.wellness);
-                    return w.sleep ? (8 - Number(w.sleep)) * 14.28 : 50; 
-                });
-
-                let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
-                let loadColor = "text-green-500";
-                
-                if (avgLoad > 0) {
-                    if (todayLoad > avgLoad * 1.4) { loadMsg = "Risco Agudo! Sobrecarga detectada. Sugestão: Recuperativo imediato."; loadColor = "text-red-500"; } 
-                    else if (todayLoad < avgLoad * 0.6) { loadMsg = "Carga baixa hoje. Oportunidade para treino de força ou tático intenso."; loadColor = "text-yellow-500"; }
-                }
-
-                const copyAthleteLink = () => {
-                    const user = firebase.auth().currentUser;
-                    if(user) {
-                        const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(link).then(() => {
-                                showToast("Link copiado! Envie no WhatsApp.");
-                            }).catch(() => alert("Copie este link:\n" + link));
-                        } else { alert("Copie este link:\n" + link); }
-                    }
-                };
-
-                return (
-                    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
-                            
-                            <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
-                                <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
-                                <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
-                                <h2 className="text-2xl font-bold uppercase tracking-tight">{player.name}</h2>
-                                <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
-                                
-                                {/* SELO DO CONTRATO NA FOTO */}
-                                {player.contractEnd && (
-                                    <div className="bg-black/30 px-3 py-1 rounded-full mt-2 border border-white/10">
-                                        <span className="text-[10px] text-yellow-400 font-bold uppercase flex items-center gap-1">
-                                            <Icon name="calendar" size={12}/> Contrato: {formatDateBR(player.contractEnd)}
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="flex gap-2 mt-3">
-                                    <button onClick={toggleInjury} className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest flex items-center gap-1 shadow-lg ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO (DM)</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
-                                </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[9px] uppercase font-bold text-slate-400">Camisa:</label>
+                                <BufferedInput type="number" className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" placeholder="Nº" value={localData.number} onSave={val=>setLocalData({...localData, number:val})}/>
                             </div>
-                            
-                            <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll bg-slate-100 dark:bg-slate-900">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between items-end mb-4">
-                                            <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
-                                                <Icon name="activity" size={14} className="text-blue-500"/> GPS Virtual (14d)
-                                            </h3>
-                                            <span className="text-[9px] font-bold text-slate-400">sRPE</span>
-                                        </div>
-                                        <div className="w-full px-2"><LineChart data={loadHistoryLine} color={themeColor} height={50} /></div>
-                                    </div>
-
-                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between items-end mb-4">
-                                            <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
-                                                <Icon name="smile" size={14} className="text-emerald-500"/> Índice de Recuperação (7d)
-                                            </h3>
-                                            <span className="text-[9px] font-bold text-slate-400">%</span>
-                                        </div>
-                                        <div className="w-full px-2"><LineChart data={wellnessHistory} color="#10b981" height={50} /></div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-700 pb-2">
-                                        <Icon name="brain" className={loadColor} size={18}/>
-                                        <span className={`text-[10px] font-black uppercase tracking-wider ${loadColor}`}>Assistente de Prontidão IA</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-snug">{loadMsg}</div>
-                                </div>
-
-                                <div>
-                                    <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2 tracking-widest"><Icon name="smile"/> Estado Hoje ({formatDateBR(today)})</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {Object.entries({Sono:wellness.sleep, Estresse:wellness.stress, Fadiga:wellness.fatigue, Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(
-                                            <div key={k} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                                <div className="flex justify-between text-xs font-bold mb-2">
-                                                    <span className="text-slate-500 dark:text-slate-400">{k}</span>
-                                                    <span className="dark:text-white font-black">{v||'-'}</span>
-                                                </div>
-                                                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                    <div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col gap-2 mt-4">
-                                    <button onClick={copyAthleteLink} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs tracking-widest uppercase py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 border-b-4 border-black/30">
-                                        <Icon name="copy"/> Copiar Link do App do Atleta
-                                    </button>
-                                </div>
+                            <div>
+                                <label className="text-[9px] uppercase font-bold text-slate-400">Posição:</label>
+                                <select className="w-full border dark:border-slate-600 p-2 rounded dark:bg-slate-700 dark:text-white text-sm" value={localData.position} onChange={e=>setLocalData({...localData, position:e.target.value})}>
+                                    <option value="">-</option>
+                                    {["Goleiro","Zagueiro","Lateral","Volante","Meia","Ponta","Atacante"].map(x=><option key={x} value={x}>{x}</option>)}
+                                </select>
                             </div>
                         </div>
-                    </div>
-                );
-            };
-
-            const injuredCount = safePlayers.filter(p=>p && p.injured).length;
-            const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} indisponíveis.` : "Elenco pronto.";
-
-            return (
-                <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
-                    <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
-                    {editPlayer!==null && <Editor/>}
-                    
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2>
-                            <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
-                                <Icon name="plus" size={14}/> Adicionar Atleta
-                            </button>
-                            <button onClick={generateExecutiveDossier} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest hidden md:flex">
-                                <Icon name="download" size={14}/> GerAR DOSSIÊ (PDF)
-                            </button>
+                        
+                        <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded border dark:border-slate-600">
+                            <div>
+                                <label className="text-[9px] uppercase font-bold text-slate-500">⚽ Gols no Ano:</label>
+                                <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.g) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, g: e.target.value}})} placeholder="0"/>
+                            </div>
+                            <div>
+                                <label className="text-[9px] uppercase font-bold text-slate-500">👟 Assistências:</label>
+                                <input type="number" min="0" className="w-full border dark:border-slate-500 p-1.5 rounded dark:bg-slate-800 dark:text-white text-sm text-center font-bold outline-none" value={(localData.stats && localData.stats.a) || ''} onChange={e=>setLocalData({...localData, stats: {...localData.stats, a: e.target.value}})} placeholder="0"/>
+                            </div>
                         </div>
-                        <div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                            <Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                            <label className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 rounded cursor-pointer transition-colors hover:bg-red-100">
+                                <input type="checkbox" checked={localData.suspended || false} onChange={e=>setLocalData({...localData, suspended: e.target.checked})} className="w-4 h-4 accent-red-600"/>
+                                <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase">🚫 Suspenso</span>
+                            </label>
+                            <label className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-2 rounded cursor-pointer transition-colors hover:bg-yellow-100">
+                                <input type="checkbox" checked={localData.highlight || false} onChange={e=>setLocalData({...localData, highlight: e.target.checked})} className="w-4 h-4 accent-yellow-500"/>
+                                <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 uppercase">🏆 Destaque</span>
+                            </label>
                         </div>
-                        <button onClick={generateExecutiveDossier} className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg transition-all uppercase tracking-widest md:hidden">
-                            <Icon name="download" size={14}/> Gerar Dossiê da Diretoria (PDF)
-                        </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
-                        {safePlayers.map((p, i) => { 
-                            if(!p) return null;
-                            const loadPct = getWeeklyLoad(i); 
-                            const dailyLog = trainingLog[today]?.[i] || {}; 
-                            const wellness = safeObj(dailyLog.wellness); 
-                            const soreness = Number(wellness.soreness) || 0; 
-                            const isRisk = soreness >= 5; 
-                            
-                            return (
-                                <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${isRisk || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
-                                    <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500 z-20"><Icon name="edit" size={12}/></button>
-                                    
-                                    {/* ETIQUETAS DE STATUS NA FOTO */}
-                                    {isRisk && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full animate-pulse z-10">RISCO</div>}
-                                    {p.injured && <div className="absolute top-1 left-1 bg-slate-800 dark:bg-slate-600 text-white p-1 rounded-full z-10"><Icon name="medkit" size={10}/></div>}
-                                    {p.suspended && <div className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🚫 SUSPENSO</div>}
-                                    {p.highlight && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🏆 DESTAQUE</div>}
 
-                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2 shrink-0 relative mt-2" style={{borderColor: p.injured || p.suspended ? '#ef4444' : p.highlight ? '#facc15' : themeColor}}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
-                                    </div>
-                                    <div className="text-center w-full mt-1">
-                                        <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate">{p.name}</div>
-                                        <div className="text-[8px] text-slate-400 dark:text-slate-500 uppercase">{p.position || 'Atleta'}</div>
-                                    </div>
-                                    <div className="w-full flex justify-center mt-1"><MiniGauge value={loadPct} min={0} max={100} /></div>
-                                </div>
-                            ) 
-                        })}
+                        <div className="flex gap-2 pt-2">
+                            <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
+                            <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
+                        </div>
                     </div>
                 </div>
-            );
+            </div>
+        );
+    };
+
+    const PlayerProfileModal = ({ player, playerIndex, logs, onClose, themeColor, setPlayers, players }) => {
+        if (!player) return null;
+        const today = getTodayStr(); 
+        const currentLog = logs[today]?.[playerIndex] || {};
+        const wellness = safeObj(currentLog.wellness);
+        const dates = getDatesInRange(today, 7).reverse();
+        
+        const toggleInjury = () => { const n = [...players]; n[playerIndex].injured = !n[playerIndex].injured; setPlayers(n); };
+        
+        const getLoad = (d) => { 
+            const l = logs[d]?.[playerIndex]; 
+            if(!l) return 0;
+            const rpeSum = (Number(l.rpe_am)||0)+(Number(l.rpe_pm)||0);
+            const dur = Number(l.duration) || 0;
+            return dur > 0 ? rpeSum * dur : rpeSum * 60; 
         };
+
+        const todayLoad = getLoad(today);
+        const historyDates = getDatesInRange(today, 7).slice(1); 
+        let chronicLoad = 0; historyDates.forEach(d => chronicLoad += getLoad(d)); 
+        const avgLoad = (chronicLoad + todayLoad) / 7;
+        
+        const loadHistoryLine = getDatesInRange(today, 14).reverse().map(d => getLoad(d));
+        const wellnessHistory = getDatesInRange(today, 7).reverse().map(d => {
+            const w = safeObj(logs[d]?.[playerIndex]?.wellness);
+            return w.sleep ? (8 - Number(w.sleep)) * 14.28 : 50; 
+        });
+
+        let loadMsg = "Carga Equilibrada. Prontidão Alta."; 
+        let loadColor = "text-green-500";
+        
+        if (avgLoad > 0) {
+            if (todayLoad > avgLoad * 1.4) { loadMsg = "Risco Agudo! Sobrecarga detectada. Sugestão: Recuperativo imediato."; loadColor = "text-red-500"; } 
+            else if (todayLoad < avgLoad * 0.6) { loadMsg = "Carga baixa hoje. Oportunidade para treino de força ou tático intenso."; loadColor = "text-yellow-500"; }
+        }
+
+        const copyAthleteLink = () => {
+            const user = firebase.auth().currentUser;
+            if(user) {
+                const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(link).then(() => {
+                        showToast("Link copiado! Envie no WhatsApp.");
+                    }).catch(() => alert("Copie este link:\n" + link));
+                } else { alert("Copie este link:\n" + link); }
+            }
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
+                    
+                    <div className="p-6 relative text-white flex flex-col items-center shrink-0" style={{background:`linear-gradient(to bottom, ${themeColor}, #1e293b)`}}>
+                        <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white"><Icon name="x" size={24}/></button>
+                        <div className="w-24 h-24 rounded-full border-4 border-white dark:border-slate-700 bg-slate-200 dark:bg-slate-600 shadow-lg mb-2 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover object-top" onError={(e)=>{e.target.style.display='none'}}/>:<div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
+                        <h2 className="text-2xl font-bold uppercase tracking-tight">{player.name}</h2>
+                        <p className="text-white/70 text-sm font-bold">{player.number?`#${player.number} `:''} {player.position||'Atleta'}</p>
+                        
+                        <div className="flex gap-2 mt-3">
+                            <button onClick={toggleInjury} className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest flex items-center gap-1 shadow-lg ${player.injured?'bg-red-500 text-white':'bg-green-500 text-white'}`}>{player.injured?<><Icon name="medkit" size={12}/> LESIONADO (DM)</>:<><Icon name="check" size={12}/> DISPONÍVEL</>}</button>
+                        </div>
+                    </div>
+                    
+                    <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scroll bg-slate-100 dark:bg-slate-900">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <div className="flex justify-between items-end mb-4">
+                                    <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                                        <Icon name="activity" size={14} className="text-blue-500"/> GPS Virtual (14d)
+                                    </h3>
+                                    <span className="text-[9px] font-bold text-slate-400">sRPE</span>
+                                </div>
+                                <div className="w-full px-2"><LineChart data={loadHistoryLine} color={themeColor} height={50} /></div>
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                <div className="flex justify-between items-end mb-4">
+                                    <h3 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest flex items-center gap-1">
+                                        <Icon name="smile" size={14} className="text-emerald-500"/> Índice de Recuperação (7d)
+                                    </h3>
+                                    <span className="text-[9px] font-bold text-slate-400">%</span>
+                                </div>
+                                <div className="w-full px-2"><LineChart data={wellnessHistory} color="#10b981" height={50} /></div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2 border-b dark:border-slate-700 pb-2">
+                                <Icon name="brain" className={loadColor} size={18}/>
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${loadColor}`}>Assistente de Prontidão IA</span>
+                            </div>
+                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-snug">{loadMsg}</div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase mb-3 flex items-center gap-2 tracking-widest"><Icon name="smile"/> Estado Hoje ({formatDateBR(today)})</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                {Object.entries({Sono:wellness.sleep, Estresse:wellness.stress, Fadiga:wellness.fatigue, Dor:wellness.soreness, Humor: wellness.mood}).map(([k,v])=>(
+                                    <div key={k} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <div className="flex justify-between text-xs font-bold mb-2">
+                                            <span className="text-slate-500 dark:text-slate-400">{k}</span>
+                                            <span className="dark:text-white font-black">{v||'-'}</span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full transition-all duration-500" style={{width:`${((Number(v)||0)/7)*100}%`,backgroundColor:(Number(v)||0)>=5?'#ef4444':(Number(v)||0)>=3?'#eab308':'#22c55e'}}></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 mt-4">
+                            <button onClick={copyAthleteLink} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs tracking-widest uppercase py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 border-b-4 border-black/30">
+                                <Icon name="copy"/> Copiar Link do App do Atleta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const injuredCount = safePlayers.filter(p=>p && p.injured).length;
+    const squadAnalysis = injuredCount > 2 ? `Atenção: ${injuredCount} indisponíveis.` : "Elenco pronto.";
+
+    return (
+        <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
+            <PlayerProfileModal player={safePlayers[viewProfile]} playerIndex={viewProfile} logs={trainingLog} onClose={()=>setViewProfile(null)} themeColor={themeColor} setPlayers={setPlayers} players={safePlayers} />
+            {editPlayer!==null && <Editor/>}
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold flex items-center gap-2 dark:text-slate-100" style={{color: themeColor}}><Icon name="user"/> Gestão do Elenco</h2>
+                    <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
+                        <Icon name="plus" size={14}/> Adicionar Atleta
+                    </button>
+                    <button onClick={generateExecutiveDossier} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest hidden md:flex">
+                        <Icon name="download" size={14}/> GerAR DOSSIÊ (PDF)
+                    </button>
+                </div>
+                <div className="text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <Icon name="brain" size={14} className="text-blue-500"/>{squadAnalysis}
+                </div>
+                <button onClick={generateExecutiveDossier} className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg transition-all uppercase tracking-widest md:hidden">
+                    <Icon name="download" size={14}/> Gerar Dossiê da Diretoria (PDF)
+                </button>
+            </div>
+            
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
+                {safePlayers.map((p, i) => { 
+                    if(!p) return null;
+                    const loadPct = getWeeklyLoad(i); 
+                    const dailyLog = trainingLog[today]?.[i] || {}; 
+                    
+                    // IA: CHECAGEM DE DOR CONTÍNUA (OLGA) NO CARTÃO DO ELENCO
+                    let daysWithPain = 0;
+                    for (let j = 0; j <= 2; j++) {
+                        let d = new Date(today);
+                        d.setDate(d.getDate() - j);
+                        let dStr = d.toISOString().split('T')[0];
+                        if (trainingLog[dStr]?.[i]?.wellness?.soreness >= 6) {
+                            daysWithPain++;
+                        }
+                    }
+                    const isChronicPain = daysWithPain >= 2;
+
+                    return (
+                        <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${isChronicPain || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
+                            <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500 z-20"><Icon name="edit" size={12}/></button>
+                            
+                            {/* ETIQUETAS DE STATUS NA FOTO */}
+                            {isChronicPain && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg animate-pulse z-10 border border-red-400">🚨 DOR CONTÍNUA</div>}
+                            {p.injured && <div className="absolute top-1 left-1 bg-slate-800 dark:bg-slate-600 text-white p-1 rounded-full z-10"><Icon name="medkit" size={10}/></div>}
+                            {p.suspended && <div className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🚫 SUSPENSO</div>}
+                            {p.highlight && !p.injured && !p.suspended && !isChronicPain && <div className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🏆 DESTAQUE</div>}
+
+                            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2 shrink-0 relative mt-2" style={{borderColor: p.injured || p.suspended || isChronicPain ? '#ef4444' : p.highlight ? '#facc15' : themeColor}}>
+                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
+                            </div>
+                            <div className="text-center w-full mt-1">
+                                <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate">{p.name}</div>
+                                <div className="text-[8px] text-slate-400 dark:text-slate-500 uppercase">{p.position || 'Atleta'}</div>
+                            </div>
+                            <div className="w-full flex justify-center mt-1"><MiniGauge value={loadPct} min={0} max={100} /></div>
+                        </div>
+                    ) 
+                })}
+            </div>
+        </div>
+    );
+};
 
         const PSEView = ({ players, themeColor, trainingLog, setTrainingLog }) => {
             const [date, setDate] = useState(getTodayStr()); 
