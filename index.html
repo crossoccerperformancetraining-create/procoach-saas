@@ -2,19 +2,9 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ProCoach V144 MAX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProCoach Performance Suite</title>
     
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-        }
-    </script>
-
     <link rel="manifest" href="manifest.json?v=19">
     <link rel="apple-touch-icon" href="logo.png?v=19">
     <link rel="icon" type="image/png" href="logo.png?v=19">
@@ -30,8 +20,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -69,7 +59,7 @@
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col safe-area-inset">
     <div id="toast"></div>
-    <div id="root" class="h-full w-full"><div id="loading-state">A Iniciar Sistema V144 MAX...</div></div>
+    <div id="root" class="h-full w-full"><div id="loading-state">A iniciar o ProCoach...</div></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
@@ -100,6 +90,15 @@
             return team === 'pro' ? uid : `${uid}_${team}`;
         };
 
+        const getAthletePortalUrl = (docId, playerId = '', preview = false) => {
+            const url = new URL('atleta.html', window.location.href);
+            url.search = '';
+            if (docId) url.searchParams.set('id', docId);
+            if (playerId) url.searchParams.set('uid', String(playerId));
+            if (preview) url.searchParams.set('view', 'coach');
+            return url.toString();
+        };
+
         const AnalysisModal = ({ day, onClose, onUpdate }) => {
             const [analysisData, setAnalysisData] = useState({ 
                 timeTarget: day.plannedMins || '', 
@@ -124,25 +123,6 @@
                     </div>
                 </div>
             );
-            const AnalysisModal = ({ day, onClose, onUpdate }) => {
-    const [analysisData, setAnalysisData] = useState({ 
-        timeTarget: day.plannedMins || '', 
-        pseTarget: day.pseTarget || '' 
-    });
-
-    return (
-        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-            <div className="bg-[#1e293b] rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-700" onClick={e=>e.stopPropagation()}>
-                <h3 className="text-xl font-black text-white uppercase mb-6">Configurar Carga: {day.name}</h3>
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                    <input type="number" className="bg-slate-900 p-4 rounded-xl text-white font-black w-full" value={analysisData.timeTarget} onChange={(e) => setAnalysisData({...analysisData, timeTarget: e.target.value})} placeholder="Tempo (min)" />
-                    <input type="number" className="bg-slate-900 p-4 rounded-xl text-white font-black w-full" value={analysisData.pseTarget} onChange={(e) => setAnalysisData({...analysisData, pseTarget: e.target.value})} placeholder="PSE (1-10)" />
-                </div>
-                <button onClick={() => { onUpdate(day.id, analysisData); onClose(); }} className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase hover:bg-blue-700">SALVAR E FECHAR</button>
-            </div>
-        </div>
-    );
-};
         };
  const MicrocycleView = ({ days, setDays, themeColor, players, trainingLog, library }) => {
     const [modalOpen, setModalOpen] = useState(false);
@@ -632,22 +612,16 @@
             static getDerivedStateFromError(error) { return { hasError: true }; }
             componentDidCatch(error, errorInfo) { console.error("ProCoach Error:", error, errorInfo); }
             
-            handleHardReset = () => {
+            handleHardReset = async () => {
                 this.setState({ resetting: true });
-                localStorage.clear();
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                        for (let r of regs) r.unregister();
-                    });
+                Object.keys(localStorage)
+                    .filter(key => key.startsWith('procoach_') || key.startsWith('ac_'))
+                    .forEach(key => localStorage.removeItem(key));
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(cacheNames.map(name => caches.delete(name)));
                 }
-                const user = firebase.auth().currentUser;
-                if (user) {
-                    firebase.firestore().collection('coachData').doc(user.uid).set({
-                        players: [], trainingLog: {}, dmRecords: [], matchMinutes: {}, assessments: {},
-                        days: DEFAULT_DAYS, themeColor: '#1e3a8a', darkMode: true
-                    });
-                }
-                setTimeout(() => { window.location.href = window.location.pathname + '?clear=' + Date.now(); }, 1000);
+                window.location.replace(window.location.pathname + '?clear=' + Date.now());
             }
 
             render() {
@@ -658,9 +632,9 @@
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             </div>
                             <h1 className="text-2xl font-bold mb-2">Erro de Carregamento</h1>
-                            <p className="text-slate-400 mb-8 max-w-md text-sm leading-relaxed">Pressione o botão para limpar a cache e resolver.</p>
+                            <p className="text-slate-400 mb-8 max-w-md text-sm leading-relaxed">Pressione o botão para limpar apenas o cache local e recarregar. Seus dados na nuvem não serão apagados.</p>
                             <button onClick={this.handleHardReset} disabled={this.state.resetting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl uppercase tracking-wider flex items-center gap-2 mb-6">
-                                {this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR E FORMATAR SISTEMA"}
+                                {this.state.resetting ? "A REINICIAR SISTEMA..." : "LIMPAR CACHE E RECARREGAR"}
                             </button>
                             <button onClick={()=>firebase.auth().signOut().then(()=>window.location.reload())} className="text-xs text-slate-500 hover:text-slate-300 underline">Ou Terminar Sessão</button>
                         </div>
@@ -719,20 +693,126 @@
             return false;
         };
 
+
+        // Camada de compatibilidade de dados V2: usa player.id como chave segura
+        // e mantém aliases numéricos temporariamente para o App do Atleta legado.
+        const normalizePlayerId = (player, index) => {
+            if (player && player.id) return String(player.id);
+            const slug = String(player?.name || 'atleta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'atleta';
+            return `atl_${index}_${slug}`;
+        };
+
+        const normalizePlayers = (players) => safeArray(players).map((player, index) => ({
+            ...safeObj(player),
+            id: normalizePlayerId(player, index)
+        }));
+
+        const decodePlayerMapForUI = (source, players) => {
+            const src = safeObj(source);
+            const result = {};
+            players.forEach((player, index) => {
+                const id = normalizePlayerId(player, index);
+                const value = src[id] !== undefined ? src[id] : src[index] !== undefined ? src[index] : src[String(index)];
+                if (value !== undefined) result[index] = value;
+            });
+            return result;
+        };
+
+        const encodePlayerMapForCloud = (source, players, dualWrite = true) => {
+            const src = safeObj(source);
+            const result = {};
+            players.forEach((player, index) => {
+                const value = src[index] !== undefined ? src[index] : src[String(index)] !== undefined ? src[String(index)] : src[player.id];
+                if (value === undefined) return;
+                result[normalizePlayerId(player, index)] = value;
+                if (dualWrite) result[String(index)] = value;
+            });
+            return result;
+        };
+
+        const decodeDatePlayerMapForUI = (source, players) => {
+            const result = {};
+            Object.entries(safeObj(source)).forEach(([date, rawDay]) => {
+                const day = safeObj(rawDay);
+                const decoded = decodePlayerMapForUI(day, players);
+                Object.entries(day).forEach(([key, value]) => {
+                    const isPlayerId = players.some((player, index) => normalizePlayerId(player, index) === key);
+                    const isIndex = /^\d+$/.test(key);
+                    if (!isPlayerId && !isIndex) decoded[key] = value;
+                });
+                result[date] = decoded;
+            });
+            return result;
+        };
+
+        const encodeDatePlayerMapForCloud = (source, players, dualWrite = true) => {
+            const result = {};
+            Object.entries(safeObj(source)).forEach(([date, rawDay]) => {
+                const day = safeObj(rawDay);
+                const encoded = encodePlayerMapForCloud(day, players, dualWrite);
+                Object.entries(day).forEach(([key, value]) => {
+                    const isIndex = /^\d+$/.test(key);
+                    const isPlayerId = players.some((player, index) => normalizePlayerId(player, index) === key);
+                    if (!isIndex && !isPlayerId) encoded[key] = value;
+                });
+                result[date] = encoded;
+            });
+            return result;
+        };
+
+        const decodeDmRecordsForUI = (records, players) => safeArray(records).map(record => {
+            const item = { ...safeObj(record) };
+            const stableId = item.playerUid || (typeof item.playerId === 'string' && !/^\d+$/.test(item.playerId) ? item.playerId : null);
+            const foundIndex = stableId ? players.findIndex((player, index) => normalizePlayerId(player, index) === stableId) : -1;
+            const legacyIndex = Number(item.playerIndex ?? item.playerId);
+            return { ...item, playerUid: stableId || (players[legacyIndex] ? normalizePlayerId(players[legacyIndex], legacyIndex) : null), playerId: stableId ? foundIndex : (Number.isFinite(legacyIndex) ? legacyIndex : item.playerId) };
+        });
+
+        const encodeDmRecordsForCloud = (records, players) => safeArray(records).map(record => {
+            const item = { ...safeObj(record) };
+            const index = Number(item.playerId);
+            const player = players[index];
+            return player ? { ...item, playerId: index, playerIndex: index, playerUid: normalizePlayerId(player, index) } : item;
+        });
+
+        const remapPlayerMapForRosterChange = (source, previousPlayers, nextPlayers) => {
+            const stable = encodePlayerMapForCloud(source, previousPlayers, false);
+            return decodePlayerMapForUI(stable, nextPlayers);
+        };
+
+        const remapDatePlayerMapForRosterChange = (source, previousPlayers, nextPlayers) => {
+            const stable = encodeDatePlayerMapForCloud(source, previousPlayers, false);
+            return decodeDatePlayerMapForUI(stable, nextPlayers);
+        };
+
+        const remapDmRecordsForRosterChange = (records, previousPlayers, nextPlayers) => {
+            const stable = encodeDmRecordsForCloud(records, previousPlayers);
+            return decodeDmRecordsForUI(stable, nextPlayers);
+        };
+
+        const prepareCloudPayload = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, ...rest }) => ({
+            ...rest,
+            dataSchemaVersion: 2,
+            players: normalizePlayers(players),
+            trainingLog: encodeDatePlayerMapForCloud(trainingLog, players, true),
+            assessments: encodePlayerMapForCloud(assessments, players, true),
+            dmRecords: encodeDmRecordsForCloud(dmRecords, players),
+            attendanceLog: encodeDatePlayerMapForCloud(attendanceLog, players, true),
+            matchMinutes: encodeDatePlayerMapForCloud(matchMinutes, players, true)
+        });
+
         const sanitizeCloudData = (data) => {
             if (!data || typeof data !== 'object') return {};
+            const players = normalizePlayers(data.players);
             return {
+                dataSchemaVersion: Number(data.dataSchemaVersion) || 1,
                 themeColor: typeof data.themeColor === 'string' ? data.themeColor : '#1e3a8a',
-               players: safeArray(data.players).map(p => {
-                    const sp = safeObj(p);
-                    if (!sp.id) sp.id = "atl_" + Math.random().toString(36).substr(2, 9);
-                    return sp;
-                }),
-                trainingLog: safeObj(data.trainingLog),
-                assessments: safeObj(data.assessments),
-                dmRecords: safeArray(data.dmRecords),
-                attendanceLog: safeObj(data.attendanceLog),
-                matchMinutes: safeObj(data.matchMinutes),
+                players,
+                trainingLog: decodeDatePlayerMapForUI(data.trainingLog, players),
+                assessments: decodePlayerMapForUI(data.assessments, players),
+                dmRecords: decodeDmRecordsForUI(data.dmRecords, players),
+                attendanceLog: decodeDatePlayerMapForUI(data.attendanceLog, players),
+                matchMinutes: decodeDatePlayerMapForUI(data.matchMinutes, players),
                 header: safeObj(data.header),
                 logo: typeof data.logo === 'string' ? data.logo : null,
                 darkMode: !!data.darkMode,
@@ -743,7 +823,10 @@
                 postWorkout: data.postWorkout || 'Livre',
                 coachMsg: data.coachMsg || '',
                 videoUrl: data.videoUrl || '',
-                nextGame: safeObj(data.nextGame), // ADICIONADO AQUI
+                nextGame: safeObj(data.nextGame),
+                lastAlertSent: Number(data.lastAlertSent) || 0,
+                trainingStatus: data.trainingStatus || 'pre',
+                statusUpdatedAt: data.statusUpdatedAt || null,
                 customCategories: data.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção'],
                 customTargets: data.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força: Superiores', 'Força: Inferiores', 'Geral', 'Transição (Retorno DM)'],
                 exerciseHistory: safeObj(data.exerciseHistory)
@@ -829,7 +912,7 @@ const LineChart = ({ data, color, height = 50 }) => {
         };
 
         const LoginScreen = ({ onLogin }) => {
-            const [email, setEmail] = useState('crossoccerperformancetraining@gmail.com');
+            const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
             const [loading, setLoading] = useState(false);
@@ -1022,7 +1105,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                 </div>
             );
         };
-        const WellnessDashboard = ({ players, themeColor, trainingLog, setTrainingLog }) => {
+        const WellnessDashboard = ({ players, setPlayers, themeColor, trainingLog, setTrainingLog, user }) => {
             const [mode, setMode] = useState('dashboard');
             const [wellnessDate, setWellnessDate] = useState(getTodayStr()); 
             
@@ -1061,7 +1144,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                     
                     newPlayers[pIdx].convocado = !newPlayers[pIdx].convocado;
                     
-                    await db.collection('coachData').doc(user.uid).update({
+                    await db.collection('coachData').doc(getActiveDocId(user.uid)).update({
                         players: newPlayers
                     });
                     
@@ -1077,14 +1160,13 @@ const LineChart = ({ data, color, height = 50 }) => {
                 const safePlayers = safeArray(players);
                 const filledCount = safePlayers.filter((p,i) => safeObj(trainingLog[wellnessDate]?.[i]?.wellness).sleep).length;
                const cobrarWhatsapp = () => {
-                    const missingPlayers = safePlayers.filter((p, i) => !p.injured && !p.suspended && !safeObj(trainingLog[wellnessDate]?.[i]?.wellness).sleep);
+                    const missingPlayers = safePlayers.map((p, idx) => ({ ...safeObj(p), idx })).filter(p => !p.injured && !p.suspended && !safeObj(trainingLog[wellnessDate]?.[p.idx]?.wellness).sleep);
                     if (missingPlayers.length === 0) return showToast("Elenco 100% em dia!", "#10b981");
 
-                    // Cria a lista com o nome exato dos "inadimplentes"
-                    const namesList = missingPlayers.map(p => `▪️ ${p.name}`).join('\n');
-                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(firebase.auth().currentUser?.uid)}`;
-
-                    const text = `🤖 *ASSISTENTE PROCOACH MAX* 🤖\n\nFALA RAPAZIADA!\nAté o momento, *${missingPlayers.length} atletas* ainda não preencheram a Prancheta Médica (Wellness) de hoje (${formatDateBR(wellnessDate)}).\n\n*Pendentes:*\n${namesList}\n\n⚠️ *Evitem advertências da comissão técnica.* Preencham agora no portal:\n🔗 ${link}`;
+                    const user = firebase.auth().currentUser;
+                    const docId = user ? getActiveDocId(user.uid) : '';
+                    const namesList = missingPlayers.map(p => `▪️ ${p.name}\n${getAthletePortalUrl(docId, p.id)}`).join('\n\n');
+                    const text = `🤖 *ASSISTENTE PROCOACH MAX* 🤖\n\nFALA RAPAZIADA!\nAté o momento, *${missingPlayers.length} atletas* ainda não preencheram a Prancheta Médica (Wellness) de hoje (${formatDateBR(wellnessDate)}).\n\n*Links individuais dos pendentes:*\n${namesList}\n\n⚠️ Cada atleta deve abrir somente o próprio link.`;
 
                     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                 };
@@ -1228,24 +1310,6 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     })}
                                 </div>
                             </div>
-                                <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex justify-between items-center">
-                                    <span>Sintomas e Dores</span>
-                                    <span className="text-[9px] text-slate-400 font-normal">Toque para marcar</span>
-                                </h4>
-                                <div className="flex flex-wrap gap-1.5 mb-4 max-h-40 overflow-y-auto custom-scroll p-1">
-                                    {bodyParts.map(p => {
-                                        const isActive = localPainZones.includes(p);
-                                        return (
-                                            <button 
-                                                key={p} 
-                                                onClick={() => togglePainZone(p)} 
-                                                className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${isActive ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-slate-400'}`}
-                                            >
-                                                {p} {isActive && '×'}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
                             </div>
                     </div>
                 </div>
@@ -1318,7 +1382,7 @@ const LineChart = ({ data, color, height = 50 }) => {
             const copyAthleteLink = () => {
                 const user = firebase.auth().currentUser;
                 if(user) {
-                    const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&uid=${player.id}`;
+                    const link = getAthletePortalUrl(getActiveDocId(user.uid), player.id);
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(link).then(() => {
                             showToast("Link copiado! Envie no WhatsApp.");
@@ -1580,7 +1644,7 @@ const LineChart = ({ data, color, height = 50 }) => {
         const copyAthleteLink = () => {
             const user = firebase.auth().currentUser;
             if(user) {
-                const link = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}&p=${playerIndex}`;
+                const link = getAthletePortalUrl(getActiveDocId(user.uid), player.id);
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(link).then(() => {
                         showToast("Link copiado! Envie no WhatsApp.");
@@ -1991,7 +2055,7 @@ const acwrGroups = useMemo(() => {
                     {/* PAINEL CENTRAL ACWR (NOVIDADE) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
                         <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 p-4 rounded-xl shadow-sm relative overflow-hidden">
-                            <h3 className="text-red-600 dark:text-red-400 font-black uppercase text-[10px] mb-3 flex items-center gap-1"><Icon name="alert"/> Zona de Perigo (ACWR > 1.5)</h3>
+                            <h3 className="text-red-600 dark:text-red-400 font-black uppercase text-[10px] mb-3 flex items-center gap-1"><Icon name="alert"/> Zona de Perigo (ACWR &gt; 1.5)</h3>
                             <div className="flex flex-wrap gap-1.5 relative z-10">
                                 {acwrGroups.danger.length > 0 ? acwrGroups.danger.map(p => <span key={p.idx} onClick={()=>setViewProfile(p.idx)} className="bg-red-600 hover:bg-red-500 cursor-pointer text-white text-[9px] font-bold px-2 py-1 rounded shadow">{p.name} ({p.acwr})</span>) : <span className="text-[10px] text-slate-500 dark:text-slate-400 italic">Nenhum atleta em risco.</span>}
                             </div>
@@ -2817,8 +2881,8 @@ const renderVideoElement = (url) => {
 
     useEffect(() => {
         if(user && targetOptions.length > 0) {
-            db.collection('coachData').doc(user.uid).update({ customTargets: targetOptions }).catch(err => {
-                if(err.code === 'not-found') db.collection('coachData').doc(user.uid).set({ customTargets: targetOptions }, { merge: true });
+            db.collection('coachData').doc(getActiveDocId(user.uid)).update({ customTargets: targetOptions }).catch(err => {
+                if(err.code === 'not-found') db.collection('coachData').doc(getActiveDocId(user.uid)).set({ customTargets: targetOptions }, { merge: true });
             });
         }
     }, [targetOptions, user]);
@@ -2848,7 +2912,7 @@ const renderVideoElement = (url) => {
 
     const importFromDate = () => {
         if(!sessionDate) return showToast("Selecione uma data no calendário!", "#ef4444");
-        db.collection('coachData').doc(user.uid).get().then(doc => {
+        db.collection('coachData').doc(getActiveDocId(user.uid)).get().then(doc => {
             if(doc.exists){
                 const pastWorkout = doc.data().exerciseHistory?.[sessionDate];
                 if(pastWorkout && pastWorkout.length > 0){ setExercises(pastWorkout); showToast("Treino importado com sucesso!", "#10b981"); } 
@@ -2858,7 +2922,7 @@ const renderVideoElement = (url) => {
     };
 
     const fixWorkoutForToday = () => {
-        db.collection('coachData').doc(user.uid).set({ exerciseHistory: { [sessionDate]: exercises } }, { merge: true }).then(() => {
+        db.collection('coachData').doc(getActiveDocId(user.uid)).set({ exerciseHistory: { [sessionDate]: exercises } }, { merge: true }).then(() => {
             showToast(`Sessão salva para o dia ${formatDateBR(sessionDate)} no app do atleta!`, "#10b981");
         });
     };
@@ -2962,10 +3026,9 @@ const renderVideoElement = (url) => {
     }
 
     const notificarTreino = () => {
-        const linkApp = user ? `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html?id=${getActiveDocId(user.uid)}` : "Link do App";
         const dataFormatada = formatDateBR(sessionDate);
         let focoTexto = getAiSuggestion().replace(/🚨 IA: |⚠️ IA: |✅ IA: /g, '');
-        const text = `⚽ *FALA RAPAZIADA!* ⚽\n\nA sessão de treino do dia *${dataFormatada}* já está liberada e detalhada no App.\n\n🎯 *Diretriz:* ${focoTexto}\n\nAssistam aos vídeos da vídeo-análise e confiram a prancheta antes de irmos pro campo. Já vão mentalizando o trabalho!\n\n🔗 *Acesse o Portal aqui:* \n${linkApp}`;
+        const text = `⚽ *FALA RAPAZIADA!* ⚽\n\nA sessão de treino do dia *${dataFormatada}* já está liberada e detalhada no App.\n\n🎯 *Diretriz:* ${focoTexto}\n\nAssistam aos vídeos da vídeo-análise e confiram a prancheta antes de irmos pro campo. Já vão mentalizando o trabalho!\n\n🔐 Acesse pelo seu link individual do Portal do Atleta enviado pela comissão.`;
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(whatsappUrl, '_blank');
         showToast("Redirecionando para o WhatsApp...", "#10b981");
@@ -3687,24 +3750,6 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate 
         </div>
     );
 };
-// Verifica os últimos 3 dias de Wellness
-const checkProntidao = (index) => {
-    const hoje = new Date();
-    let queixas = 0;
-    
-    // Varre os últimos 3 dias
-    for(let i = 1; i <= 3; i++) {
-        let d = new Date();
-        d.setDate(hoje.getDate() - i);
-        let dataStr = d.toISOString().split('T')[0];
-        
-        // Se o atleta registrou dor (soreness) acima de 6
-        if(wellnessLog[dataStr] && wellnessLog[dataStr][index]?.soreness > 6) {
-            queixas++;
-        }
-    }
-    return queixas >= 2; // Alerta se houve queixa em pelo menos 2 dos últimos 3 dias
-};
  const GameDayView = ({ players, setPlayers, themeColor, matchMinutes, setMatchMinutes, user, exercises, library, trainingLog }) => {
     const [matchDate, setMatchDate] = useState(getTodayStr());
     const [opponent, setOpponent] = useState('');
@@ -4092,7 +4137,194 @@ const checkProntidao = (index) => {
                 </div>
             );
         };
-  const DashboardView = ({ players, days, trainingLog, dmRecords, themeColor, attendanceLog, trainingStatus }) => {
+
+const ExecutiveDecisionPanel = ({ players, trainingLog, dmRecords, attendanceLog, days, assessments, matchMinutes, onNavigate }) => {
+    const today = getTodayStr();
+    const safePlayers = safeArray(players);
+    const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const todayPlan = safeArray(days, DEFAULT_DAYS)[todayIndex] || {};
+    const todayData = safeObj(trainingLog[today]);
+    const responses = safePlayers.filter((_, index) => safeObj(todayData[index]?.wellness).sleep).length;
+    const dataQuality = safePlayers.length ? Math.round((responses / safePlayers.length) * 100) : 0;
+    const available = safePlayers.filter((player, index) => {
+        const status = attendanceLog?.[today]?.[index];
+        return player && !player.injured && !player.suspended && !['A','J','DM'].includes(status);
+    });
+    const readinessValues = safePlayers.map((_, index) => safeObj(todayData[index]?.wellness)).filter(w => w.sleep).map(w => {
+        const burden = ['sleep','stress','fatigue','soreness','mood'].reduce((sum, key) => sum + (Number(w[key]) || 1), 0);
+        return Math.max(0, Math.round(100 - ((burden - 5) / 30) * 100));
+    });
+    const readiness = readinessValues.length ? Math.round(readinessValues.reduce((a,b) => a+b, 0) / readinessValues.length) : 0;
+    const realLoads = safePlayers.map((_, index) => calcDailyLoad(todayData[index])).filter(Boolean);
+    const actualLoad = realLoads.length ? Math.round(realLoads.reduce((a,b)=>a+b,0) / realLoads.length) : 0;
+    const targetMinutes = todayPlan.md?.includes('JOGO') ? 90 : todayPlan.md?.includes('MD-3') ? 65 : todayPlan.md?.includes('MD-2') ? 45 : todayPlan.md?.includes('MD-1') ? 35 : 60;
+    const targetPse = todayPlan.md?.includes('JOGO') ? 10 : todayPlan.md?.includes('MD-3') ? 8 : todayPlan.md?.includes('MD-1') ? 3 : 6;
+    const targetLoad = targetMinutes * targetPse;
+    const activeDm = safeArray(dmRecords).filter(record => record?.status === 'Active');
+    const alerts = [];
+    safePlayers.forEach((player, index) => {
+        if (!player) return;
+        const wellness = safeObj(todayData[index]?.wellness);
+        if (player.injured) alerts.push({ level: 'red', text: `${player.name}: indisponível no DM` });
+        else if ((Number(wellness.soreness)||0) >= 6) alerts.push({ level: 'red', text: `${player.name}: dor muscular elevada` });
+        else if ((Number(wellness.fatigue)||0) >= 6 || (Number(wellness.sleep)||0) >= 6) alerts.push({ level: 'yellow', text: `${player.name}: prontidão reduzida` });
+        if (!wellness.sleep) alerts.push({ level: 'slate', text: `${player.name}: wellness pendente` });
+    });
+    const positions = available.reduce((acc, player) => {
+        const key = player.position || player.pos || 'Sem posição';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const card = (label, value, subtitle, tone, icon) => (
+        <div className={`rounded-2xl border p-4 shadow-sm ${tone}`}>
+            <div className="flex justify-between items-start"><div><div className="text-[9px] font-black uppercase tracking-widest opacity-70">{label}</div><div className="text-3xl font-black mt-1">{value}</div><div className="text-[10px] font-bold opacity-70 mt-1">{subtitle}</div></div><Icon name={icon} size={28} className="opacity-30"/></div>
+        </div>
+    );
+    return (
+        <div className="mb-6 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div><h3 className="text-sm font-black uppercase dark:text-white">Central de Decisão</h3><p className="text-[10px] text-slate-500 font-bold uppercase">Indicadores que exigem ação da comissão hoje</p></div>
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={()=>onNavigate?.('profile360')} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Perfil 360º</button>
+                    <button onClick={()=>onNavigate?.('reports')} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Relatório semanal</button>
+                    <button onClick={()=>onNavigate?.('workout')} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Montar treino</button>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                {card('Prontidão média', readiness ? `${readiness}%` : '-', `${readinessValues.length} respostas válidas`, readiness >= 75 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300', 'activity')}
+                {card('Disponíveis', `${available.length}/${safePlayers.length}`, `${activeDm.length} no departamento médico`, 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300', 'user')}
+                {card('Carga do dia', actualLoad || '-', `Meta estimada: ${targetLoad} U.A.`, actualLoad > targetLoad * 1.15 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300', 'barChart')}
+                {card('Qualidade dos dados', `${dataQuality}%`, `${responses}/${safePlayers.length} wellness preenchidos`, dataQuality >= 90 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300', 'check')}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+                    <div className="flex justify-between items-center mb-3"><h4 className="text-[10px] font-black uppercase text-slate-500">Central de alertas</h4><span className="text-[9px] font-bold bg-slate-100 dark:bg-slate-700 dark:text-slate-300 px-2 py-1 rounded-full">{alerts.length} sinais</span></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scroll">
+                        {alerts.length ? alerts.slice(0,10).map((alert,index)=><div key={index} className={`text-[10px] font-bold p-2 rounded-lg border ${alert.level==='red'?'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800':alert.level==='yellow'?'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800':'bg-slate-50 dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700'}`}>{alert.text}</div>) : <div className="text-xs text-emerald-600 font-bold">Nenhum alerta crítico identificado.</div>}
+                    </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 mb-3">Disponibilidade por posição</h4>
+                    <div className="space-y-2">{Object.entries(positions).length ? Object.entries(positions).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([position,count])=><div key={position} className="flex justify-between text-[10px] font-bold dark:text-slate-300"><span className="truncate">{position}</span><span className="bg-slate-100 dark:bg-slate-700 px-2 rounded">{count}</span></div>) : <div className="text-xs text-slate-400">Cadastre as posições do elenco.</div>}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, themeColor }) => {
+    const safePlayers = safeArray(players);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [searchPlayer, setSearchPlayer] = useState('');
+    useEffect(() => { if (selectedIndex >= safePlayers.length) setSelectedIndex(0); }, [safePlayers.length]);
+    const visiblePlayers = safePlayers.map((item, index) => ({ item, index })).filter(({ item }) => String(item?.name || '').toLowerCase().includes(searchPlayer.toLowerCase()));
+    const player = safePlayers[selectedIndex];
+    if (!player) return <div className="p-8 text-center text-slate-500">Cadastre um atleta para abrir o Perfil 360º.</div>;
+    const today = getTodayStr();
+    const dates7 = getDatesInRange(today, 7);
+    const dates28 = getDatesInRange(today, 28);
+    const loads7 = dates7.map(date => calcDailyLoad(trainingLog?.[date]?.[selectedIndex]));
+    const loads28 = dates28.map(date => calcDailyLoad(trainingLog?.[date]?.[selectedIndex]));
+    const total7 = loads7.reduce((a,b)=>a+b,0);
+    const total28 = loads28.reduce((a,b)=>a+b,0);
+    const acuteChronic = total28 > 0 ? Number((total7 / (total28 / 4)).toFixed(2)) : 0;
+    const wellnessEntries = dates7.map(date => safeObj(trainingLog?.[date]?.[selectedIndex]?.wellness)).filter(w => w.sleep);
+    const avgWellness = key => wellnessEntries.length ? (wellnessEntries.reduce((sum,w)=>sum+(Number(w[key])||0),0)/wellnessEntries.length).toFixed(1) : '-';
+    const painCounts = {};
+    dates28.forEach(date => safeArray(trainingLog?.[date]?.[selectedIndex]?.painZones).forEach(zone => painCounts[zone]=(painCounts[zone]||0)+1));
+    const frequentPain = Object.entries(painCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const attendanceDates = Object.keys(safeObj(attendanceLog)).filter(date => dates28.includes(date));
+    const attendanceStatuses = attendanceDates.map(date => attendanceLog[date]?.[selectedIndex]).filter(Boolean);
+    const presentCount = attendanceStatuses.filter(status => ['P','T'].includes(status)).length;
+    const attendanceRate = attendanceStatuses.length ? Math.round((presentCount / attendanceStatuses.length) * 100) : 0;
+    const matchEntries = Object.entries(safeObj(matchMinutes)).map(([date,data])=>({date, ...safeObj(data?.[selectedIndex])})).filter(item=>Number(item.mins)>0).sort((a,b)=>b.date.localeCompare(a.date));
+    const totalMinutes = matchEntries.reduce((sum,item)=>sum+(Number(item.mins)||0),0);
+    const history = Array.isArray(assessments?.[selectedIndex]) ? assessments[selectedIndex] : [];
+    const latestAssessment = history[0] || {};
+    const injuries = safeArray(dmRecords).filter(record => Number(record?.playerId) === selectedIndex || record?.playerUid === player.id);
+    const activeInjury = injuries.find(record => record.status === 'Active');
+    const todayWellness = safeObj(trainingLog?.[today]?.[selectedIndex]?.wellness);
+    const riskReasons = [];
+    if (activeInjury || player.injured) riskReasons.push('Atleta indisponível no departamento médico');
+    if ((Number(todayWellness.soreness)||0) >= 6) riskReasons.push('Dor muscular elevada hoje');
+    if ((Number(todayWellness.fatigue)||0) >= 6) riskReasons.push('Fadiga elevada hoje');
+    if (acuteChronic >= 1.5) riskReasons.push(`Relação agudo:crônico em ${acuteChronic}`);
+    if (!todayWellness.sleep) riskReasons.push('Wellness de hoje ainda não preenchido');
+    const riskTone = activeInjury || acuteChronic >= 1.5 ? 'red' : riskReasons.length ? 'yellow' : 'green';
+    const summaryCard = (label,value,detail) => <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm"><div className="text-[9px] uppercase font-black text-slate-400">{label}</div><div className="text-2xl font-black dark:text-white mt-1">{value}</div><div className="text-[9px] text-slate-500 font-bold mt-1">{detail}</div></div>;
+    return (
+        <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6 custom-scroll pb-32">
+            <div className="flex flex-col lg:flex-row gap-5">
+                <aside className="lg:w-72 shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm h-fit">
+                    <div className="text-[10px] font-black uppercase text-slate-400 mb-3">Selecionar atleta</div>
+                    <input value={searchPlayer} onChange={e=>setSearchPlayer(e.target.value)} placeholder="Buscar pelo nome..." className="w-full mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white outline-none focus:border-blue-500" />
+                    <div className="max-h-[65vh] overflow-y-auto custom-scroll space-y-1">{visiblePlayers.map(({item,index})=><button key={item.id || index} onClick={()=>setSelectedIndex(index)} className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all ${selectedIndex===index?'bg-blue-600 text-white shadow':'hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-200'}`}><div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">{item.image?<img src={item.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-2 text-slate-400"/>}</div><div className="min-w-0"><div className="text-xs font-black truncate uppercase">{item.name}</div><div className={`text-[9px] font-bold truncate ${selectedIndex===index?'text-blue-100':'text-slate-400'}`}>{item.position || item.pos || 'Atleta'}</div></div></button>)}</div>
+                </aside>
+                <main className="flex-1 min-w-0 space-y-5">
+                    <div className="bg-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl relative overflow-hidden">
+                        <div className="absolute inset-y-0 right-0 w-40 opacity-10" style={{background:`linear-gradient(135deg, transparent, ${themeColor})`}}></div>
+                        <div className="relative flex flex-col md:flex-row md:items-center gap-5"><div className="w-24 h-24 rounded-2xl bg-slate-700 overflow-hidden border-2 border-white/20 shrink-0">{player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={52} className="m-5 text-slate-400"/>}</div><div className="flex-1"><div className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Perfil 360º do atleta</div><h2 className="text-3xl font-black uppercase mt-1">{player.name}</h2><div className="flex flex-wrap gap-2 mt-3 text-[10px] font-bold"><span className="bg-white/10 px-2 py-1 rounded">{player.position || player.pos || 'Sem posição'}</span><span className="bg-white/10 px-2 py-1 rounded">Nº {player.number || '-'}</span><span className={`px-2 py-1 rounded ${riskTone==='red'?'bg-red-600':riskTone==='yellow'?'bg-yellow-500 text-slate-900':'bg-emerald-600'}`}>{riskTone==='red'?'ALTO RISCO':riskTone==='yellow'?'ATENÇÃO':'DISPONÍVEL'}</span></div></div></div>
+                    </div>
+                    <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">{summaryCard('Carga 7 dias', total7, 'U.A. acumuladas')}{summaryCard('Carga 28 dias', total28, 'U.A. acumuladas')}{summaryCard('Agudo : crônico', acuteChronic || '-', acuteChronic>=1.5?'Zona de atenção':'Referência individual')}{summaryCard('Frequência 28d', attendanceRate?`${attendanceRate}%`:'-', `${presentCount}/${attendanceStatuses.length} registros`)}{summaryCard('Minutos em jogos', totalMinutes, `${matchEntries.length} partidas registradas`)}</div>
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                        <section className="xl:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Prontidão e wellness — 7 dias</h3><div className="grid grid-cols-2 md:grid-cols-5 gap-3">{[['Sono','sleep'],['Estresse','stress'],['Fadiga','fatigue'],['Dor','soreness'],['Humor','mood']].map(([label,key])=><div key={key} className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700"><div className="text-[9px] font-black text-slate-400 uppercase">{label}</div><div className="text-2xl font-black dark:text-white mt-1">{avgWellness(key)}</div><div className="text-[8px] text-slate-400">média 1–7</div></div>)}</div><div className="mt-5"><div className="text-[10px] font-black uppercase text-slate-400 mb-2">Regiões com dor recorrente</div><div className="flex flex-wrap gap-2">{frequentPain.length?frequentPain.map(([zone,count])=><span key={zone} className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-full text-[10px] font-bold">{zone}: {count}x</span>):<span className="text-xs text-slate-400">Sem dor recorrente registrada.</span>}</div></div></section>
+                        <section className={`rounded-2xl p-5 border shadow-sm ${riskTone==='red'?'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800':riskTone==='yellow'?'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800':'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}><h3 className="text-xs font-black uppercase mb-3">Assistente de decisão</h3><div className="space-y-2">{riskReasons.length?riskReasons.map((reason,index)=><div key={index} className="text-[10px] font-bold">• {reason}</div>):<div className="text-xs font-bold">Nenhum sinal relevante de risco nos dados atuais.</div>}</div><div className="text-[9px] opacity-70 mt-4">A decisão final permanece com a comissão e a equipe médica.</div></section>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Última avaliação</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[['Data',formatDateBR(latestAssessment.date)],['Peso',latestAssessment.weight?`${latestAssessment.weight} kg`:'-'],['FMS',latestAssessment.fms_total||'-'],['1RM',latestAssessment.squat_rm?`${latestAssessment.squat_rm} kg`:'-'],['30 m',latestAssessment.speed30?`${latestAssessment.speed30} s`:'-'],['SJ',latestAssessment.sj?`${latestAssessment.sj} cm`:'-'],['Resistência',latestAssessment.soccer_test||'-'],['Scout',latestAssessment.scout_tech||'-']].map(([label,value])=><div key={label} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl"><div className="text-[8px] uppercase font-black text-slate-400">{label}</div><div className="font-black dark:text-white mt-1">{value}</div></div>)}</div></section>
+                        <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Histórico médico</h3><div className="space-y-2 max-h-48 overflow-y-auto custom-scroll">{injuries.length?injuries.map(record=><div key={record.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"><div className="flex justify-between gap-2"><div className="text-[10px] font-black dark:text-white">{record.location || record.type || 'Registro médico'}</div><span className={`text-[8px] font-black px-2 py-1 rounded ${record.status==='Active'?'bg-red-100 text-red-700':'bg-emerald-100 text-emerald-700'}`}>{record.status==='Active'?'ATIVO':'ALTA'}</span></div><div className="text-[9px] text-slate-500 mt-1">Entrada: {formatDateBR(record.dateIn)} · Saída: {formatDateBR(record.dateOut)}</div></div>):<div className="text-xs text-slate-400">Sem histórico médico registrado.</div>}</div></section>
+                    </div>
+                </main>
+            </div>
+        </div>
+    );
+};
+
+const ReportsView = ({ players, trainingLog, dmRecords, attendanceLog, matchMinutes, header, logo, themeColor }) => {
+    const [endDate, setEndDate] = useState(getTodayStr());
+    const dates = getDatesInRange(endDate, 7).reverse();
+    const safePlayers = safeArray(players);
+    const activeDm = safeArray(dmRecords).filter(record=>record?.status==='Active');
+    const dailyRows = dates.map(date => {
+        const logs = safeObj(trainingLog[date]);
+        const loads = safePlayers.map((_,index)=>calcDailyLoad(logs[index])).filter(Boolean);
+        const responses = safePlayers.filter((_,index)=>safeObj(logs[index]?.wellness).sleep).length;
+        const attendance = safePlayers.map((_,index)=>attendanceLog?.[date]?.[index]).filter(Boolean);
+        const present = attendance.filter(status=>['P','T'].includes(status)).length;
+        return { date, avgLoad: loads.length?Math.round(loads.reduce((a,b)=>a+b,0)/loads.length):0, responses, present, attendanceCount: attendance.length };
+    });
+    const avgLoad = Math.round(dailyRows.reduce((sum,row)=>sum+row.avgLoad,0) / Math.max(1,dailyRows.filter(row=>row.avgLoad>0).length));
+    const responseTotal = dailyRows.reduce((sum,row)=>sum+row.responses,0);
+    const possibleResponses = safePlayers.length * dates.length;
+    const adherence = possibleResponses ? Math.round((responseTotal/possibleResponses)*100) : 0;
+    const presentTotal = dailyRows.reduce((sum,row)=>sum+row.present,0);
+    const attendanceTotal = dailyRows.reduce((sum,row)=>sum+row.attendanceCount,0);
+    const attendanceRate = attendanceTotal ? Math.round((presentTotal/attendanceTotal)*100) : 0;
+    const alerts = safePlayers.map((player,index)=>{
+        const last = safeObj(trainingLog?.[endDate]?.[index]?.wellness);
+        const load7 = dates.reduce((sum,date)=>sum+calcDailyLoad(trainingLog?.[date]?.[index]),0);
+        const reasons=[];
+        if(player.injured) reasons.push('DM');
+        if((Number(last.soreness)||0)>=6) reasons.push('dor alta');
+        if((Number(last.fatigue)||0)>=6) reasons.push('fadiga alta');
+        if(load7>=3000) reasons.push('carga semanal alta');
+        return reasons.length?{name:player.name,reasons}:null;
+    }).filter(Boolean);
+    const reportText = `*RELATÓRIO SEMANAL PROCOACH*\nEquipe: ${header?.teamName || 'Equipe'}\nPeríodo: ${formatDateBR(dates[0])} a ${formatDateBR(endDate)}\n\nCarga média diária: ${avgLoad || '-'} U.A.\nAdesão ao wellness: ${adherence}%\nFrequência registrada: ${attendanceRate || '-'}%\nAtletas no DM: ${activeDm.length}\nAlertas: ${alerts.length}\n\n${alerts.length?'Atenção:\n'+alerts.map(a=>`• ${a.name}: ${a.reasons.join(', ')}`).join('\n'):'Nenhum alerta prioritário.'}`;
+    const copyReport = async () => { try { await navigator.clipboard.writeText(reportText); showToast('Relatório copiado para o WhatsApp!', '#10b981'); } catch(e) { alert(reportText); } };
+    return (
+        <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6 custom-scroll pb-32">
+            <div id="executive-report" className="max-w-6xl mx-auto space-y-5">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex items-center gap-4">{logo?<img src={logo} className="w-14 h-14 object-contain"/>:<div className="w-14 h-14 rounded-xl flex items-center justify-center text-white" style={{backgroundColor:themeColor}}><Icon name="barChart" size={28}/></div>}<div><div className="text-[10px] uppercase font-black text-slate-400">Inteligência e relatórios</div><h2 className="text-2xl font-black uppercase dark:text-white">Resumo Executivo Semanal</h2><div className="text-xs font-bold text-slate-500">{header?.teamName || 'ProCoach'} · {formatDateBR(dates[0])} a {formatDateBR(endDate)}</div></div></div><div className="flex flex-wrap gap-2 no-print"><input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="border dark:border-slate-600 rounded-lg px-3 py-2 text-xs font-bold dark:bg-slate-700 dark:text-white"/><button onClick={copyReport} className="bg-emerald-600 text-white rounded-lg px-4 py-2 text-[10px] font-black uppercase">Copiar resumo</button><button onClick={()=>window.print()} className="bg-slate-800 text-white rounded-lg px-4 py-2 text-[10px] font-black uppercase">Imprimir / PDF</button></div></div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[['Carga média',avgLoad?`${avgLoad} U.A.`:'-','Média diária do elenco'],['Adesão wellness',`${adherence}%`,`${responseTotal}/${possibleResponses} respostas`],['Frequência',attendanceRate?`${attendanceRate}%`:'-','Registros da semana'],['Disponibilidade',`${safePlayers.length-activeDm.length}/${safePlayers.length}`,`${activeDm.length} atletas no DM`]].map(([label,value,detail])=><div key={label} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm"><div className="text-[9px] uppercase font-black text-slate-400">{label}</div><div className="text-3xl font-black dark:text-white mt-1">{value}</div><div className="text-[9px] font-bold text-slate-500 mt-1">{detail}</div></div>)}</div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Indicadores por dia</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="text-left text-[9px] uppercase text-slate-400 border-b dark:border-slate-700"><th className="py-2">Data</th><th>Carga média</th><th>Wellness</th><th>Presentes</th></tr></thead><tbody>{dailyRows.map(row=><tr key={row.date} className="border-b dark:border-slate-700 dark:text-slate-300"><td className="py-3 font-bold">{formatDateBR(row.date)}</td><td>{row.avgLoad || '-'}</td><td>{row.responses}/{safePlayers.length}</td><td>{row.attendanceCount?`${row.present}/${row.attendanceCount}`:'-'}</td></tr>)}</tbody></table></div></div><div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Prioridades da comissão</h3><div className="space-y-2 max-h-72 overflow-y-auto custom-scroll">{alerts.length?alerts.map(alert=><div key={alert.name} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3"><div className="text-[10px] font-black text-red-700 dark:text-red-300">{alert.name}</div><div className="text-[9px] text-red-600 dark:text-red-400 mt-1">{alert.reasons.join(' · ')}</div></div>):<div className="text-xs font-bold text-emerald-600">Nenhum alerta prioritário nesta semana.</div>}</div></div></div>
+                <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xl"><div className="text-[10px] font-black uppercase text-blue-300 mb-2">Conclusão automática baseada nos registros</div><p className="text-sm font-medium leading-relaxed">{adherence<70?'A qualidade dos dados está baixa; priorize a adesão ao wellness antes de decisões mais sensíveis. ':''}{avgLoad>600?'A carga média semanal ficou elevada; considere recuperação e controle de volume. ':avgLoad>0?'A carga registrada permaneceu em uma faixa operacional moderada. ':'Ainda não há carga suficiente registrada. '}{activeDm.length?`${activeDm.length} atleta(s) permanecem no departamento médico e exigem acompanhamento de retorno. `:'O elenco não possui lesões ativas registradas. '}{alerts.length?'Revise os atletas destacados antes do próximo treino ou convocação.':'Não foram identificados alertas prioritários nos critérios atuais.'}</p><div className="text-[9px] text-slate-400 mt-3">Este resumo apoia a decisão profissional; não substitui avaliação médica, fisiológica ou técnica.</div></div>
+            </div>
+        </div>
+    );
+};
+
+  const DashboardView = ({ players, days, trainingLog, dmRecords, themeColor, attendanceLog, trainingStatus, assessments, matchMinutes, nextGame, setNextGame, header, setHeader, onNavigate }) => {
     const todayStr = getTodayStr();
     const safePs = Array.isArray(players) ? players : [];
     const activeDM = Array.isArray(dmRecords) ? dmRecords.filter(r => r && r.status === 'Active') : [];
@@ -4144,11 +4376,11 @@ const checkProntidao = (index) => {
     const hojeDashboard = new Date().toISOString().split('T')[0];
     const elencoTotal = players || [];
     
-    const pendentes = elencoTotal.filter((p, i) => {
-        const log = trainingLog[hojeDashboard]?.[i] || {};
-        if (trainingStatus === 'pre') return !log.wellness?.sleep; 
-        if (trainingStatus === 'pos') return !log.rpe_am && !log.rpe_pm; 
-        return false; 
+    const pendentes = elencoTotal.map((p, idx) => ({ ...p, idx })).filter((p) => {
+        const log = trainingLog[hojeDashboard]?.[p.idx] || {};
+        if (trainingStatus === 'pre') return !log.wellness?.sleep;
+        if (trainingStatus === 'pos') return !log.rpe_am && !log.rpe_pm;
+        return false;
     });
     const wellnessPendente = pendentes.length;
 
@@ -4161,13 +4393,13 @@ const checkProntidao = (index) => {
         return true;
     }).length;
 
-    const [proximoJogo, setProximoJogo] = useState(localStorage.getItem('ac_prox_jogo') || 'vs Adversário (Sábado)');
-    const [metaPrincipal, setMetaPrincipal] = useState(localStorage.getItem('ac_meta') || 'Classificação na Copa do Nordeste');
-    const [recadoComissao, setRecadoComissao] = useState(localStorage.getItem('ac_recado') || '');
+    const proximoJogo = nextGame?.label || nextGame?.opponent || 'vs Adversário';
+    const metaPrincipal = header?.mainGoal || 'Defina a meta principal da temporada';
+    const recadoComissao = header?.staffMessage || '';
 
-    const salvarProxJogo = (val) => { setProximoJogo(val); localStorage.setItem('ac_prox_jogo', val); };
-    const salvarMeta = (val) => { setMetaPrincipal(val); localStorage.setItem('ac_meta', val); };
-    const salvarRecado = (val) => { setRecadoComissao(val); localStorage.setItem('ac_recado', val); };
+    const salvarProxJogo = (val) => setNextGame?.({ ...safeObj(nextGame), label: val, opponent: val });
+    const salvarMeta = (val) => setHeader?.({ ...safeObj(header), mainGoal: val });
+    const salvarRecado = (val) => setHeader?.({ ...safeObj(header), staffMessage: val });
 
     const updateTrainingStatus = async (status) => {
         const user = firebase.auth().currentUser;
@@ -4245,6 +4477,8 @@ const checkProntidao = (index) => {
                 </span>
             </div>
 
+            <ExecutiveDecisionPanel players={players} trainingLog={trainingLog} dmRecords={dmRecords} attendanceLog={attendanceLog} days={days} assessments={assessments} matchMinutes={matchMinutes} onNavigate={onNavigate} />
+
             <div className="space-y-4 mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-slate-800 p-4 rounded-xl border-l-4 border-blue-500 shadow-md">
@@ -4277,10 +4511,12 @@ const checkProntidao = (index) => {
                             </div>
                             <i className="fa-solid fa-users text-3xl text-emerald-500 opacity-20"></i>
                         </div>
-                        {elencoDisponivel < 22 ? (
-                            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-2">NÚMERO IDEAL PARA COLETIVO</p>
+                        {elencoDisponivel >= 22 ? (
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-2">ELENCO COMPLETO PARA COLETIVO</p>
+                        ) : elencoDisponivel >= 16 ? (
+                            <p className="text-[10px] text-yellow-400 font-bold uppercase mt-2">COLETIVO COM AJUSTES DE FORMATO</p>
                         ) : (
-                            <p className="text-[10px] text-emerald-400 font-bold uppercase mt-2">NÚMERO IDEAL PARA COLETIVO</p>
+                            <p className="text-[10px] text-red-400 font-bold uppercase mt-2">DISPONIBILIDADE REDUZIDA</p>
                         )}
                     </div>
 
@@ -4307,9 +4543,10 @@ const checkProntidao = (index) => {
                                     ))}
                                 </ul>
                                 <button onClick={() => { 
-                                    const lista = pendentes.map(p => `▪️ ${p.name ? p.name.toUpperCase() : 'ATLETA'}`).join('\n');
-                                    const urlAtleta = `https://crossoccerperformancetraining-create.github.io/procoach-saas/atleta.html`;
-                                    const mensagem = `🤖 *ASSISTENTE PROCOACH MAX*\n\nFALA RAPAZIADA!\nAté o momento, *${pendentes.length} atletas* ainda não preencheram a ${trainingStatus === 'pre' ? 'Prancheta Médica' : 'PSE'} de hoje.\n\n*Pendentes:*\n${lista}\n\n⚠️ *Evitem advertências da comissão técnica.* Acessem:\n🔗 ${urlAtleta}`;
+                                    const user = firebase.auth().currentUser;
+                                    const docId = user ? getActiveDocId(user.uid) : '';
+                                    const lista = pendentes.map(p => `▪️ ${p.name ? p.name.toUpperCase() : 'ATLETA'}\n${getAthletePortalUrl(docId, p.id)}`).join('\n\n');
+                                    const mensagem = `🤖 *ASSISTENTE PROCOACH MAX*\n\nFALA RAPAZIADA!\nAté o momento, *${pendentes.length} atletas* ainda não preencheram a ${trainingStatus === 'pre' ? 'Prancheta Médica' : 'PSE'} de hoje.\n\n*Links individuais dos pendentes:*\n${lista}\n\n⚠️ Cada atleta deve usar somente o próprio link.`;
                                     navigator.clipboard.writeText(mensagem); alert("Lista copiada para o WhatsApp!");
                                 }} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-2 rounded-lg flex items-center justify-center gap-2 text-[10px] uppercase mt-auto">
                                     COPIAR PARA ZAP
@@ -4538,7 +4775,7 @@ const checkProntidao = (index) => {
         const MainApp = ({ user, initialData, activeTeam, setActiveTeam }) => {
             const [tab, setTab] = useState('home'); 
             const [themeColor, setThemeColor] = useState(initialData?.themeColor || '#1e3a8a');
-            const [players, setPlayers] = useState(initialData?.players || []);
+            const [players, setPlayers] = useState(normalizePlayers(initialData?.players));
             const [trainingLog, setTrainingLog] = useState(initialData?.trainingLog || {});
             const [assessments, setAssessments] = useState(initialData?.assessments || {});
             const [dmRecords, setDmRecords] = useState(initialData?.dmRecords || []);
@@ -4557,6 +4794,21 @@ const checkProntidao = (index) => {
             const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
             const [nextGame, setNextGame] = useState(initialData?.nextGame || { logistics: '' });
             const [lastAlertSent, setLastAlertSent] = useState(initialData?.lastAlertSent || 0); 
+            const setPlayersSafely = (nextValue) => {
+                const previousPlayers = normalizePlayers(players);
+                const nextPlayers = normalizePlayers(typeof nextValue === 'function' ? nextValue(previousPlayers) : nextValue);
+                const previousIds = previousPlayers.map(player => player.id).join('|');
+                const nextIds = nextPlayers.map(player => player.id).join('|');
+                if (previousIds !== nextIds) {
+                    setTrainingLog(current => remapDatePlayerMapForRosterChange(current, previousPlayers, nextPlayers));
+                    setAssessments(current => remapPlayerMapForRosterChange(current, previousPlayers, nextPlayers));
+                    setAttendanceLog(current => remapDatePlayerMapForRosterChange(current, previousPlayers, nextPlayers));
+                    setMatchMinutes(current => remapDatePlayerMapForRosterChange(current, previousPlayers, nextPlayers));
+                    setDmRecords(current => remapDmRecordsForRosterChange(current, previousPlayers, nextPlayers));
+                }
+                setPlayers(nextPlayers);
+            };
+
             // Robô Cobrador Automático (Nudge Bot)
             useEffect(() => {
                 const checkAutoNudge = () => {
@@ -4590,7 +4842,7 @@ const checkProntidao = (index) => {
             useEffect(() => {
                 if (initialData) {
                     isSyncing.current = true; // Liga a trava de segurança
-                    setPlayers(initialData.players || []);
+                    setPlayers(normalizePlayers(initialData.players));
                     setTrainingLog(initialData.trainingLog || {});
                     setAssessments(initialData.assessments || {});
                     setDmRecords(initialData.dmRecords || []);
@@ -4617,7 +4869,7 @@ const checkProntidao = (index) => {
             }, [darkMode]);
 
             useEffect(() => {
-                if(!user || !players || players.length === 0) return;
+                if(!user || !Array.isArray(players)) return;
                 
                 // NOVO: Se o dado acabou de vir da nuvem (Atleta respondeu), ignora o salvamento automático para não dar sobrescrita!
                 if (isSyncing.current) {
@@ -4627,13 +4879,12 @@ const checkProntidao = (index) => {
 
                 const timeoutId = setTimeout(() => {
                     setSyncStatus('A Guardar...');
-                    const dataToSave = { 
-                        themeColor, players, trainingLog, assessments, 
-                        dmRecords, matchMinutes, header, logo, attendanceLog,
-                       darkMode, days, exercises, library, macrocycle, attendanceLog,
-                        postWorkout, coachMsg, videoUrl, nextGame,
-                        lastAlertSent
-                    };
+                    const dataToSave = prepareCloudPayload({
+                        themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog,
+                        header, logo, darkMode, days, exercises, library, macrocycle,
+                        postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent,
+                        trainingStatus: initialData?.trainingStatus || 'pre'
+                    });
                     const docId = getActiveDocId(user.uid);
                     db.collection('coachData').doc(docId).update(dataToSave)
                         .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
@@ -4646,40 +4897,35 @@ const checkProntidao = (index) => {
             }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, header, logo, darkMode, days, exercises, library, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam]);
            const dispararAlerta = async () => {
                 setLastAlertSent(Date.now());
-                const options = {
-                    method: 'POST',
-                    headers: {
-                        accept: 'application/json',
-                        'content-type': 'application/json',
-                        Authorization: 'Basic COLE_AQUI_A_SUA_REST_API_KEY' 
-                    },
-                    body: JSON.stringify({
-                        app_id: 'd5cc1c36-cb5b-403d-ab8b-327de95b7b7c',
-                        included_segments: ['Subscribed Users'],
-                        headings: { pt: '🚨 URGENTE: ProCoach MAX' },
-                        contents: { pt: 'O professor atualizou a agenda e os treinos. Verifique agora!' },
-                        priority: 10,
-                        ttl: 86400,
-                        content_available: true
-                    })
-                };
                 try {
-                    await fetch('https://onesignal.com/api/v1/notifications', options);
-                    showToast("🔔 Notificação de alta prioridade enviada para o elenco!");
+                    const idToken = await user.getIdToken();
+                    const response = await fetch('/api/send-notification', {
+                        method: 'POST',
+                        headers: {
+                            'content-type': 'application/json',
+                            Authorization: `Bearer ${idToken}`
+                        },
+                        body: JSON.stringify({
+                            title: '🚨 URGENTE: ProCoach',
+                            message: 'O professor atualizou a agenda e os treinos. Verifique agora!'
+                        })
+                    });
+                    if (!response.ok) throw new Error(`Falha no envio: ${response.status}`);
+                    showToast("🔔 Notificação enviada para o elenco!");
                 } catch (err) {
                     console.error("Erro no OneSignal:", err);
-                    showToast("Aviso interno salvo, mas houve erro no disparo push.");
+                    showToast("Aviso salvo, mas o push não foi enviado.", "#ef4444");
                 }
             };
 
             const handleExport = () => {
                 try {
-                    const dataToExport = { 
-                        themeColor, players, trainingLog, assessments, 
-                        dmRecords, matchMinutes, header, logo, 
-                        darkMode, days, exercises, library, 
-                        postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent
-                    };
+                    const dataToExport = prepareCloudPayload({
+                        themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog,
+                        header, logo, darkMode, days, exercises, library, macrocycle,
+                        postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent,
+                        trainingStatus: initialData?.trainingStatus || 'pre'
+                    });
                     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -4698,26 +4944,35 @@ const checkProntidao = (index) => {
             const handleImport = (newData) => {
                 if(!newData) return;
                 if(confirm("Isso irá substituir todos os dados atuais. Continuar?")) {
-                    setThemeColor(newData.themeColor || '#1e3a8a');
-                    setPlayers(newData.players || []);
-                    setTrainingLog(newData.trainingLog || {});
-                    setAssessments(newData.assessments || {});
-                    setDmRecords(newData.dmRecords || []);
-                    setMatchMinutes(newData.matchMinutes || {});
-                    setHeader(newData.header || {});
-                    setLogo(newData.logo || null);
-                    setDarkMode(!!newData.darkMode);
-                    setDays(newData.days || DEFAULT_DAYS);
-                    setExercises(newData.exercises || []);
-                    setLibrary(newData.library || []);
-                    setPostWorkout(newData.postWorkout || 'Livre');
-                    setCoachMsg(newData.coachMsg || '');
-                    setVideoUrl(newData.videoUrl || '');
-                    setNextGame(newData.nextGame || { logistics: '' });
-                    setLastAlertSent(newData.lastAlertSent || 0);
-                    showToast("Dados restaurados! 🔄");
+                    const imported = sanitizeCloudData(newData);
+                    setThemeColor(imported.themeColor || '#1e3a8a');
+                    setPlayers(normalizePlayers(imported.players));
+                    setTrainingLog(imported.trainingLog || {});
+                    setAssessments(imported.assessments || {});
+                    setDmRecords(imported.dmRecords || []);
+                    setAttendanceLog(imported.attendanceLog || {});
+                    setMatchMinutes(imported.matchMinutes || {});
+                    setHeader(imported.header || {});
+                    setLogo(imported.logo || null);
+                    setDarkMode(!!imported.darkMode);
+                    setDays(imported.days || DEFAULT_DAYS);
+                    setExercises(imported.exercises || []);
+                    setLibrary(imported.library || []);
+                    setMacrocycle(imported.macrocycle || {});
+                    setPostWorkout(imported.postWorkout || 'Livre');
+                    setCoachMsg(imported.coachMsg || '');
+                    setVideoUrl(imported.videoUrl || '');
+                    setNextGame(imported.nextGame || { logistics: '' });
+                    setLastAlertSent(imported.lastAlertSent || 0);
+                    showToast("Dados restaurados e migrados para o esquema seguro V2! 🔄");
                 }
             };
+
+            const navGroups = [
+                { label: 'Operação', items: [['home','Central'],['micro','Microciclo'],['workout','Treino'],['macro','Temporada']] },
+                { label: 'Gestão do elenco', items: [['squad','Elenco'],['profile360','Perfil 360º'],['wellness','Wellness'],['pse','PSE'],['freq','Frequência'],['dm','DM/RTP']] },
+                { label: 'Performance', items: [['assessment','Avaliações'],['match','Pré-jogo'],['gameday','Jogo'],['reports','Relatórios'],['library','Biblioteca']] }
+            ];
 
             return (
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
@@ -4735,7 +4990,7 @@ const checkProntidao = (index) => {
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">V144 MAX</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center">
@@ -4777,7 +5032,7 @@ const checkProntidao = (index) => {
                                 </button>
                             </div>
 
-                            <button onClick={()=>window.open(`atleta.html?id=${getActiveDocId(user.uid)}&view=coach`,'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
+                            <button onClick={()=>window.open(getAthletePortalUrl(getActiveDocId(user.uid), '', true),'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
                                 <Icon name="user" size={14}/>
                                 <span className="hidden md:inline">Portal Atleta</span>
                             </button>
@@ -4787,9 +5042,15 @@ const checkProntidao = (index) => {
                         </div>
                     </div>
                     
-                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg gap-1 overflow-x-auto shadow-inner no-print w-full custom-scroll">
-                       {['home','squad','macro','micro','wellness','pse','workout','freq','match','gameday','dm','assessment','library'].map(t => (
-                            <button key={t} onClick={()=>setTab(t)} className={`px-3 py-1.5 rounded text-xs font-bold transition-all shrink-0 uppercase ${tab===t?'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white':'text-slate-400 dark:text-slate-500'}`}>{t}</button>
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 gap-2 overflow-x-auto shadow-inner no-print w-full custom-scroll border-y border-slate-200 dark:border-slate-800">
+                        {navGroups.map((group, groupIndex) => (
+                            <div key={group.label} className="flex items-center gap-1 shrink-0">
+                                {groupIndex > 0 && <span aria-hidden="true" className="hidden xl:block w-px h-7 bg-slate-300 dark:bg-slate-700 mx-2"></span>}
+                                <span aria-hidden="true" className="hidden xl:inline text-[8px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 pl-2 pr-1 border-l-2 border-slate-300 dark:border-slate-700 cursor-default select-none whitespace-nowrap">{group.label}</span>
+                                {group.items.map(([key,label]) => (
+                                    <button key={key} onClick={()=>setTab(key)} className={`px-3 py-2 rounded-lg text-[10px] font-black transition-all shrink-0 uppercase whitespace-nowrap ${tab===key?'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600':'text-slate-500 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-800'}`}>{label}</button>
+                                ))}
+                            </div>
                         ))}
                     </div>
                     
@@ -4839,15 +5100,17 @@ const checkProntidao = (index) => {
                             </div>
                         )}
                         <div className="h-full">
-                           {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} />}
-                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
-                            {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} />}
-                            {tab === 'wellness' && <WellnessDashboard players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
+                           {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} assessments={assessments} matchMinutes={matchMinutes} nextGame={nextGame} setNextGame={setNextGame} header={header} setHeader={setHeader} onNavigate={setTab} />}
+                            {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} themeColor={themeColor} />}
+                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                            {tab === 'micro' && <MicrocycleView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} library={library} />}
+                            {tab === 'wellness' && <WellnessDashboard players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} user={user} />}
                             {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
-                            {tab === 'match' && <PreGameView players={players} setPlayers={setPlayers} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} />}
-                            {tab === 'gameday' && <GameDayView players={players} setPlayers={setPlayers} themeColor={themeColor} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} user={user} exercises={exercises} library={library} trainingLog={trainingLog} />}
-                            {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayers} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
+                            {tab === 'match' && <PreGameView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} getActiveDocId={getActiveDocId} />}
+                            {tab === 'gameday' && <GameDayView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} matchMinutes={matchMinutes} setMatchMinutes={setMatchMinutes} user={user} exercises={exercises} library={library} trainingLog={trainingLog} />}
+                            {tab === 'dm' && <MedicalView players={players} setPlayers={setPlayersSafely} dmRecords={dmRecords} setDmRecords={setDmRecords} themeColor={themeColor} />}
                             {tab === 'assessment' && <AssessmentView players={players} themeColor={themeColor} assessments={assessments} setAssessments={setAssessments} dmRecords={dmRecords} />}
+                            {tab === 'reports' && <ReportsView players={players} trainingLog={trainingLog} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} header={header} logo={logo} themeColor={themeColor} />}
                             {tab === 'library' && <LibraryView themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
                             {tab === 'macro' && <MacrocycleView themeColor={themeColor} macrocycle={macrocycle} setMacrocycle={setMacrocycle} user={user} />}
                             {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} initialData={initialData} user={user} />}
