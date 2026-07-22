@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal do Atleta - ProCoach MAX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Atleta | ProCoach Performance Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -63,14 +63,81 @@
         const playerIndex = parseInt(urlParams.get('p')); 
         const playerUid = urlParams.get('uid'); 
         const activeCoachDocId = rawCoachId;
+        const coachPreview = urlParams.get('view') === 'coach';
+        const hasIndividualLink = Boolean(playerUid) || Number.isInteger(playerIndex);
 
         const getTodayStr = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().split('T')[0]; };
         const getGreeting = () => { const hour = new Date().getHours(); return hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'; };
         const getDayOfWeek = () => { const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']; return days[new Date().getDay()]; };
-        const showToast = (msg, icon="✅") => { const t = document.getElementById('toast'); if(t){ t.innerHTML = `<span>${icon}</span> ${msg}`; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); } };
+        const showToast = (msg, icon="✅") => {
+            const t = document.getElementById('toast');
+            if(!t) return;
+            const iconText = String(icon || '');
+            const isColor = iconText.startsWith('#') || iconText.startsWith('rgb');
+            t.innerHTML = isColor ? String(msg) : `<span>${iconText}</span> ${msg}`;
+            t.style.backgroundColor = isColor ? iconText : '#1e293b';
+            t.classList.remove('hidden');
+            t.style.opacity = '1';
+            clearTimeout(window.__proCoachToastTimer);
+            window.__proCoachToastTimer = setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.classList.add('hidden'), 250); }, 3000);
+        };
         
         const safeArray = (arr) => Array.isArray(arr) ? arr : [];
         const safeObj = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+
+        // Compatibilidade de dados V2: player.id é a chave oficial.
+        // O índice numérico continua sendo gravado temporariamente para versões antigas.
+        const normalizePortalPlayers = (players) => safeArray(players).map((player, index) => ({
+            ...safeObj(player),
+            id: String(player?.id || `atl_${index}_${String(player?.name || 'atleta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'atleta'}`)
+        }));
+
+        const getPlayerStableId = (players, index) => {
+            const player = safeArray(players)[index];
+            return player?.id ? String(player.id) : (Number.isInteger(index) ? String(index) : '');
+        };
+
+        const getPlayerStorageKeys = (players, index) => {
+            const stableId = getPlayerStableId(players, index);
+            return [...new Set([stableId, Number.isInteger(index) ? String(index) : ''].filter(Boolean))];
+        };
+
+        const getPlayerMapValue = (source, players, index, fallback = undefined) => {
+            const src = safeObj(source);
+            for (const key of getPlayerStorageKeys(players, index)) {
+                if (src[key] !== undefined) return src[key];
+            }
+            return fallback;
+        };
+
+        const getPlayerDayRecord = (source, date, players, index) => safeObj(getPlayerMapValue(safeObj(source)[date], players, index, {}));
+
+        const buildDualPlayerDayUpdate = (root, date, players, index, patch) => {
+            const update = {};
+            getPlayerStorageKeys(players, index).forEach(key => {
+                Object.entries(patch).forEach(([field, value]) => {
+                    update[`${root}.${date}.${key}.${field}`] = value;
+                });
+            });
+            return update;
+        };
+
+        const patchLocalPlayerDay = (source, date, players, index, patch) => {
+            const result = { ...safeObj(source) };
+            const day = { ...safeObj(result[date]) };
+            const merged = { ...getPlayerDayRecord(result, date, players, index), ...patch };
+            getPlayerStorageKeys(players, index).forEach(key => { day[key] = merged; });
+            result[date] = day;
+            return result;
+        };
+
+        const recordBelongsToPlayer = (record, players, index) => {
+            if (!record || !Number.isInteger(index)) return false;
+            const stableId = getPlayerStableId(players, index);
+            if (record.playerUid && String(record.playerUid) === stableId) return true;
+            if (typeof record.playerId === 'string' && !/^\d+$/.test(record.playerId) && String(record.playerId) === stableId) return true;
+            return Number(record.playerIndex ?? record.playerId) === index;
+        };
         const formatDateBR = (ds) => { if(!ds) return '-'; const [y, m, d] = ds.split('-'); return `${d}/${m}`; };
         const getDatesInRange = (start, days) => { const dates = []; const end = new Date(start); end.setMinutes(end.getMinutes() - end.getTimezoneOffset()); for(let i=0; i<days; i++){ const d = new Date(end); d.setDate(end.getDate() - i); dates.push(d.toISOString().split('T')[0]); } return dates; };
         const vibrate = (pattern) => { if ("vibrate" in navigator) { try { navigator.vibrate(pattern); } catch (e) {} } };
@@ -189,7 +256,7 @@
         ];
 
         const AthletePortal = () => {
-            const [data, setData] = useState({ players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0, trainingStatus: 'pre' });
+            const [data, setData] = useState({ dataSchemaVersion:2, players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0, trainingStatus: 'pre' });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [selectedDate, setSelectedDate] = useState(getTodayStr());
             const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
@@ -211,7 +278,7 @@
             
             const [showAlertPopup, setShowAlertPopup] = useState(false);
 
-            const activeExRef = useRef(null); const audioCtxRef = useRef(null);
+            const activeExRef = useRef(null); const audioCtxRef = useRef(null); const selectedPlayerUidRef = useRef(playerUid || null);
 
             useEffect(() => {
                 if (!activeCoachDocId) {
@@ -222,40 +289,54 @@
                 const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
+                        const normalizedPlayers = normalizePortalPlayers(d.players);
                         setData({ 
-                            players: d.players||[], log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, 
+                            dataSchemaVersion: Number(d.dataSchemaVersion) || 1,
+                            players: normalizedPlayers, log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, 
                             act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, 
                             postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', 
                             color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, 
                             teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], 
                             lastAlertSent: d.lastAlertSent || 0,
-                            trainingStatus: d.trainingStatus || 'pre' // Puxa a Trava do Treinador
+                            trainingStatus: d.trainingStatus || 'pre'
                         });
-                        
-                      if (idx === null) {
-                    let foundIndex = -1;
-                    if (playerUid) {
-                        foundIndex = (d.players || []).findIndex(p => p && p.id === playerUid);
-                    } else if (!isNaN(playerIndex)) {
-                        foundIndex = playerIndex;
-                    }
 
-                    if (foundIndex !== -1 && d.players && d.players[foundIndex]) {
-                        setIdx(foundIndex);
-                        setIsPriv(true);
-                    } else {
-                        setIsPriv(false);
+                        let foundIndex = -1;
+                        const requestedUid = selectedPlayerUidRef.current || playerUid;
+                        if (requestedUid) {
+                            foundIndex = normalizedPlayers.findIndex(p => p && String(p.id) === String(requestedUid));
+                        } else if (Number.isInteger(playerIndex)) {
+                            foundIndex = playerIndex;
+                        }
+
+                        if (foundIndex >= 0 && normalizedPlayers[foundIndex]) {
+                            setIdx(foundIndex);
+                            selectedPlayerUidRef.current = normalizedPlayers[foundIndex].id;
+                            setIsPriv(!coachPreview);
+                            // Converte silenciosamente links antigos ?p= para o formato estável ?uid=.
+                            if (!playerUid && normalizedPlayers[foundIndex]?.id && !coachPreview) {
+                                const nextUrl = new URL(window.location.href);
+                                nextUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
+                                nextUrl.searchParams.delete('p');
+                                window.history.replaceState({}, '', nextUrl.toString());
+                            }
+                        } else if (coachPreview) {
+                            setIdx(null);
+                            setIsPriv(false);
+                            setStep(1);
+                        } else {
+                            setIdx(null);
+                            setIsPriv(true);
+                        }
                     }
-                }
-            }
-            setLoading(false);
-        }, () => { setLoading(false); });
-        return () => unsubscribe();
-    }, [activeCoachDocId, playerIndex, playerUid]); 
+                    setLoading(false);
+                }, () => { setLoading(false); });
+                return () => unsubscribe();
+            }, [activeCoachDocId, playerIndex, playerUid, coachPreview]); 
 
             useEffect(() => {
                 if (idx !== null) {
-                    const currentLog = data.log?.[selectedDate]?.[idx];
+                    const currentLog = getPlayerDayRecord(data.log, selectedDate, data.players, idx);
                     const todayStr = getTodayStr();
                     
                     if (selectedDate === todayStr && !currentLog?.wellness?.sleep) {
@@ -268,11 +349,11 @@
                         setWater(Number(currentLog?.waterIntake) || 0); 
                     }
                 }
-            }, [selectedDate, data.log, idx]);
+            }, [selectedDate, data.log, data.players, idx]);
 
             useEffect(() => {
                 if (data.lastAlertSent) {
-                    const localAlert = localStorage.getItem('procoach_last_alert');
+                    const localAlert = localStorage.getItem(`procoach_last_alert_${data.id || activeCoachDocId}_${getPlayerStableId(data.players, idx) || 'portal'}`);
                     if (!localAlert || Number(data.lastAlertSent) > Number(localAlert)) {
                         setShowAlertPopup(true);
                     }
@@ -280,15 +361,15 @@
             }, [data.lastAlertSent]);
 
             const markAlertAsRead = () => {
-                localStorage.setItem('procoach_last_alert', data.lastAlertSent.toString());
+                localStorage.setItem(`procoach_last_alert_${data.id || activeCoachDocId}_${getPlayerStableId(data.players, idx) || 'portal'}`, data.lastAlertSent.toString());
                 setShowAlertPopup(false);
             };
 
-            const getDM = (id) => { const act = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Active'); if(act.length>0) return (parseInt(act[0].rtpPhase)||1)>=3 ? 'TRANSIÇÃO' : 'DM'; const rec = safeArray(data.dm).filter(r=>r&&r.playerId==id&&r.status==='Recovered'&&r.dateOut); const td = new Date(getTodayStr()); for(let r of rec) if(!isNaN(new Date(r.dateOut).getTime()) && Math.ceil(Math.abs(td - new Date(r.dateOut))/(1000*60*60*24))<=7) return 'TRANSIÇÃO'; return 'APTO'; };
+            const getDM = (playerIdx) => { const act = safeArray(data.dm).filter(r=>recordBelongsToPlayer(r, data.players, playerIdx)&&r.status==='Active'); if(act.length>0) return (parseInt(act[0].rtpPhase)||1)>=3 ? 'TRANSIÇÃO' : 'DM'; const rec = safeArray(data.dm).filter(r=>recordBelongsToPlayer(r, data.players, playerIdx)&&r.status==='Recovered'&&r.dateOut); const td = new Date(getTodayStr()); for(let r of rec) if(!isNaN(new Date(r.dateOut).getTime()) && Math.ceil(Math.abs(td - new Date(r.dateOut))/(1000*60*60*24))<=7) return 'TRANSIÇÃO'; return 'APTO'; };
             const calcBat = (w) => { if(!w || !w.sleep) return { p: 0, c: 'text-slate-500', f: 'bg-slate-500' }; const s = (w.sleep||0)+(w.stress||0)+(w.fatigue||0)+(w.soreness||0)+(w.mood||0); const p = Math.max(0, Math.min(100, Math.round(100 - (((s - 5) / 30) * 100)))); return { p, c: p<40?'text-red-500':p<75?'text-yellow-500':'text-green-500', f: p<40?'bg-red-500':p<75?'bg-yellow-500':'bg-green-500' }; };
 
             const getOrderedExs = () => {
-                const pAss = (data.ass && data.ass[idx] && data.ass[idx][0]) ? data.ass[idx][0] : {}; const assStr = (pAss.anamnese || '').toLowerCase();
+                const athleteAssessments = safeArray(getPlayerMapValue(data.ass, data.players, idx, [])); const pAss = athleteAssessments[0] || {}; const assStr = (pAss.anamnese || '').toLowerCase();
                 const hasLca = assStr.includes('lca'); const hasPub = assStr.includes('pubalgia'); const hasPost = assStr.includes('posterior')||assStr.includes('muscular'); const hasHist = assStr.trim()!=='' && !assStr.includes('nenhum') && !assStr.includes('sem histórico');
                 let baseExs = safeArray(data.exHistory?.[selectedDate] || data.ex); 
                 const dm = getDM(idx); const trans = dm==='TRANSIÇÃO'; const inj = dm==='DM';
@@ -312,101 +393,121 @@
             const initAudio = () => { if(!audioCtxRef.current) { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); audioCtxRef.current = ctx; } catch(e){} } if(audioCtxRef.current && audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume(); try { const osc = audioCtxRef.current.createOscillator(); const gain = audioCtxRef.current.createGain(); gain.gain.value = 0; osc.connect(gain); gain.connect(audioCtxRef.current.destination); osc.start(); osc.stop(audioCtxRef.current.currentTime + 0.1); } catch(e) {} };
             const playBeep = () => { try { const ctx = audioCtxRef.current; if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(1, ctx.currentTime); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => { const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime); gain2.gain.setValueAtTime(1, ctx.currentTime); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(); osc2.stop(ctx.currentTime + 0.3); }, 400); } catch(e) {} };
 
-            const selectP = (i) => { setIdx(i); initAudio(); };
+            const selectP = (i) => { selectedPlayerUidRef.current = getPlayerStableId(data.players, i); setIdx(i); setIsPriv(false); initAudio(); };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
-            // NOVIDADE V145 MAX: REGISTRO DE HORÁRIO NA PRONTIDÃO
-            const subData = () => {
-                setSubmitting(true); const td = selectedDate; 
-                const updateObj = {
-                    [`trainingLog.${td}.${idx}.wellness`]: scores,
-                    [`trainingLog.${td}.${idx}.painZones`]: pain,
-                    [`trainingLog.${td}.${idx}.timestamp`]: new Date().toISOString() // RELÓGIO CARIMBADO AQUI
-                };
-                db.collection('coachData').doc(data.id).update(updateObj).then(()=>{
-                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={};
-                    nl[td][idx].wellness = scores; nl[td][idx].painZones = pain;
-                    nl[td][idx].timestamp = new Date().toISOString();
-                    setData({...data, log:nl}); setStep(3); setSubmitting(false); window.scrollTo(0,0);
-                }).catch(()=>{ setSubmitting(false); alert("Erro de conexão."); });
+            // Registro seguro por player.id com alias numérico temporário.
+            const subData = async () => {
+                if (submitting || idx === null) return;
+                setSubmitting(true);
+                const td = selectedDate;
+                const timestamp = new Date().toISOString();
+                const stableId = getPlayerStableId(data.players, idx);
+                const patch = { wellness: scores, painZones: pain, timestamp, playerUid: stableId, playerIndex: idx, source: 'athlete-portal' };
+                try {
+                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    const nl = patchLocalPlayerDay(data.log, td, data.players, idx, patch);
+                    setData({...data, log:nl});
+                    setStep(3);
+                    window.scrollTo(0,0);
+                } catch (error) {
+                    console.error('Erro ao salvar prontidão:', error);
+                    alert("Erro de conexão.");
+                } finally {
+                    setSubmitting(false);
+                }
             };
 
-            const ackAgenda = () => {
+            const ackAgenda = async () => {
+                if (idx === null) return;
                 const td = selectedDate;
-                db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.agendaAck`]: true }).then(()=>{ 
-                    setAgendaAck(true); const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].agendaAck = true; setData({...data, log: nl});
-                }).catch(()=>{ alert("Erro ao confirmar."); });
+                const patch = { agendaAck: true, playerUid: getPlayerStableId(data.players, idx), playerIndex: idx };
+                try {
+                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    setAgendaAck(true);
+                    setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
+                } catch (error) {
+                    console.error('Erro ao confirmar agenda:', error);
+                    alert("Erro ao confirmar.");
+                }
             };
 
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
-            
-            const logToday = data.log[selectedDate]?.[idx] || {};
+
+            const logToday = getPlayerDayRecord(data.log, selectedDate, data.players, idx);
             const maxRpe = Math.max(Number(logToday?.rpe_am)||0, Number(logToday?.rpe_pm)||0);
             const waterGoal = maxRpe >= 8 ? 5.0 : maxRpe >= 6 ? 4.0 : 3.0;
 
-            const handleAddWater = () => { 
-                const td = selectedDate; const currentWater = Number(data.log[td]?.[idx]?.waterIntake) || 0; 
-                const newWater = currentWater + 0.25; const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; nl[td][idx].waterIntake = newWater; setData({...data, log: nl}); setWater(newWater); db.collection('coachData').doc(data.id).update({ [`trainingLog.${td}.${idx}.waterIntake`]: newWater }); showToast(`+250ml 💧 (Meta: ${waterGoal}L)`, "💧"); 
+            const handleAddWater = async () => {
+                if (idx === null) return;
+                const td = selectedDate;
+                const currentWater = Number(getPlayerDayRecord(data.log, td, data.players, idx)?.waterIntake) || 0;
+                const newWater = Math.round((currentWater + 0.25) * 100) / 100;
+                const patch = { waterIntake: newWater, playerUid: getPlayerStableId(data.players, idx), playerIndex: idx };
+                setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
+                setWater(newWater);
+                try {
+                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    showToast(`+250ml 💧 (Meta: ${waterGoal}L)`, "💧");
+                } catch (error) {
+                    console.error('Erro ao registrar hidratação:', error);
+                    showToast('Não foi possível sincronizar a hidratação.', '#ef4444');
+                }
             };
 
-            // NOVIDADE V145 MAX: REGISTRO DE HORÁRIO NA CARGA
             const saveRPE = async () => {
                 try {
-                    if(submitting) return; 
-                    setSubmitting(true); 
-                    
-                    const td = selectedDate; 
+                    if(submitting || idx === null) return;
+                    setSubmitting(true);
+
+                    const td = selectedDate;
                     const allExs = getOrderedExs().flat;
                     const doneExsNames = completed.map(id => { const x = allExs.find(e => e.id === id); return x ? `${x.title} ${exLoads[id] ? `(${exLoads[id]}kg)` : ''}` : null; }).filter(Boolean);
                     const skippedInfo = Object.entries(skippedExs).map(([id, reason]) => { const x = allExs.find(e => e.id === parseInt(id)); return x ? `${x.title} (Motivo: ${reason})` : null; }).filter(Boolean);
+                    const timestamp = new Date().toISOString();
+                    const patch = {
+                        duration: dur,
+                        feedback: feedbackMsg,
+                        exercisesDone: doneExsNames,
+                        exercisesSkipped: skippedInfo,
+                        timestamp,
+                        playerUid: getPlayerStableId(data.players, idx),
+                        playerIndex: idx,
+                        source: 'athlete-portal'
+                    };
 
-                    const updateData = {};
-                    if(rpePeriod === 'am') { 
-                        updateData[`trainingLog.${td}.${idx}.rpe_am`] = rpe; 
-                        updateData[`trainingLog.${td}.${idx}.rpe_am_submitted`] = true;
-                    } else if (rpePeriod === 'pm') { 
-                        updateData[`trainingLog.${td}.${idx}.rpe_pm`] = rpe; 
-                        updateData[`trainingLog.${td}.${idx}.rpe_pm_submitted`] = true;
+                    if(rpePeriod === 'am') {
+                        patch.rpe_am = rpe;
+                        patch.rpe_am_submitted = true;
+                    } else if (rpePeriod === 'pm') {
+                        patch.rpe_pm = rpe;
+                        patch.rpe_pm_submitted = true;
                     } else {
-                        updateData[`trainingLog.${td}.${idx}.rpeSubmitted`] = true;
-                        updateData[`trainingLog.${td}.${idx}.rpe_am`] = 0;
-                        updateData[`trainingLog.${td}.${idx}.rpe_pm`] = 0;
+                        patch.rpeSubmitted = true;
+                        patch.rpe_am = 0;
+                        patch.rpe_pm = 0;
                     }
-                    
-                    updateData[`trainingLog.${td}.${idx}.duration`] = dur;
-                    updateData[`trainingLog.${td}.${idx}.feedback`] = feedbackMsg;
-                    updateData[`trainingLog.${td}.${idx}.exercisesDone`] = doneExsNames;
-                    updateData[`trainingLog.${td}.${idx}.exercisesSkipped`] = skippedInfo;
-                    updateData[`trainingLog.${td}.${idx}.timestamp`] = new Date().toISOString(); // RELÓGIO CARIMBADO AQUI
 
-                    await db.collection('coachData').doc(data.id).update(updateData);
-                    
-                    setSubmitting(false); 
-                    setRpeMod(false); 
-                    showToast(rpePeriod === 'rest' ? "Descanso Registrado! 🔋" : `Registro da ${rpePeriod === 'am'?'Manhã':'Tarde'} Concluído! 🚀`, "🔥"); 
-                    if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 99999 }); vibrate([100, 50, 100]);
-                    
-                    const nl = {...data.log}; if(!nl[td]) nl[td]={}; if(!nl[td][idx]) nl[td][idx]={}; 
-                    if(rpePeriod === 'am') { nl[td][idx].rpe_am = rpe; nl[td][idx].rpe_am_submitted = true; }
-                    else if (rpePeriod === 'pm') { nl[td][idx].rpe_pm = rpe; nl[td][idx].rpe_pm_submitted = true; }
-                    else { nl[td][idx].rpeSubmitted = true; nl[td][idx].rpe_am = 0; }
-                    
-                    nl[td][idx].duration = dur; nl[td][idx].exercisesDone = doneExsNames; nl[td][idx].exercisesSkipped = skippedInfo; 
-                    nl[td][idx].timestamp = new Date().toISOString();
-                    setData({...data, log:nl}); window.scrollTo(0,0);
-
+                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
+                    setRpeMod(false);
+                    showToast(rpePeriod === 'rest' ? "Descanso Registrado! 🔋" : `Registro da ${rpePeriod === 'am'?'Manhã':'Tarde'} Concluído! 🚀`, "🔥");
+                    if(typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 99999 });
+                    vibrate([100, 50, 100]);
+                    window.scrollTo(0,0);
                 } catch (err) {
                     console.error("Erro ao salvar PSE:", err);
-                    setSubmitting(false); 
                     alert("Falha na conexão ao salvar o treino. Tente novamente.");
+                } finally {
+                    setSubmitting(false);
                 }
             };
 
             const shareToInsta = async () => { const el = document.getElementById('share-card'); if(!el) return; showToast("A gerar o seu Card...", "📸"); try { el.style.display = 'flex'; const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#0f172a' }); el.style.display = 'none'; canvas.toBlob(blob => { smartShare(blob, 'meutreino.png', 'Treino Concluído'); }); } catch(e) { el.style.display = 'none'; showToast("Erro ao compartilhar."); } };
 
-            const getPlayerStats = () => { let wCompleted = 0; let sleepSum = 0; let sleepCount = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = data.log[dateStr]?.[idx]; if(l?.rpeSubmitted || l?.rpe_am_submitted || l?.rpe_pm_submitted) wCompleted++; if(l?.wellness?.sleep) { sleepSum += l.wellness.sleep; sleepCount++; } }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { totalMins += (Number(data.matchM[d]?.[idx]?.mins) || Number(data.matchM[d]?.[idx]) || 0); }); } let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset()); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(data.log[dStr]?.[idx]?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
+            const getPlayerStats = () => { let wCompleted = 0; let sleepSum = 0; let sleepCount = 0; let totalMins = 0; let currentStreak = 0; Object.keys(data.log).forEach(dateStr => { const l = getPlayerDayRecord(data.log, dateStr, data.players, idx); if(l?.rpeSubmitted || l?.rpe_am_submitted || l?.rpe_pm_submitted) wCompleted++; if(l?.wellness?.sleep) { sleepSum += l.wellness.sleep; sleepCount++; } }); if(data.matchM) { Object.keys(data.matchM).forEach(d => { const matchRecord = getPlayerMapValue(data.matchM[d], data.players, idx, {}); totalMins += (Number(matchRecord?.mins) || Number(matchRecord) || 0); }); } let checkDate = new Date(); checkDate.setMinutes(checkDate.getMinutes() - checkDate.getTimezoneOffset()); for(let i=0; i<30; i++) { const dStr = checkDate.toISOString().split('T')[0]; if(getPlayerDayRecord(data.log, dStr, data.players, idx)?.wellness?.sleep) currentStreak++; else if(i !== 0) break; checkDate.setDate(checkDate.getDate() - 1); } return { workouts: wCompleted, mins: totalMins, streak: currentStreak }; };
 
-            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = data.log[d]?.[idx] || {}; const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
+            const getHistory = () => { const pastDays = getDatesInRange(getTodayStr(), 7); return pastDays.map(d => { const l = getPlayerDayRecord(data.log, d, data.players, idx); const w = safeObj(l.wellness); return { date: d, hasW: !!w.sleep, bat: calcBat(w).p, rpe: Math.max(l.rpe_am||0, l.rpe_pm||0), dur: l.duration, rpeSub: (l.rpeSubmitted || l.rpe_am_submitted || l.rpe_pm_submitted), exs: l.exercisesDone || [], skips: l.exercisesSkipped || [] }; }); };
             
           const getRankingData = () => { 
                 const validPlayers = safeArray(data.players).filter(p => p); 
@@ -414,7 +515,7 @@
                     let streak = 0; let checkDate = new Date(); 
                     for(let j=0; j<30; j++) { 
                         const dStr = checkDate.toISOString().split('T')[0]; 
-                        if(data.log[dStr]?.[i]?.wellness?.sleep) streak++; 
+                        if(getPlayerDayRecord(data.log, dStr, data.players, i)?.wellness?.sleep) streak++; 
                         else if(j!==0) break; checkDate.setDate(checkDate.getDate() - 1); 
                     } 
                     const g = p.stats ? Number(p.stats.g) : 0; 
@@ -422,7 +523,7 @@
                     let m = 0;
                     if(data.matchM) {
                         Object.keys(data.matchM).forEach(d => {
-                            m += (Number(data.matchM[d]?.[i]?.mins) || Number(data.matchM[d]?.[i]) || 0);
+                            const matchRecord = getPlayerMapValue(data.matchM[d], data.players, i, {}); m += (Number(matchRecord?.mins) || Number(matchRecord) || 0);
                         });
                     }
                     return { ...p, streak, goals: g || 0, assists: a || 0, mins: m }; 
@@ -436,7 +537,7 @@
             };
 
             const getPlayerSkills = (pIdx) => { 
-                const pAss = (data.ass && data.ass[pIdx] && data.ass[pIdx][0]) ? data.ass[pIdx][0] : {}; 
+                const pAss = safeArray(getPlayerMapValue(data.ass, data.players, pIdx, []))[0] || {}; 
                 const fms = (Number(pAss.fms_total)||0) * 4.7; 
                 const force = (Number(pAss.squat_rm)||0); 
                 const speed = 100 - ((Number(pAss.speed30)||4.5) * 10); 
@@ -485,21 +586,30 @@
                     <h2 className="text-xl font-black uppercase mb-2">Atleta Não Encontrado</h2>
                     <p className="text-xs text-slate-400 font-bold max-w-xs mb-8">O perfil que tentaste acessar não existe ou foi removido do sistema.</p>
                     {!isPriv && (
-                        <button onClick={()=>{setIdx(null); setStep(1);}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center gap-2 transition-colors">
+                        <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center gap-2 transition-colors">
                             <Icon name="arrowLeft" size={14}/> VOLTAR AO ELENCO
                         </button>
                     )}
                 </div>
             );
 
+            if(!coachPreview && idx === null) return (
+                <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
+                    <div className="w-20 h-20 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center mb-5"><Icon name="lock" size={38} className="text-blue-400"/></div>
+                    <h2 className="text-xl font-black uppercase mb-2">Link individual necessário</h2>
+                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed">Por privacidade, a lista completa do elenco não fica disponível em links comuns. Solicite à comissão técnica o seu link pessoal do Portal do Atleta.</p>
+                    <div className="mt-6 text-[9px] uppercase tracking-widest text-slate-600">ProCoach · acesso protegido por perfil</div>
+                </div>
+            );
+
             if(step===1) return (
                 <div className="p-6 h-screen flex flex-col items-center justify-center animate-fade-in bg-slate-950 overflow-y-auto">
                     <h1 className="text-3xl font-black italic mb-8 text-white"><span style={{color:data.color}}>PRO</span>COACH</h1>
-                    <div className="text-sm text-slate-400 font-bold mb-6 uppercase tracking-wider">Selecione seu perfil</div>
+                    <div className="text-sm text-slate-400 font-bold mb-2 uppercase tracking-wider">Prévia da comissão</div><div className="text-[10px] text-slate-600 font-bold mb-6 uppercase tracking-widest">Selecione um atleta para testar o portal</div>
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl pb-10">
                         {data.players.map((p, i) => {
                             if(!p) return null;
-                            const isCheck = !!(data.log && data.log[getTodayStr()] && data.log[getTodayStr()][i] && data.log[getTodayStr()][i].wellness && data.log[getTodayStr()][i].wellness.sleep);
+                            const isCheck = !!getPlayerDayRecord(data.log, getTodayStr(), data.players, i)?.wellness?.sleep;
                             return (
                                 <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform relative">
                                     <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-lg ${p.highlight ? 'border-yellow-400 gold-glow' : 'border-slate-800'}`}>
@@ -531,7 +641,7 @@
                             <h3 className="text-xl font-black text-white uppercase mb-2 tracking-widest">Prontidão Fechada</h3>
                             <p className="text-slate-400 text-xs font-bold mb-8 leading-relaxed">A comissão técnica ainda não liberou o formulário de Pré-Treino ou o período já foi encerrado.</p>
                             {!isPriv && (
-                                <button onClick={()=>{setIdx(null); setStep(1);}} className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-4 rounded-xl uppercase tracking-widest text-xs transition-colors flex justify-center items-center gap-2"><Icon name="arrowLeft" size={14}/> Voltar ao Início</button>
+                                <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black py-4 rounded-xl uppercase tracking-widest text-xs transition-colors flex justify-center items-center gap-2"><Icon name="arrowLeft" size={14}/> Voltar ao Início</button>
                             )}
                         </div>
                     </div>
@@ -627,8 +737,8 @@
             else isFinished = isAmDone && isPmDone;
 
             const tEx = exData.flat.length; 
-            const wl = data.log[selectedDate]?.[idx]?.wellness||{}; 
-            const activeDm = safeArray(data.dm).find(r => r && r.playerId == idx && r.status === 'Active');
+            const wl = getPlayerDayRecord(data.log, selectedDate, data.players, idx)?.wellness||{}; 
+            const activeDm = safeArray(data.dm).find(r => recordBelongsToPlayer(r, data.players, idx) && r.status === 'Active');
             let daysInDm = 0;
             if(activeDm && activeDm.dateIn) { const dIn = new Date(activeDm.dateIn); const td = new Date(selectedDate); daysInDm = Math.max(0, Math.floor((td - dIn) / (1000 * 60 * 60 * 24))); }
 
@@ -652,7 +762,7 @@
                                             {stats.streak > 2 && <div className="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 shadow-sm border border-orange-500/30"><Icon name="fire" size={10}/> {stats.streak}d</div>}
                                         </div>
                                         <div className={`text-[10px] font-black uppercase mt-1 tracking-widest ${isMatchDay ? 'text-yellow-400' : 'text-blue-400'}`}>{isMatchDay ? '🔥 MATCH DAY' : streakTitle}</div>
-                                        <div className="text-[9px] text-slate-300 font-medium italic mt-1.5 opacity-90 leading-tight">"{getMotivationalQuote()}"</div>
+                                        <div className="text-[9px] text-slate-300 font-medium italic mt-1.5 opacity-90 leading-tight">"{getMotivationalQuote()}"</div><div className="text-[8px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Perfil sincronizado · {getPlayerStableId(data.players, idx).slice(-8)}</div>
                                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                                             <span className="text-[9px] font-black bg-white/20 text-white px-2 py-0.5 rounded uppercase">{p.pos || 'Atleta'} {p.number ? `#${p.number}` : ''}</span>
                                             {isHighlight && <span className="text-[9px] font-black bg-yellow-500 text-slate-900 px-2 py-0.5 rounded flex items-center gap-1 shadow-lg"><Icon name="trophy" size={10}/> DESTAQUE</span>}
@@ -661,9 +771,10 @@
                                 </div>
                                 
                                 {!isPriv && (
-                                    <button onClick={()=>{setIdx(null); setStep(1);}} className="flex items-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm shrink-0">
-                                        <Icon name="arrowLeft" size={12}/> VOLTAR
-                                    </button>
+                                    <div className="flex flex-col gap-2 shrink-0">
+                                        <button onClick={()=>{ const link = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(data.id)}&uid=${encodeURIComponent(getPlayerStableId(data.players, idx))}`; navigator.clipboard?.writeText(link).then(()=>showToast('Link individual copiado!', '🔗')).catch(()=>window.prompt('Copie o link individual:', link)); }} className="flex items-center justify-center gap-1 bg-blue-600/80 border border-blue-400/40 px-3 py-1.5 rounded-full text-white hover:bg-blue-500 transition-colors text-[9px] font-bold uppercase shadow-sm"><Icon name="share" size={12}/> LINK</button>
+                                        <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="flex items-center justify-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm"><Icon name="arrowLeft" size={12}/> VOLTAR</button>
+                                    </div>
                                 )}
                             </div>
 
@@ -801,13 +912,13 @@
                                                         {hasAM && (
                                                             <div className="flex justify-between items-center bg-blue-900/20 px-2 py-1 rounded border border-blue-900/50">
                                                                 <span className="text-[9px] font-bold text-blue-400 uppercase">Manhã</span>
-                                                                <span className="text-sm font-black text-blue-400">{data.log[selectedDate]?.[idx]?.rpe_am || 0}/10</span>
+                                                                <span className="text-sm font-black text-blue-400">{getPlayerDayRecord(data.log, selectedDate, data.players, idx)?.rpe_am || 0}/10</span>
                                                             </div>
                                                         )}
                                                         {hasPM && (
                                                             <div className="flex justify-between items-center bg-orange-900/20 px-2 py-1 rounded border border-orange-900/50">
                                                                 <span className="text-[9px] font-bold text-orange-400 uppercase">Tarde</span>
-                                                                <span className="text-sm font-black text-orange-400">{data.log[selectedDate]?.[idx]?.rpe_pm || 0}/10</span>
+                                                                <span className="text-sm font-black text-orange-400">{getPlayerDayRecord(data.log, selectedDate, data.players, idx)?.rpe_pm || 0}/10</span>
                                                             </div>
                                                         )}
                                                         {!hasAM && !hasPM && (
@@ -820,12 +931,12 @@
                                                 <div className="h-16 w-px bg-slate-700 mx-2"></div>
                                                 <div className="text-center flex flex-col justify-center w-1/2">
                                                     <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Duração</span>
-                                                    <span className="text-3xl font-black text-white mt-1">{data.log[selectedDate]?.[idx]?.duration || 0}<span className="text-xs text-slate-400 ml-1">min</span></span>
+                                                    <span className="text-3xl font-black text-white mt-1">{getPlayerDayRecord(data.log, selectedDate, data.players, idx)?.duration || 0}<span className="text-xs text-slate-400 ml-1">min</span></span>
                                                 </div>
                                             </div>
 
                                             {(() => {
-                                                const advice = getNutritionAdvice(data.log[selectedDate]?.[idx]);
+                                                const advice = getNutritionAdvice(getPlayerDayRecord(data.log, selectedDate, data.players, idx));
                                                 return (
                                                     <div className="w-full text-left bg-slate-800 border border-slate-700 p-4 rounded-2xl flex gap-3 items-start mb-4 shadow-sm">
                                                         <span className="text-2xl">{advice.ic}</span>
@@ -1376,7 +1487,7 @@
                             </div>
                             <button onClick={()=>setShowProfile(false)} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl border border-slate-700 mb-2">FECHAR PERFIL</button>
                             {!isPriv && (
-                                <button onClick={()=>{setShowProfile(false); setIdx(null); setStep(1);}} className="w-full bg-red-600/20 text-red-500 font-black py-4 rounded-2xl border border-red-500/50 flex items-center justify-center gap-2"><Icon name="logout" size={18}/> TROCAR DE ATLETA</button>
+                                <button onClick={()=>{setShowProfile(false); selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="w-full bg-red-600/20 text-red-500 font-black py-4 rounded-2xl border border-red-500/50 flex items-center justify-center gap-2"><Icon name="logout" size={18}/> TROCAR DE ATLETA</button>
                             )}
                         </div>
                     )}
@@ -1455,7 +1566,7 @@
                                 <div className="h-10 w-px bg-slate-700"></div>
                                 <div className="text-center w-1/2">
                                     <span className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Duração</span>
-                                    <span className="text-2xl font-black text-white">{data.log[selectedDate]?.[idx]?.duration || 60}<span className="text-sm text-slate-400">m</span></span>
+                                    <span className="text-2xl font-black text-white">{getPlayerDayRecord(data.log, selectedDate, data.players, idx)?.duration || 60}<span className="text-sm text-slate-400">m</span></span>
                                 </div>
                             </div>
 
