@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Performance Suite • Versão 1.1.1</title>
+    <title>ProCoach Performance Suite • Versão 1.1.2</title>
     
     <link rel="manifest" href="manifest.json?v=19">
     <link rel="apple-touch-icon" href="logo.png?v=19">
@@ -156,7 +156,7 @@
             if (docId) url.searchParams.set('id', String(docId));
             if (playerId) url.searchParams.set('uid', String(playerId));
             if (preview) url.searchParams.set('view', 'coach');
-            url.searchParams.set('v', '111');
+            url.searchParams.set('v', '113');
             return url.toString();
         };
 
@@ -166,7 +166,7 @@
             if (docId) url.searchParams.set('workspace', String(docId));
             if (rootId) url.searchParams.set('root', String(rootId));
             url.searchParams.set('team', normalizeTeamId(teamId));
-            url.searchParams.set('v', '111');
+            url.searchParams.set('v', '113');
             return url.toString();
         };
 
@@ -1564,6 +1564,49 @@ const LineChart = ({ data, color, height = 50 }) => {
     const [editPlayer, setEditPlayer] = useState(null); 
     const today = getTodayStr(); 
     const safePlayers = safeArray(players);
+
+    const downloadRosterSnapshot = (reason='manual') => {
+        const snapshot = {
+            appVersion: '1.1.3',
+            createdAt: new Date().toISOString(),
+            reason,
+            team: localStorage.getItem('procoach_active_team') || 'pro',
+            workspace: localStorage.getItem('procoach_active_workspace') || '',
+            players: safePlayers
+        };
+        localStorage.setItem('procoach_last_roster_snapshot', JSON.stringify(snapshot));
+        const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `procoach_elenco_antes_exclusao_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        return snapshot;
+    };
+
+    const removePlayerSafely = (index) => {
+        const player = safePlayers[index];
+        if (!player) return;
+        const teamLabel = (localStorage.getItem('procoach_active_team') || 'pro').toUpperCase();
+        if (!confirm(`Remover ${player.name} somente da equipe ${teamLabel}?\n\nUm backup do elenco será baixado antes da remoção.`)) return;
+        downloadRosterSnapshot(`antes de remover ${player.name}`);
+        setPlayers(safePlayers.filter((_,i)=>i!==index));
+        setEditPlayer(null);
+        showToast('Atleta removido desta equipe. Backup do elenco baixado.', '#eab308');
+    };
+
+    const restoreLastRosterSnapshot = () => {
+        try {
+            const raw = localStorage.getItem('procoach_last_roster_snapshot');
+            if (!raw) return showToast('Nenhum backup recente encontrado neste dispositivo.', '#ef4444');
+            const snapshot = JSON.parse(raw);
+            const roster = safeArray(snapshot.players);
+            if (!roster.length) return showToast('O backup recente não contém atletas.', '#ef4444');
+            if (!confirm(`Restaurar ${roster.length} atletas do último backup neste elenco?`)) return;
+            setPlayers(roster);
+            showToast('Último elenco restaurado.', '#10b981');
+        } catch (e) { showToast('Não foi possível restaurar o backup local.', '#ef4444'); }
+    };
     
     const addP = () => {
         const uniqueId = "atl_" + Date.now();
@@ -1759,7 +1802,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                            <button onClick={()=>{if(confirm('Excluir Atleta?')){setPlayers(safePlayers.filter((_,i)=>i!==editPlayer));setEditPlayer(null);}}} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">EXCLUIR</button>
+                            <button onClick={()=>removePlayerSafely(editPlayer)} className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded font-bold flex-1 text-xs hover:bg-red-200">REMOVER DESTA EQUIPE</button>
                             <button onClick={()=>{const n=[...safePlayers];n[editPlayer]=localData;setPlayers(n);setEditPlayer(null);}} className="bg-blue-600 text-white p-3 rounded font-bold flex-1 text-xs shadow-lg hover:bg-blue-700">SALVAR DADOS</button>
                         </div>
                     </div>
@@ -1904,6 +1947,8 @@ const LineChart = ({ data, color, height = 50 }) => {
                     <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
                         <Icon name="plus" size={14}/> Adicionar Atleta
                     </button>
+                    <button onClick={()=>downloadRosterSnapshot('backup manual')} className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black shadow-lg uppercase hidden md:block">Backup elenco</button>
+                    <button onClick={restoreLastRosterSnapshot} className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-2 rounded-lg text-[9px] font-black shadow-lg uppercase hidden md:block">Restaurar última exclusão</button>
                     <button onClick={enableFemaleHealthForSquad} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest hidden lg:flex" title="Ativar questionário de cólicas e saúde menstrual para esta categoria">
                         <Icon name="activity" size={14}/> Equipe feminina
                     </button>
@@ -1920,6 +1965,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                 <button onClick={enableFemaleHealthForSquad} className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg transition-all uppercase tracking-widest lg:hidden">
                     <Icon name="activity" size={14}/> Configurar equipe feminina
                 </button>
+                <button onClick={()=>window.open('resgate-elenco.html','_blank')} className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg uppercase">Resgatar elenco apagado</button>
             </div>
             
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
@@ -4689,8 +4735,6 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         </ul>
                     </div>
                 )}
-
-                <QuickCommissionPublisher user={user} workspaceId={workspaceId} teamCommitments={teamCommitments} setTeamCommitments={setTeamCommitments} onOpenCommission={()=>onNavigate('commission')} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -5611,7 +5655,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             viewer: { label: 'Somente leitura', permissions: ['dashboard','commission','reports'] }
         };
         const TAB_PERMISSION = {
-            home:'dashboard', commission:'commission', alerts:'dashboard', micro:'training', workout:'training', macro:'training', squad:'squad', profile360:'squad', contracts:'director', documents:'medical', wellness:'performance', pse:'performance', freq:'squad', dm:'medical', clinical:'clinical', care:'care', family:'consent', commitments:'squad', postgame:'performance', integrations:'integration', assessment:'performance', match:'performance', selection:'performance', gameday:'performance', reports:'reports', print:'reports', library:'training', scout:'scout', director:'director', access:'access', audit:'access', clubs:'clubs'
+            home:'dashboard', alerts:'dashboard', micro:'training', workout:'training', macro:'training', squad:'squad', profile360:'squad', contracts:'director', documents:'medical', wellness:'performance', pse:'performance', freq:'squad', dm:'medical', clinical:'clinical', care:'care', family:'consent', commitments:'squad', postgame:'performance', integrations:'integration', assessment:'performance', match:'performance', selection:'performance', gameday:'performance', reports:'reports', print:'reports', library:'training', scout:'scout', director:'director', access:'access', audit:'access', clubs:'clubs'
         };
         const roleCan = (role, permission) => {
             const permissions = ROLE_CATALOG[role]?.permissions || [];
@@ -6057,7 +6101,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V1.1 FINAL</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V1.1.3 ESTÁVEL</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
@@ -6100,8 +6144,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             </div>
 
                             <span className="hidden lg:inline px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase text-slate-500 dark:text-slate-300 mr-1">{ROLE_CATALOG[currentRole]?.label}</span>
-                            {roleCan(currentRole,'commission') && <button onClick={()=>window.open(getCommissionPortalUrl(workspaceId || getActiveDocId(user.uid), activeWorkspace || user.uid, activeTeam),'_blank')} className="text-[10px] bg-slate-800 dark:bg-slate-600 text-white px-2 py-1 rounded font-bold hover:bg-slate-700 mr-1 uppercase flex items-center gap-1"><Icon name="user" size={14}/><span className="hidden md:inline">Comissão</span></button>}
-                            <button onClick={()=>window.open(getAthletePortalUrl(workspaceId || getActiveDocId(user.uid), '', true),'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
+<button onClick={()=>window.open(getAthletePortalUrl(workspaceId || getActiveDocId(user.uid), '', true),'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
                                 <Icon name="user" size={14}/>
                                 <span className="hidden md:inline">Portal Atleta</span>
                             </button>
@@ -6164,8 +6207,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             </div>
                         )}
                         <div className="h-full min-h-0">
-                           {tab === 'commission' && <CommissionHubView user={user} workspaceId={workspaceId || getActiveDocId(user.uid)} workspaceRootId={activeWorkspace || user.uid} teamId={activeTeam} currentRole={currentRole} organization={organization} themeColor={themeColor} />}
-                           {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} assessments={assessments} matchMinutes={matchMinutes} nextGame={nextGame} setNextGame={setNextGame} header={header} setHeader={setHeader} onNavigate={setTab} user={user} workspaceId={workspaceId || getActiveDocId(user.uid)} teamCommitments={teamCommitments} setTeamCommitments={setTeamCommitments} />}
+{tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} assessments={assessments} matchMinutes={matchMinutes} nextGame={nextGame} setNextGame={setNextGame} header={header} setHeader={setHeader} onNavigate={setTab} user={user} workspaceId={workspaceId || getActiveDocId(user.uid)} teamCommitments={teamCommitments} setTeamCommitments={setTeamCommitments} />}
                             {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} themeColor={themeColor} />}
                             {tab === 'squad' && <SquadView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
                             {tab === 'micro' && <MicrocycleSeasonView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} library={library} macrocycle={macrocycle} setMacrocycle={setMacrocycle} />}
@@ -6224,7 +6266,20 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
             if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold">A Carregar Espaço de Trabalho...</div>;
             const role = resolveWorkspaceRole(user, initialData, workspaceId);
-            if (role === 'viewer' && initialData?.ownerUid && initialData.ownerUid !== user.uid && !initialData?.memberRoles?.[normalizeEmailKey(user.email)]) return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-red-500 mb-4"/><h1 className="text-2xl font-black uppercase">Acesso não autorizado</h1><p className="text-sm text-slate-400 max-w-md mt-2">O proprietário precisa incluir o seu e-mail na aba Acessos deste espaço de trabalho.</p><button onClick={()=>auth.signOut()} className="mt-6 px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div>;
+            if (role === 'viewer' && initialData?.ownerUid && initialData.ownerUid !== user.uid && !initialData?.memberRoles?.[normalizeEmailKey(user.email)]) {
+                const ownedWorkspace = safeArray(profile?.workspaces).find(item => item?.ownerUid === user.uid)?.id || user.uid;
+                const recoverOwnerWorkspace = () => {
+                    localStorage.setItem('procoach_active_workspace', ownedWorkspace);
+                    localStorage.setItem('procoach_active_team', 'pro');
+                    const url = new URL(window.location.href);
+                    url.search = '';
+                    url.searchParams.set('root', ownedWorkspace);
+                    url.searchParams.set('team', 'pro');
+                    url.searchParams.set('v', '113');
+                    window.location.replace(url.toString());
+                };
+                return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-red-500 mb-4"/><h1 className="text-2xl font-black uppercase">Espaço de trabalho diferente</h1><p className="text-sm text-slate-400 max-w-md mt-2">O login foi aceito, mas este dispositivo abriu outro clube ou categoria. Volte ao seu espaço principal sem alterar a senha e sem recadastrar atletas.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
+            }
             return <ErrorBoundary><MainApp user={user} initialData={initialData} activeTeam={activeTeam} setActiveTeam={setActiveTeam} workspaceId={workspaceId} activeWorkspace={activeWorkspace} profile={profile} setProfile={setProfile} /></ErrorBoundary>;
         };
 
