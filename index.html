@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Performance Suite • Versão 1.1.2</title>
+    <title>ProCoach Performance Suite • Versão 1.2.0</title>
     
     <link rel="manifest" href="manifest.json?v=19">
     <link rel="apple-touch-icon" href="logo.png?v=19">
@@ -142,11 +142,13 @@
             return { root: raw, team: 'pro' };
         };
         const getActiveDocId = (uid) => {
-            const baseId = String(getWorkspaceBaseId(uid) || uid || '');
+            // O workspace raiz e a categoria são armazenados separadamente.
+            // Profissional usa o documento raiz; Base usa exclusivamente <raiz>_base.
+            const baseId = String(getWorkspaceBaseId(uid) || uid || '').trim();
             const team = normalizeTeamId(localStorage.getItem('procoach_active_team') || 'pro');
+            if (!baseId) return String(uid || '');
             if (team === 'pro') return baseId;
-            const suffix = `_${team}`;
-            return baseId.endsWith(suffix) ? baseId : `${baseId}${suffix}`;
+            return `${baseId}_${team}`;
         };
         const normalizeEmailKey = (email='') => String(email).trim().toLowerCase();
 
@@ -156,19 +158,13 @@
             if (docId) url.searchParams.set('id', String(docId));
             if (playerId) url.searchParams.set('uid', String(playerId));
             if (preview) url.searchParams.set('view', 'coach');
-            url.searchParams.set('v', '113');
+            url.searchParams.set('v', '120');
             return url.toString();
         };
 
-        const getCommissionPortalUrl = (docId, rootId = '', teamId = 'pro') => {
-            const url = new URL('comissao.html', window.location.href);
-            url.search = '';
-            if (docId) url.searchParams.set('workspace', String(docId));
-            if (rootId) url.searchParams.set('root', String(rootId));
-            url.searchParams.set('team', normalizeTeamId(teamId));
-            url.searchParams.set('v', '113');
-            return url.toString();
-        };
+        // Portal da Comissão removido na versão 1.2.0.
+        const getCommissionPortalUrl = () => '#';
+
 
         const AnalysisModal = ({ day, onClose, onUpdate }) => {
             const [analysisData, setAnalysisData] = useState({ 
@@ -5644,15 +5640,15 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
         const ROLE_CATALOG = {
             owner: { label: 'Proprietário', permissions: ['*'] },
-            admin: { label: 'Administrador', permissions: ['dashboard','commission','squad','training','performance','medical','clinical','care','consent','integration','scout','reports','director','access','clubs'] },
-            headCoach: { label: 'Treinador principal', permissions: ['dashboard','commission','squad','training','performance','scout','reports'] },
-            performance: { label: 'Preparação física', permissions: ['dashboard','commission','squad','training','performance','reports'] },
-            medical: { label: 'Departamento médico', permissions: ['dashboard','commission','squad','medical','clinical','care','performance','reports'] },
-            nutrition: { label: 'Nutrição', permissions: ['dashboard','commission','squad','clinical','care','reports'] },
-            psychology: { label: 'Psicologia', permissions: ['dashboard','commission','squad','clinical','care','reports'] },
-            analyst: { label: 'Análise de desempenho', permissions: ['dashboard','commission','squad','performance','scout','reports'] },
-            director: { label: 'Diretoria', permissions: ['commission','director','reports'] },
-            viewer: { label: 'Somente leitura', permissions: ['dashboard','commission','reports'] }
+            admin: { label: 'Administrador', permissions: ['dashboard','squad','training','performance','medical','clinical','care','consent','integration','scout','reports','director','access','clubs'] },
+            headCoach: { label: 'Treinador principal', permissions: ['dashboard','squad','training','performance','scout','reports'] },
+            performance: { label: 'Preparação física', permissions: ['dashboard','squad','training','performance','reports'] },
+            medical: { label: 'Departamento médico', permissions: ['dashboard','squad','medical','clinical','care','performance','reports'] },
+            nutrition: { label: 'Nutrição', permissions: ['dashboard','squad','clinical','care','reports'] },
+            psychology: { label: 'Psicologia', permissions: ['dashboard','squad','clinical','care','reports'] },
+            analyst: { label: 'Análise de desempenho', permissions: ['dashboard','squad','performance','scout','reports'] },
+            director: { label: 'Diretoria', permissions: ['director','reports'] },
+            viewer: { label: 'Somente leitura', permissions: ['dashboard','reports'] }
         };
         const TAB_PERMISSION = {
             home:'dashboard', alerts:'dashboard', micro:'training', workout:'training', macro:'training', squad:'squad', profile360:'squad', contracts:'director', documents:'medical', wellness:'performance', pse:'performance', freq:'squad', dm:'medical', clinical:'clinical', care:'care', family:'consent', commitments:'squad', postgame:'performance', integrations:'integration', assessment:'performance', match:'performance', selection:'performance', gameday:'performance', reports:'reports', print:'reports', library:'training', scout:'scout', director:'director', access:'access', audit:'access', clubs:'clubs'
@@ -5971,7 +5967,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         });
                 }, 800);
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics, header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics, header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam, activeWorkspace, workspaceId]);
            const dispararAlerta = async () => {
                 const now = Date.now();
                 setLastAlertSent(now);
@@ -6275,12 +6271,12 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     url.search = '';
                     url.searchParams.set('root', ownedWorkspace);
                     url.searchParams.set('team', 'pro');
-                    url.searchParams.set('v', '113');
+                    url.searchParams.set('v', '120');
                     window.location.replace(url.toString());
                 };
                 return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-red-500 mb-4"/><h1 className="text-2xl font-black uppercase">Espaço de trabalho diferente</h1><p className="text-sm text-slate-400 max-w-md mt-2">O login foi aceito, mas este dispositivo abriu outro clube ou categoria. Volte ao seu espaço principal sem alterar a senha e sem recadastrar atletas.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
             }
-            return <ErrorBoundary><MainApp user={user} initialData={initialData} activeTeam={activeTeam} setActiveTeam={setActiveTeam} workspaceId={workspaceId} activeWorkspace={activeWorkspace} profile={profile} setProfile={setProfile} /></ErrorBoundary>;
+            return <ErrorBoundary><MainApp key={workspaceId} user={user} initialData={initialData} activeTeam={activeTeam} setActiveTeam={setActiveTeam} workspaceId={workspaceId} activeWorkspace={activeWorkspace} profile={profile} setProfile={setProfile} /></ErrorBoundary>;
         };
 
         const RootApp = () => {
