@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Atleta | ProCoach Performance Suite</title>
+    <title>Portal do Atleta | ProCoach</title>
+    <link rel="manifest" href="athlete-manifest.json">
+    <meta name="theme-color" content="#020617">
+    <meta name="referrer" content="same-origin">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -31,6 +36,8 @@
         .animate-fade-in { animation: fadeIn 0.4s; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
         .gold-glow { box-shadow: 0 0 15px rgba(234, 179, 8, 0.4); border: 2px solid #eab308; }
+        .athlete-safe-bottom { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+        .athlete-card { background: rgba(15,23,42,.72); border: 1px solid #1e293b; border-radius: 24px; }
     </style>
 </head>
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
@@ -56,13 +63,30 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130" };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore(); const auth = firebase.auth();
         
         const urlParams = new URLSearchParams(window.location.search);
         const rawCoachId = urlParams.get('id'); 
         const playerIndex = parseInt(urlParams.get('p')); 
         const playerUid = urlParams.get('uid'); 
         const activeCoachDocId = rawCoachId;
+        const portalMode = urlParams.get('mode') || 'athlete';
+        const guardianMode = portalMode === 'guardian';
+        const secureMode = urlParams.get('secure') === '1' || guardianMode;
+        const inviteToken = urlParams.get('invite') || '';
+        const guardianInviteToken = urlParams.get('guardianInvite') || '';
+        const apiRequest = async (path, body=null) => {
+            const current=auth.currentUser; if(!current) throw new Error('AUTH_REQUIRED');
+            const token=await current.getIdToken(); const options={headers:{Authorization:`Bearer ${token}`}};
+            if(body!==null){ options.method='POST'; options.headers['content-type']='application/json'; options.body=JSON.stringify(body); }
+            const response=await fetch(path,options); const result=await response.json().catch(()=>({}));
+            if(!response.ok){const error=new Error(result.error||`Erro ${response.status}`);error.status=response.status;throw error;} return result;
+        };
+        const OFFLINE_DB_NAME='procoach-athlete-offline-v1';
+        const openOfflineDb=()=>new Promise((resolve,reject)=>{if(!window.indexedDB)return reject(new Error('IndexedDB indisponível'));const req=indexedDB.open(OFFLINE_DB_NAME,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('queue'))req.result.createObjectStore('queue',{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+        const offlineQueueAdd=async item=>{const dbi=await openOfflineDb();return new Promise((resolve,reject)=>{const tx=dbi.transaction('queue','readwrite');tx.objectStore('queue').put(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})};
+        const offlineQueueList=async()=>{const dbi=await openOfflineDb();return new Promise((resolve,reject)=>{const req=dbi.transaction('queue').objectStore('queue').getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)})};
+        const offlineQueueDelete=async id=>{const dbi=await openOfflineDb();return new Promise((resolve,reject)=>{const tx=dbi.transaction('queue','readwrite');tx.objectStore('queue').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})};
         const coachPreview = urlParams.get('view') === 'coach';
         const hasIndividualLink = Boolean(playerUid) || Number.isInteger(playerIndex);
 
@@ -243,6 +267,21 @@
             return { t: "Dia de Recuperação", d: "O corpo está em repouso. Foco total em hidratação contínua e boa qualidade de sono.", ic: "🔋" };
         };
 
+        const GuardianPortal = ({ data, setData, onSubmit }) => {
+            const [tab,setTab]=useState('home'); const player=data.players?.[0]||{}; const upcoming=safeArray(data.commitments).filter(x=>x.date>=getTodayStr()).sort((a,b)=>`${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+            const acknowledge=async n=>{await onSubmit('notificationAck',{notificationId:n.id});setData(prev=>({...prev,notificationReads:{...safeObj(prev.notificationReads),[n.id]:new Date().toISOString()}}))};
+            const respondCommitment=async(c,response)=>{await onSubmit('commitmentResponse',{commitmentId:c.id,response});setData(prev=>({...prev,commitmentResponses:{...safeObj(prev.commitmentResponses),[c.id]:{...safeObj(prev.commitmentResponses?.[c.id]),[player.id]:{response,by:'guardian',at:new Date().toISOString()}}}}))};
+            const consent=async(t,accepted)=>{await onSubmit('consentAck',{templateId:t.id,version:t.version,accepted});setData(prev=>({...prev,consentRecords:{...safeObj(prev.consentRecords),[t.id]:{...safeObj(prev.consentRecords?.[t.id]),guardian:{accepted,version:t.version,at:new Date().toISOString()}}}}))};
+            return <div className="h-[100dvh] bg-slate-950 text-white flex flex-col"><header className="p-5 border-b border-slate-800 bg-slate-900"><div className="text-[9px] font-black uppercase tracking-[.25em] text-violet-400">Portal do responsável</div><div className="flex items-center gap-3 mt-2"><div className="w-12 h-12 rounded-full bg-slate-800 overflow-hidden">{player.image?<img src={player.image} className="w-full h-full object-cover"/>:<Icon name="user" className="m-3"/>}</div><div><h1 className="font-black text-lg">{player.name||'Atleta'}</h1><p className="text-[10px] text-slate-400">{data.teamName}</p></div></div></header><main className="flex-1 overflow-y-auto p-4 pb-24 custom-scroll">
+                {tab==='home'&&<div className="space-y-4"><div className="athlete-card p-5"><h2 className="font-black uppercase mb-3">Visão do responsável</h2><p className="text-xs text-slate-400 leading-relaxed">Acompanhe compromissos, comunicados, documentos e consentimentos. Informações clínicas sensíveis não são exibidas nesta área.</p></div><div className="athlete-card p-5"><h3 className="font-black uppercase text-sm mb-3">Próximos compromissos</h3>{upcoming.slice(0,3).map(c=><div key={c.id} className="p-3 border-b border-slate-800"><div className="font-black text-xs">{c.title}</div><div className="text-[9px] text-slate-500">{formatDateBR(c.date)} {c.time||''} • {c.location||'-'}</div></div>)}</div><div className="athlete-card p-5"><h3 className="font-black uppercase text-sm mb-3">Atendimentos</h3>{safeArray(data.appointments).length===0?<p className="text-xs text-slate-500">Nenhum horário agendado.</p>:safeArray(data.appointments).map(a=><div key={a.id} className="p-3 border-b border-slate-800"><div className="font-black text-xs">{a.specialty}</div><div className="text-[9px] text-slate-500">{formatDateBR(a.date)} {a.time||''} • {a.location||'-'}</div></div>)}</div></div>}
+                {tab==='agenda'&&<div className="space-y-3">{upcoming.length===0?<div className="athlete-card p-6 text-center text-slate-500">Nenhum compromisso futuro.</div>:upcoming.map(c=>{const response=data.commitmentResponses?.[c.id]?.[player.id]?.response;return <div key={c.id} className="athlete-card p-5"><div className="text-[9px] text-orange-400 font-black uppercase">{c.type}</div><h3 className="font-black mt-1">{c.title}</h3><div className="text-[10px] text-slate-400 mt-1">{formatDateBR(c.date)} {c.time||''} • {c.location||'-'}</div><p className="text-xs text-slate-300 mt-3 whitespace-pre-line">{c.details}</p>{c.requiresAck&&<div className="grid grid-cols-2 gap-2 mt-4"><button onClick={()=>respondCommitment(c,'Confirmado')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${response==='Confirmado'?'bg-green-600':'bg-slate-800'}`}>Confirmar</button><button onClick={()=>respondCommitment(c,'Não participará')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${response==='Não participará'?'bg-red-600':'bg-slate-800'}`}>Não participará</button></div>}</div>})}</div>}
+                {tab==='notices'&&<div className="space-y-3">{safeArray(data.notifications).map(n=><div key={n.id} className={`athlete-card p-5 ${data.notificationReads?.[n.id]?'opacity-60':'border-blue-500/50'}`}><h3 className="font-black">{n.title}</h3><p className="text-xs text-slate-400 mt-2">{n.message}</p>{!data.notificationReads?.[n.id]&&<button onClick={()=>acknowledge(n)} className="mt-3 text-[9px] font-black uppercase text-blue-400">Confirmar leitura</button>}</div>)}</div>}
+                {tab==='documents'&&<div className="space-y-3">{safeArray(data.documents).length===0?<div className="athlete-card p-6 text-center text-slate-500">Nenhum documento compartilhado.</div>:safeArray(data.documents).map(d=><a key={d.id} href={d.url||'#'} target="_blank" rel="noopener noreferrer" className="athlete-card p-5 flex items-center gap-3"><div className="w-10 h-10 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center font-black text-[9px]">DOC</div><div className="flex-1"><div className="font-black text-xs">{d.title}</div><div className="text-[9px] text-slate-500">{d.type}</div></div>↗</a>)}</div>}
+                {tab==='consents'&&<div className="space-y-3">{safeArray(data.consentTemplates).map(t=>{const rec=data.consentRecords?.[t.id]?.guardian;return <div key={t.id} className="athlete-card p-5"><div className="flex justify-between"><div><div className="font-black">{t.title}</div><div className="text-[9px] text-slate-500">Versão {t.version}</div></div><span className={`text-[8px] font-black uppercase ${rec?.accepted?'text-green-400':'text-yellow-400'}`}>{rec?.accepted?'Aceito':'Pendente'}</span></div><p className="text-xs text-slate-300 mt-3 whitespace-pre-line max-h-40 overflow-y-auto custom-scroll">{t.body}</p><div className="grid grid-cols-2 gap-2 mt-4"><button onClick={()=>consent(t,true)} className="py-3 bg-green-600 rounded-xl text-[9px] font-black uppercase">Aceitar</button><button onClick={()=>consent(t,false)} className="py-3 bg-slate-800 rounded-xl text-[9px] font-black uppercase">Não aceitar</button></div></div>})}</div>}
+            </main><nav className="fixed bottom-0 left-0 w-full bg-slate-900/95 border-t border-slate-800 p-2 flex justify-around"><button onClick={()=>setTab('home')} className={tab==='home'?'text-violet-400':'text-slate-500'}><Icon name="user"/><span className="block text-[7px] font-black">INÍCIO</span></button><button onClick={()=>setTab('agenda')} className={tab==='agenda'?'text-violet-400':'text-slate-500'}><Icon name="calendar"/><span className="block text-[7px] font-black">AGENDA</span></button><button onClick={()=>setTab('notices')} className={tab==='notices'?'text-violet-400':'text-slate-500'}><Icon name="bell"/><span className="block text-[7px] font-black">AVISOS</span></button><button onClick={()=>setTab('documents')} className={tab==='documents'?'text-violet-400':'text-slate-500'}><Icon name="eye"/><span className="block text-[7px] font-black">DOCS</span></button><button onClick={()=>setTab('consents')} className={tab==='consents'?'text-violet-400':'text-slate-500'}><Icon name="check"/><span className="block text-[7px] font-black">TERMOS</span></button></nav></div>;
+        };
+
+
         const RTP_PHASES = [ 
             {id:1, label:"Fase 1: Aguda", desc:"Controle do quadro álgico/inflamatório."}, 
             {id:2, label:"Fase 2: Sub-aguda", desc:"Reabilitação do segmento lesado + Fortalecimento."}, 
@@ -256,7 +295,7 @@
         ];
 
         const AthletePortal = () => {
-            const [data, setData] = useState({ dataSchemaVersion:2, players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0, trainingStatus: 'pre' });
+            const [data, setData] = useState({ dataSchemaVersion:6, players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postGame:{}, externalMetrics:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0, trainingStatus: 'pre', notifications:[], documents:[], requests:[], notificationReads:{}, appointments:[], commitments:[], commitmentResponses:{}, consentTemplates:[], consentRecords:{}, privateHealth:{}, guardianProfile:{} });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [selectedDate, setSelectedDate] = useState(getTodayStr());
             const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
@@ -277,8 +316,26 @@
             const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
             
             const [showAlertPopup, setShowAlertPopup] = useState(false);
+            const [requestForm, setRequestForm] = useState({type:'Dor / desconforto',severity:'Moderada',location:'',message:''});
+            const [requestSubmitting, setRequestSubmitting] = useState(false);
+            const [cycleHealth,setCycleHealth]=useState({menstruating:'Prefiro não informar',cramps:0,flow:'Não informado',cycleDay:'',symptoms:[],notes:''});
+            const [postGameForm,setPostGameForm]=useState({perceivedPerformance:7,matchRpe:5,minutes:0,recovery:5,pain:0,painLocation:'',comments:''});
+            const [offlineCount,setOfflineCount]=useState(0);
+            const [cyclePending,setCyclePending]=useState(false);
+            const [authUser, setAuthUser] = useState(null); const [authLoading, setAuthLoading] = useState(secureMode);
+            const [loginMode, setLoginMode] = useState('login'); const [loginEmail, setLoginEmail] = useState(''); const [loginPassword, setLoginPassword] = useState(''); const [loginError, setLoginError] = useState('');
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null); const selectedPlayerUidRef = useRef(playerUid || null);
+
+            useEffect(() => auth.onAuthStateChanged(user => { setAuthUser(user); setAuthLoading(false); }), []);
+            useEffect(()=>{if(!secureMode||!authUser||!activeCoachDocId||!playerUid)return;window.OneSignalDeferred=window.OneSignalDeferred||[];window.OneSignalDeferred.push(async OneSignal=>{try{await OneSignal.login(`${guardianMode?'guardian':'athlete'}:${activeCoachDocId}:${playerUid}`)}catch(e){console.warn('OneSignal login',e)}})},[authUser,activeCoachDocId,playerUid,guardianMode]);
+
+            const applyPortalPayload = (payload) => {
+                const d=payload||{}; const normalizedPlayers=normalizePortalPlayers(d.players || (d.player ? [d.player] : []));
+                setData({ dataSchemaVersion:Number(d.dataSchemaVersion)||6, players:normalizedPlayers, log:d.trainingLog||d.log||{}, ex:d.exercises||d.ex||[], exHistory:d.exerciseHistory||d.exHistory||{}, act:d.activationExercises||d.act||[], dm:d.dmRecords||d.dm||[], ass:d.assessments||d.ass||{}, matchM:d.matchMinutes||d.matchM||{}, postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, postW:d.postWorkout||d.postW||'IA', nextG:d.nextGame||d.nextG||{}, coachMsg:d.coachMsg||'', color:d.themeColor||d.color||'#1e3a8a', id:d.workspaceId||d.id||activeCoachDocId, videoUrl:d.videoUrl||'', logo:d.logo||null, teamName:d.teamName||(d.header&&d.header.teamName)||'PROCOACH', days:d.days||[], lastAlertSent:d.lastAlertSent||0, trainingStatus:d.trainingStatus||'pre', notifications:d.notificationCenter||d.notifications||[], documents:d.athleteDocuments||d.documents||[], requests:d.athleteRequests||d.requests||[], notificationReads:d.athleteNotificationReads||d.notificationReads||{}, appointments:d.careAppointments||d.appointments||[], commitments:d.teamCommitments||d.commitments||[], commitmentResponses:d.commitmentResponses||{}, consentTemplates:d.consentTemplates||[], consentRecords:d.consentRecords||{}, privateHealth:d.privateHealth||{}, guardianProfile:d.guardianProfile||{} });
+                const requestedUid=selectedPlayerUidRef.current||playerUid; let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>String(p.id)===String(requestedUid)):0; if(foundIndex<0&&normalizedPlayers.length===1)foundIndex=0;
+                if(foundIndex>=0){ setIdx(foundIndex); selectedPlayerUidRef.current=normalizedPlayers[foundIndex].id; setIsPriv(true); } setLoading(false);
+            };
 
             useEffect(() => {
                 if (!activeCoachDocId) {
@@ -286,10 +343,17 @@
                     showToast("Erro: Link de acesso incompleto.", "#ef4444");
                     return;
                 }
+                if (secureMode) {
+                    if (authLoading || !authUser) { setLoading(false); return; }
+                    let cancelled=false;
+                    const loadSecure=async()=>{ try { const endpoint=guardianMode?'/api/guardian-data':'/api/athlete-data'; const result=await apiRequest(`${endpoint}?workspaceId=${encodeURIComponent(activeCoachDocId)}&playerId=${encodeURIComponent(playerUid||'')}`); if(!cancelled) applyPortalPayload(result); } catch(err) { console.error(err); if(!cancelled){setLoginError(err.message);setLoading(false);} } };
+                    loadSecure(); const timer=setInterval(loadSecure,30000); return()=>{cancelled=true;clearInterval(timer);};
+                }
                 const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
                         const normalizedPlayers = normalizePortalPlayers(d.players);
+                        const requestedUid = selectedPlayerUidRef.current || playerUid;
                         setData({ 
                             dataSchemaVersion: Number(d.dataSchemaVersion) || 1,
                             players: normalizedPlayers, log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, 
@@ -298,11 +362,17 @@
                             color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, 
                             teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], 
                             lastAlertSent: d.lastAlertSent || 0,
-                            trainingStatus: d.trainingStatus || 'pre'
+                            trainingStatus: d.trainingStatus || 'pre',
+                            notifications: safeArray(d.notificationCenter).filter(n=>!n.target||n.target==='all'||String(n.target)===String(requestedUid||playerUid||'')),
+                            documents: safeArray(safeObj(d.athleteDocuments)[requestedUid||playerUid] || []),
+                            requests: safeArray(safeObj(d.athleteRequests)[requestedUid||playerUid] || []),
+                            notificationReads: safeObj(safeObj(d.athleteNotificationReads)[requestedUid||playerUid]),
+                            appointments: safeArray(d.careAppointments).filter(a=>String(a.playerId)===String(requestedUid||playerUid)&&a.visibleToAthlete!==false),
+                            commitments: safeArray(d.teamCommitments).filter(c=>!c.target||c.target==='all'||String(c.target)===String(requestedUid||playerUid)),
+                            commitmentResponses: safeObj(d.commitmentResponses), consentTemplates:safeArray(d.consentTemplates).filter(t=>t.active!==false&&['athlete','both'].includes(t.audience||'both')), consentRecords:safeObj(safeObj(d.consentRecords)[requestedUid||playerUid]), postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, privateHealth:{}
                         });
 
                         let foundIndex = -1;
-                        const requestedUid = selectedPlayerUidRef.current || playerUid;
                         if (requestedUid) {
                             foundIndex = normalizedPlayers.findIndex(p => p && String(p.id) === String(requestedUid));
                         } else if (Number.isInteger(playerIndex)) {
@@ -332,7 +402,7 @@
                     setLoading(false);
                 }, () => { setLoading(false); });
                 return () => unsubscribe();
-            }, [activeCoachDocId, playerIndex, playerUid, coachPreview]); 
+            }, [activeCoachDocId, playerIndex, playerUid, coachPreview, secureMode, authUser, authLoading]); 
 
             useEffect(() => {
                 if (idx !== null) {
@@ -360,8 +430,10 @@
                 }
             }, [data.lastAlertSent]);
 
-            const markAlertAsRead = () => {
+            const markAlertAsRead = async (notificationId='broadcast') => {
                 localStorage.setItem(`procoach_last_alert_${data.id || activeCoachDocId}_${getPlayerStableId(data.players, idx) || 'portal'}`, data.lastAlertSent.toString());
+                setData(prev=>({...prev,notificationReads:{...safeObj(prev.notificationReads),[notificationId]:new Date().toISOString()}}));
+                try { if(secureMode) await submitSecureAction('notificationAck',{notificationId}); else { const pid=getPlayerStableId(data.players,idx); await db.collection('coachData').doc(data.id).update({[`athleteNotificationReads.${pid}.${notificationId}`]:new Date().toISOString()}); } } catch(e) { console.warn(e); }
                 setShowAlertPopup(false);
             };
 
@@ -396,40 +468,40 @@
             const selectP = (i) => { selectedPlayerUidRef.current = getPlayerStableId(data.players, i); setIdx(i); setIsPriv(false); initAudio(); };
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
+            const refreshOfflineCount=async()=>{try{const items=await offlineQueueList();setOfflineCount(items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx)).length)}catch(e){setOfflineCount(0)}};
+            const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe']);
+            const submitSecureAction = async (action, payload) => {
+                const item={id:`offline_${Date.now()}_${Math.random().toString(36).slice(2)}`,workspaceId:activeCoachDocId,playerId:getPlayerStableId(data.players,idx),action,payload,date:selectedDate,createdAt:new Date().toISOString()};
+                const queue=async()=>{if(!OFFLINE_QUEUE_ACTIONS.has(action)){const error=new Error('Esta informação sensível exige conexão segura para ser enviada.');error.status=0;throw error;}await offlineQueueAdd(item);await refreshOfflineCount();showToast('Sem conexão: registro guardado para envio automático.','📶');return {queued:true}};
+                if(!navigator.onLine)return queue();
+                try{return await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action,payload,date:item.date})}catch(e){if((!navigator.onLine||!e.status||e.status>=500)&&OFFLINE_QUEUE_ACTIONS.has(action))return queue();throw e}
+            };
+            const flushOfflineQueue=async()=>{if(!secureMode||!auth.currentUser||!navigator.onLine)return;let items=[];try{items=await offlineQueueList()}catch(e){return}for(const item of items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx))){try{await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action:item.action,payload:item.payload,date:item.date});await offlineQueueDelete(item.id)}catch(e){if(!e.status||e.status>=500)break;await offlineQueueDelete(item.id)}}await refreshOfflineCount()};
+            useEffect(()=>{refreshOfflineCount();const online=()=>flushOfflineQueue();window.addEventListener('online',online);if(navigator.onLine)flushOfflineQueue();return()=>window.removeEventListener('online',online)},[idx,activeCoachDocId,authUser]);
+            const submitMedicalRequest = async () => {
+                if(requestSubmitting||!requestForm.message.trim()) return showToast('Descreva o que está sentindo.','⚠️');
+                setRequestSubmitting(true); const request={...requestForm,id:`req_${Date.now()}`,createdAt:new Date().toISOString(),status:'Aberto'};
+                try { if(secureMode) await submitSecureAction('medicalRequest',request); else { const pid=getPlayerStableId(data.players,idx); await db.collection('coachData').doc(data.id).update({[`athleteRequests.${pid}`]:firebase.firestore.FieldValue.arrayUnion(request)}); } setData(prev=>({...prev,requests:[request,...safeArray(prev.requests)]}));setRequestForm({type:'Dor / desconforto',severity:'Moderada',location:'',message:''});showToast('Solicitação enviada à comissão.','🩺'); } catch(e) { showToast('Não foi possível enviar. Tente novamente.','❌'); } finally { setRequestSubmitting(false); }
+            };
+
             // Registro seguro por player.id com alias numérico temporário.
             const subData = async () => {
                 if (submitting || idx === null) return;
-                setSubmitting(true);
-                const td = selectedDate;
-                const timestamp = new Date().toISOString();
-                const stableId = getPlayerStableId(data.players, idx);
-                const patch = { wellness: scores, painZones: pain, timestamp, playerUid: stableId, playerIndex: idx, source: 'athlete-portal' };
+                setSubmitting(true); const td=selectedDate; const timestamp=new Date().toISOString(); const stableId=getPlayerStableId(data.players,idx);
+                const patch={wellness:scores,painZones:pain,timestamp,playerUid:stableId,playerIndex:idx,source:'athlete-portal'};
                 try {
-                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
-                    const nl = patchLocalPlayerDay(data.log, td, data.players, idx, patch);
-                    setData({...data, log:nl});
-                    setStep(3);
-                    window.scrollTo(0,0);
-                } catch (error) {
-                    console.error('Erro ao salvar prontidão:', error);
-                    alert("Erro de conexão.");
-                } finally {
-                    setSubmitting(false);
-                }
+                    const result=secureMode?await submitSecureAction('wellness',patch):await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog',td,data.players,idx,patch));
+                    const player=data.players[idx];
+                    const hasCycleHealth=secureMode&&(player?.menstrualTrackingEnabled||player?.healthProfile==='Feminino')&&(cycleHealth.menstruating==='Sim'||Number(cycleHealth.cramps)>0||safeArray(cycleHealth.symptoms).length||cycleHealth.notes);
+                    if(hasCycleHealth){if(navigator.onLine){await submitSecureAction('cycleHealth',cycleHealth);setCyclePending(false)}else{setCyclePending(true);showToast('Wellness salvo. Os dados clínicos aguardam uma conexão segura.','🔒')}}
+                    setData({...data,log:patchLocalPlayerDay(data.log,td,data.players,idx,patch),privateHealth:{...safeObj(data.privateHealth),menstrualLogs:{...safeObj(data.privateHealth?.menstrualLogs),[td]:cycleHealth}}});
+                    setStep(3);window.scrollTo(0,0);if(result?.queued)showToast('Prontidão salva no aparelho e será enviada.','📶');
+                } catch(error){console.error('Erro ao salvar prontidão:',error);showToast(error.message||'Erro de conexão.','❌')} finally{setSubmitting(false)}
             };
 
             const ackAgenda = async () => {
-                if (idx === null) return;
-                const td = selectedDate;
-                const patch = { agendaAck: true, playerUid: getPlayerStableId(data.players, idx), playerIndex: idx };
-                try {
-                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
-                    setAgendaAck(true);
-                    setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
-                } catch (error) {
-                    console.error('Erro ao confirmar agenda:', error);
-                    alert("Erro ao confirmar.");
-                }
+                if(idx===null)return;const td=selectedDate;const patch={agendaAck:true,playerUid:getPlayerStableId(data.players,idx),playerIndex:idx};
+                try{if(secureMode)await submitSecureAction('agendaAck',patch);else await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog',td,data.players,idx,patch));setAgendaAck(true);setData({...data,log:patchLocalPlayerDay(data.log,td,data.players,idx,patch)})}catch(error){console.error(error);showToast('Erro ao confirmar.','❌')}
             };
 
             const handleSkip = (reason) => { setSkippedExs({...skippedExs, [skipModal]: reason}); setCompleted(completed.filter(x => x !== skipModal)); setSkipModal(null); showToast(`Série pulada`, '⚠️'); };
@@ -447,7 +519,7 @@
                 setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
                 setWater(newWater);
                 try {
-                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    if(secureMode) await submitSecureAction('water',patch); else await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
                     showToast(`+250ml 💧 (Meta: ${waterGoal}L)`, "💧");
                 } catch (error) {
                     console.error('Erro ao registrar hidratação:', error);
@@ -488,7 +560,7 @@
                         patch.rpe_pm = 0;
                     }
 
-                    await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
+                    if(secureMode) await submitSecureAction('rpe',{...patch,period:rpePeriod,rpe}); else await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog', td, data.players, idx, patch));
                     setData({...data, log: patchLocalPlayerDay(data.log, td, data.players, idx, patch)});
                     setRpeMod(false);
                     showToast(rpePeriod === 'rest' ? "Descanso Registrado! 🔋" : `Registro da ${rpePeriod === 'am'?'Manhã':'Tarde'} Concluído! 🚀`, "🔥");
@@ -502,6 +574,13 @@
                     setSubmitting(false);
                 }
             };
+
+            const respondAppointment=async(a,response)=>{try{await submitSecureAction('appointmentResponse',{appointmentId:a.id,response});setData(prev=>({...prev,appointments:safeArray(prev.appointments).map(x=>x.id===a.id?{...x,athleteResponse:response,athleteRespondedAt:new Date().toISOString()}:x)}));showToast('Resposta enviada.','✅')}catch(e){showToast(e.message||'Falha ao responder.','❌')}};
+            const respondCommitment=async(c,response)=>{try{await submitSecureAction('commitmentResponse',{commitmentId:c.id,response});const pid=getPlayerStableId(data.players,idx);setData(prev=>({...prev,commitmentResponses:{...safeObj(prev.commitmentResponses),[c.id]:{...safeObj(prev.commitmentResponses?.[c.id]),[pid]:{response,by:'athlete',at:new Date().toISOString()}}}}));showToast('Presença registrada.','✅')}catch(e){showToast(e.message||'Falha ao responder.','❌')}};
+            const acceptConsent=async(t,accepted)=>{try{await submitSecureAction('consentAck',{templateId:t.id,version:t.version,accepted});setData(prev=>({...prev,consentRecords:{...safeObj(prev.consentRecords),[t.id]:{...safeObj(prev.consentRecords?.[t.id]),athlete:{accepted,version:t.version,at:new Date().toISOString()}}}}));showToast(accepted?'Consentimento registrado.':'Decisão registrada.','✅')}catch(e){showToast(e.message||'Falha no termo.','❌')}};
+            const submitPostGame=async()=>{try{await submitSecureAction('postGame',postGameForm);const pid=getPlayerStableId(data.players,idx);const day={...safeObj(data.postGame?.[selectedDate]),[pid]:{...postGameForm,submittedAt:new Date().toISOString()}};setData({...data,postGame:{...safeObj(data.postGame),[selectedDate]:day}});showToast('Questionário pós-jogo enviado.','🏆')}catch(e){showToast(e.message||'Falha ao enviar.','❌')}};
+            const acknowledgeMedication=async medication=>{try{const timeKey=new Date().toTimeString().slice(0,5);await submitSecureAction('medicationAck',{medicationId:medication.id,timeKey,status:'Confirmado'});setData(prev=>({...prev,privateHealth:{...safeObj(prev.privateHealth),medicationAdherence:{...safeObj(prev.privateHealth?.medicationAdherence),[medication.id]:{...safeObj(prev.privateHealth?.medicationAdherence?.[medication.id]),[`${getTodayStr()}_${timeKey.replace(':','')}`]:{status:'Confirmado',at:new Date().toISOString()}}}}}));showToast('Confirmação registrada.','✅')}catch(e){showToast(e.message||'Falha ao confirmar.','❌')}};
+            const submitPendingCycleHealth=async()=>{try{await submitSecureAction('cycleHealth',cycleHealth);setCyclePending(false);setData(prev=>({...prev,privateHealth:{...safeObj(prev.privateHealth),menstrualLogs:{...safeObj(prev.privateHealth?.menstrualLogs),[selectedDate]:{...cycleHealth,recordedAt:new Date().toISOString()}}}}));showToast('Informações clínicas enviadas com segurança.','🔒')}catch(e){showToast(e.message||'Conecte-se para enviar.','❌')}};
 
             const shareToInsta = async () => { const el = document.getElementById('share-card'); if(!el) return; showToast("A gerar o seu Card...", "📸"); try { el.style.display = 'flex'; const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#0f172a' }); el.style.display = 'none'; canvas.toBlob(blob => { smartShare(blob, 'meutreino.png', 'Treino Concluído'); }); } catch(e) { el.style.display = 'none'; showToast("Erro ao compartilhar."); } };
 
@@ -572,6 +651,12 @@
                 </div>
             );
 
+            if (secureMode && authLoading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-black">Validando acesso...</div>;
+            if (secureMode && !authUser) {
+                const hasInvite=guardianMode?guardianInviteToken:inviteToken;
+                const submitAuth=async e=>{e.preventDefault();setLoginError('');try{let credential;if(loginMode==='register')credential=await auth.createUserWithEmailAndPassword(loginEmail,loginPassword);else credential=await auth.signInWithEmailAndPassword(loginEmail,loginPassword);if(hasInvite){await apiRequest(guardianMode?'/api/guardian-claim':'/api/athlete-claim',{workspaceId:activeCoachDocId,playerId:playerUid,inviteToken:hasInvite,email:loginEmail});const cleanUrl=new URL(window.location.href);cleanUrl.searchParams.delete(guardianMode?'guardianInvite':'invite');window.history.replaceState({},'',cleanUrl.toString())}setAuthUser(credential.user);setLoading(true)}catch(err){console.error(err);setLoginError(err.message||'Falha no acesso.')}};
+                return <div className="h-[100dvh] flex items-center justify-center bg-slate-950 text-white p-5"><div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-[30px] p-7 shadow-2xl"><div className="text-center mb-6"><div className="text-3xl font-black italic"><span className={guardianMode?'text-violet-500':'text-blue-500'}>PRO</span>COACH</div><div className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">{guardianMode?'Acesso seguro do responsável':'Acesso individual do atleta'}</div></div>{loginError&&<div className="mb-4 p-3 rounded-xl bg-red-900/30 border border-red-800 text-red-300 text-xs">{loginError}</div>}<form onSubmit={submitAuth} className="space-y-3"><input type="email" required value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="Seu e-mail" className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-blue-500"/><input type="password" minLength={6} required value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Sua senha" className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-blue-500"/><button className={`w-full py-4 rounded-xl ${guardianMode?'bg-violet-600':'bg-blue-600'} font-black uppercase text-xs`}>{loginMode==='register'?'Ativar minha conta':'Entrar'}</button></form>{hasInvite&&<button onClick={()=>setLoginMode(loginMode==='login'?'register':'login')} className="w-full mt-4 text-[10px] font-black uppercase text-blue-400">{loginMode==='login'?'Primeiro acesso? Ativar convite':'Já ativei. Entrar'}</button>}<p className="text-[9px] text-slate-600 mt-5 text-center">O acesso é pessoal e não deve ser compartilhado.</p></div></div>;
+            }
             if(loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6 shadow-lg shadow-blue-500/20"></div>
@@ -580,6 +665,11 @@
                 </div>
             );
             
+            if(guardianMode && data.id && data.players?.[0]) {
+                const guardianSubmit=(action,payload)=>apiRequest('/api/guardian-submit',{workspaceId:activeCoachDocId,playerId:playerUid,action,payload});
+                return <GuardianPortal data={data} setData={setData} onSubmit={guardianSubmit}/>;
+            }
+
             if(!data.id || (idx !== null && !data.players[idx])) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
                     <div className="text-red-500 mb-4 animate-pulse"><Icon name="alert" size={48} /></div>
@@ -680,7 +770,18 @@
                         {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                         
                         {/* DORES FOCAIS */}
-                        <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
+                        <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólica pélvica", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
+                        {secureMode && (p.menstrualTrackingEnabled || p.healthProfile === 'Feminino') && (
+                            <div className="bg-fuchsia-950/40 p-5 rounded-xl border border-fuchsia-500/30">
+                                <div className="flex justify-between items-start gap-3"><div><h3 className="font-black text-fuchsia-300 uppercase text-sm">Saúde menstrual</h3><p className="text-[9px] text-slate-500 mt-1">Opcional e protegido. Visível apenas à equipe clínica autorizada.</p></div><span className="text-xl">🌸</span></div>
+                                <div className="grid grid-cols-2 gap-2 mt-4"><select value={cycleHealth.menstruating} onChange={e=>setCycleHealth({...cycleHealth,menstruating:e.target.value})} className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"><option>Prefiro não informar</option><option>Sim</option><option>Não</option></select><select value={cycleHealth.flow} onChange={e=>setCycleHealth({...cycleHealth,flow:e.target.value})} className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"><option>Não informado</option><option>Leve</option><option>Moderado</option><option>Intenso</option></select></div>
+                                <div className="mt-4"><div className="flex justify-between text-xs font-bold"><span>Cólicas / desconforto pélvico</span><span className={Number(cycleHealth.cramps)>=7?'text-red-400':'text-fuchsia-300'}>{cycleHealth.cramps}/10</span></div><input type="range" min="0" max="10" value={cycleHealth.cramps} onChange={e=>setCycleHealth({...cycleHealth,cramps:Number(e.target.value)})} className="hooper-slider mt-2" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>
+                                <div className="mt-3"><label className="text-[9px] font-black uppercase text-slate-500">Dia aproximado do ciclo</label><input type="number" min="0" max="60" value={cycleHealth.cycleDay} onChange={e=>setCycleHealth({...cycleHealth,cycleDay:e.target.value})} placeholder="Opcional" className="w-full mt-1 p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"/></div>
+                                <div className="flex flex-wrap gap-2 mt-3">{['Dor lombar','Dor de cabeça','Náusea','Inchaço','Sensibilidade mamária','Alteração de humor','Fadiga'].map(sym=>{const active=safeArray(cycleHealth.symptoms).includes(sym);return <button type="button" key={sym} onClick={()=>setCycleHealth({...cycleHealth,symptoms:active?cycleHealth.symptoms.filter(x=>x!==sym):[...safeArray(cycleHealth.symptoms),sym]})} className={`px-2 py-1.5 rounded-lg text-[9px] font-black border ${active?'bg-fuchsia-600 border-fuchsia-500 text-white':'bg-slate-950 border-slate-700 text-slate-400'}`}>{sym}</button>})}</div>
+                                <textarea value={cycleHealth.notes} onChange={e=>setCycleHealth({...cycleHealth,notes:e.target.value})} placeholder="Observação opcional para a equipe clínica" className="w-full h-16 mt-3 p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"/>
+                                {Number(cycleHealth.cramps)>=7&&<div className="mt-3 p-3 rounded-xl bg-red-900/30 border border-red-800 text-[10px] text-red-300 font-bold">Desconforto elevado. Considere também solicitar atendimento na aba Saúde.</div>}
+                            </div>
+                        )}
                     </div>
                     
                     {/* BOTÃO DE ENVIO */}
@@ -690,7 +791,7 @@
         }
 
             const p = data.players[idx]; 
-            const isSuspended = p.suspended === true; const isHighlight = p.highlight === true;
+            const isSuspended = p.suspended === true; const isHighlight = p.highlight === true || p.convocado === true;
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
             
@@ -1175,6 +1276,11 @@
                                                     {data.nextG && data.nextG.presentation && (
                                                         <div className="text-[10px] font-bold text-blue-400 uppercase italic mt-0.5">{data.nextG.presentation}</div>
                                                     )}
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {p.selectionRole && <span className="text-[9px] font-black uppercase bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2 py-1 rounded-lg">Função: {p.selectionRole}</span>}
+                                                        {Number(p.selectionLimit) > 0 && <span className="text-[9px] font-black uppercase bg-orange-500/15 text-orange-300 border border-orange-500/30 px-2 py-1 rounded-lg">Limite: {p.selectionLimit} min</span>}
+                                                    </div>
+                                                    {p.selectionNote && <div className="mt-2 text-[10px] font-bold text-slate-300 bg-slate-950/60 border border-slate-700 rounded-lg p-2">📝 {p.selectionNote}</div>}
                                                 </div>
                                             </div>
 
@@ -1209,6 +1315,27 @@
                                         </div>
                                     )}
 
+                                    {/* ATENDIMENTOS INDIVIDUAIS */}
+                                    {safeArray(data.appointments).length > 0 && (
+                                        <div className="athlete-card p-5">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div><div className="text-[9px] font-black uppercase tracking-widest text-cyan-400">Agenda clínica</div><h3 className="font-black uppercase text-sm">Meus atendimentos</h3></div>
+                                                <Icon name="clock" size={20} className="text-cyan-400"/>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {safeArray(data.appointments).sort((a,b)=>`${a.date||''}${a.time||''}`.localeCompare(`${b.date||''}${b.time||''}`)).map(a=><div key={a.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800"><div className="flex justify-between gap-3"><div><div className="text-[9px] uppercase font-black text-cyan-400">{a.specialty||'Atendimento'}</div><div className="font-black text-sm mt-1">{formatDateBR(a.date)} {a.time?`às ${a.time}`:''}</div><div className="text-[10px] text-slate-400 mt-1">{a.professional||'Profissional a definir'} • {a.location||'Local a definir'}</div>{a.notes&&<div className="text-[10px] text-slate-500 mt-2 whitespace-pre-line">{a.notes}</div>}</div><span className={`h-fit px-2 py-1 rounded-lg text-[8px] font-black uppercase ${a.athleteResponse==='Confirmado'?'bg-green-500/15 text-green-400':a.athleteResponse==='Solicitar alteração'?'bg-orange-500/15 text-orange-400':'bg-slate-800 text-slate-400'}`}>{a.athleteResponse||a.status||'Pendente'}</span></div>{secureMode&&a.status!=='Concluído'&&a.status!=='Cancelado'&&<div className="grid grid-cols-2 gap-2 mt-4"><button onClick={()=>respondAppointment(a,'Confirmado')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${a.athleteResponse==='Confirmado'?'bg-green-600 text-white':'bg-slate-800 text-slate-300'}`}>Confirmar horário</button><button onClick={()=>respondAppointment(a,'Solicitar alteração')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${a.athleteResponse==='Solicitar alteração'?'bg-orange-600 text-white':'bg-slate-800 text-slate-300'}`}>Pedir alteração</button></div>}</div>)}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* COMPROMISSOS E CONFIRMAÇÃO DE PRESENÇA */}
+                                    {safeArray(data.commitments).filter(c=>!c.target||c.target==='all'||c.target===p.id).length > 0 && (
+                                        <div className="athlete-card p-5">
+                                            <div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-orange-400">Presença e logística</div><h3 className="font-black uppercase text-sm">Viagens, jogos e reuniões</h3></div><Icon name="calendar" size={20} className="text-orange-400"/></div>
+                                            <div className="space-y-3">{safeArray(data.commitments).filter(c=>!c.target||c.target==='all'||c.target===p.id).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).map(c=>{const response=data.commitmentResponses?.[c.id]?.[p.id]?.response;return <div key={c.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800"><div className="text-[9px] font-black uppercase text-orange-400">{c.type||'Compromisso'}</div><div className="font-black text-sm mt-1">{c.title}</div><div className="text-[10px] text-slate-400 mt-1">{formatDateBR(c.date)} {c.time||''} • {c.location||'Local a definir'}</div>{c.details&&<p className="text-[10px] text-slate-400 mt-3 whitespace-pre-line">{c.details}</p>}{c.requiresAck&&secureMode&&<div className="grid grid-cols-2 gap-2 mt-4"><button onClick={()=>respondCommitment(c,'Confirmado')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${response==='Confirmado'?'bg-green-600 text-white':'bg-slate-800 text-slate-300'}`}>Vou participar</button><button onClick={()=>respondCommitment(c,'Não participará')} className={`py-3 rounded-xl font-black uppercase text-[9px] ${response==='Não participará'?'bg-red-600 text-white':'bg-slate-800 text-slate-300'}`}>Não participarei</button></div>}{response&&<div className="mt-2 text-[9px] font-bold text-slate-500">Resposta registrada: {response}</div>}</div>})}</div>
+                                        </div>
+                                    )}
+
                                     {/* PROGRAMAÇÃO SEMANAL */}
                                     <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-[32px] shadow-inner mb-20">
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><Icon name="calendar" size={16} className="text-emerald-500"/> Programação Semanal</h3>
@@ -1227,6 +1354,42 @@
                                             ))}
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+
+                            {tab === 'health' && (
+                                <div className="p-4 md:p-6 space-y-5 athlete-safe-bottom animate-fade-in">
+                                    <div className="athlete-card p-5 bg-gradient-to-br from-red-950/80 to-slate-900"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center"><Icon name="medkit"/></div><div><div className="text-[9px] font-black uppercase tracking-widest text-red-400">Canal de saúde</div><h2 className="text-xl font-black uppercase">Falar com o DM</h2><p className="text-[10px] text-slate-400">Relate dor, desconforto ou solicite atendimento.</p></div></div></div>
+                                    {cyclePending && (
+                                        <div className="athlete-card p-4 border border-fuchsia-500/50 bg-fuchsia-950/30"><div className="flex items-center justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-fuchsia-400">Saúde menstrual pendente</div><p className="text-[10px] text-slate-400 mt-1">Por privacidade, estes dados não são guardados na fila offline. Envie quando houver conexão segura.</p></div><button onClick={submitPendingCycleHealth} className="px-3 py-3 rounded-xl bg-fuchsia-600 text-white text-[9px] font-black uppercase">Enviar</button></div></div>
+                                    )}
+
+                                    {secureMode && (
+                                        <div className={`athlete-card p-4 border ${offlineCount>0?'border-orange-500/50 bg-orange-950/30':'border-emerald-500/20 bg-emerald-950/20'}`}>
+                                            <div className="flex items-center justify-between"><div><div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sincronização segura</div><div className={`text-xs font-black mt-1 ${offlineCount>0?'text-orange-400':'text-emerald-400'}`}>{navigator.onLine?'Conectado':'Sem conexão'} • {offlineCount} envio(s) aguardando</div></div><button onClick={flushOfflineQueue} className="px-3 py-2 rounded-xl bg-slate-800 text-[9px] font-black uppercase">Sincronizar</button></div>
+                                        </div>
+                                    )}
+
+                                    {safeArray(data.consentTemplates).length > 0 && (
+                                        <div className="athlete-card p-5"><div className="flex justify-between items-center mb-3"><div><div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Privacidade e participação</div><h3 className="font-black uppercase text-sm">Termos e consentimentos</h3></div><Icon name="lock" size={20} className="text-violet-400"/></div><div className="space-y-3">{safeArray(data.consentTemplates).map(t=>{const record=data.consentRecords?.[t.id]?.athlete;const current=record&&String(record.version)===String(t.version);return <div key={t.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800"><div className="flex justify-between gap-3"><div><div className="font-black text-xs">{t.title}</div><div className="text-[8px] text-slate-600 mt-1">Versão {t.version||1}</div></div><span className={`h-fit text-[8px] font-black uppercase ${current?(record.accepted?'text-emerald-400':'text-red-400'):'text-orange-400'}`}>{current?(record.accepted?'Aceito':'Não aceito'):'Pendente'}</span></div><p className="text-[10px] text-slate-400 mt-3 whitespace-pre-line max-h-32 overflow-y-auto custom-scroll">{t.body||t.text||t.content||'Leia o termo disponibilizado pela organização.'}</p>{secureMode&&<div className="grid grid-cols-2 gap-2 mt-3"><button onClick={()=>acceptConsent(t,true)} className="py-3 rounded-xl bg-emerald-600 text-white font-black uppercase text-[9px]">Aceitar</button><button onClick={()=>acceptConsent(t,false)} className="py-3 rounded-xl bg-slate-800 text-slate-300 font-black uppercase text-[9px]">Não aceitar</button></div>}</div>})}</div><div className="text-[8px] text-slate-600 mt-3">O registro digital auxilia a comprovação operacional e deve seguir a política de privacidade e a orientação jurídica da organização.</div></div>
+                                    )}
+
+                                    {Object.keys(safeObj(data.privateHealth?.nutritionPlan)).length > 0 && (
+                                        <div className="athlete-card p-5 bg-gradient-to-br from-emerald-950/50 to-slate-900"><div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Orientação individual</div><h3 className="font-black uppercase text-sm">Meu plano alimentar</h3></div><span className="text-2xl">🥗</span></div>{(()=>{const n=safeObj(data.privateHealth?.nutritionPlan);return <div className="space-y-2">{[['Objetivo',n.objective],['Pré-treino',n.preTraining],['Pós-treino',n.postTraining],['Hidratação',n.hydration],['Restrições / alergias',n.restrictions],['Orientações',n.notes]].filter(([,v])=>v).map(([l,v])=><div key={l} className="p-3 rounded-xl bg-slate-950/80 border border-slate-800"><div className="text-[8px] font-black uppercase text-emerald-500">{l}</div><div className="text-[10px] text-slate-300 mt-1 whitespace-pre-line">{v}</div></div>)}{n.professional&&<div className="text-[9px] text-slate-500 mt-2">Responsável: {n.professional}</div>}</div>})()}</div>
+                                    )}
+
+                                    {safeArray(data.privateHealth?.medications).filter(m=>(m.status||'Ativo')==='Ativo').length > 0 && (
+                                        <div className="athlete-card p-5"><div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-blue-400">Uso conforme prescrição</div><h3 className="font-black uppercase text-sm">Medicamentos registrados</h3></div><span className="text-2xl">💊</span></div><div className="space-y-3">{safeArray(data.privateHealth?.medications).filter(m=>(m.status||'Ativo')==='Ativo').map(m=><div key={m.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800"><div className="font-black text-xs">{m.name}</div><div className="text-[10px] text-slate-400 mt-1">{m.dose||'Dose não informada'} • {m.schedule||'Horário não informado'}</div>{m.prescribedBy&&<div className="text-[9px] text-slate-500 mt-1">Prescrito por: {m.prescribedBy}</div>}{m.notes&&<div className="text-[9px] text-slate-500 mt-2">{m.notes}</div>}<button onClick={()=>acknowledgeMedication(m)} className="w-full mt-3 py-3 rounded-xl bg-blue-600 text-white font-black uppercase text-[9px]">Confirmar administração</button></div>)}</div><div className="text-[8px] text-red-400/80 mt-3">Registro administrativo. Não altere dose ou horário sem orientação do departamento médico.</div></div>
+                                    )}
+
+                                    {(()=>{const existing=safeObj(getPlayerMapValue(data.postGame?.[selectedDate],data.players,idx,{}));const gps=safeObj(getPlayerMapValue(data.externalMetrics?.[selectedDate],data.players,idx,{}));const eligible=isMatchDay||Number(data.matchM?.[selectedDate]?.[p.id]?.mins||data.matchM?.[selectedDate]?.[idx]?.mins||0)>0||Object.keys(existing).length>0;return eligible?<div className="athlete-card p-5 bg-gradient-to-br from-fuchsia-950/40 to-slate-900"><div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-fuchsia-400">Feedback competitivo</div><h3 className="font-black uppercase text-sm">Questionário pós-jogo</h3></div><Icon name="trophy" size={22} className="text-fuchsia-400"/></div>{Object.keys(existing).length>0&&<div className="mb-3 p-3 rounded-xl bg-emerald-950/30 border border-emerald-800 text-[9px] text-emerald-400 font-bold">Resposta já enviada nesta data. Você pode atualizar os dados abaixo.</div>}<div className="grid grid-cols-2 gap-3">{[['perceivedPerformance','Minha atuação'],['matchRpe','Esforço do jogo'],['recovery','Recuperação'],['pain','Dor pós-jogo']].map(([k,l])=><div key={k}><div className="flex justify-between text-[9px] font-black uppercase text-slate-400"><span>{l}</span><span>{postGameForm[k]}/10</span></div><input type="range" min="0" max="10" value={postGameForm[k]} onChange={e=>setPostGameForm({...postGameForm,[k]:Number(e.target.value)})} className="hooper-slider mt-2"/></div>)}</div><div className="grid grid-cols-2 gap-2 mt-3"><input type="number" min="0" value={postGameForm.minutes} onChange={e=>setPostGameForm({...postGameForm,minutes:Number(e.target.value)})} placeholder="Minutos jogados" className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"/><input value={postGameForm.painLocation} onChange={e=>setPostGameForm({...postGameForm,painLocation:e.target.value})} placeholder="Local da dor" className="p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"/></div><textarea value={postGameForm.comments} onChange={e=>setPostGameForm({...postGameForm,comments:e.target.value})} placeholder="O que funcionou bem? O que precisa melhorar?" className="w-full h-24 mt-3 p-3 rounded-xl bg-slate-950 border border-slate-700 text-xs"/><button onClick={submitPostGame} className="w-full mt-3 py-4 rounded-xl bg-fuchsia-600 text-white font-black uppercase text-xs">Enviar avaliação pós-jogo</button>{Object.keys(gps).length>0&&<div className="grid grid-cols-3 gap-2 mt-4"><div className="bg-slate-950 p-3 rounded-xl text-center"><div className="font-black text-blue-400">{gps.distance||gps.totalDistance||'-'}</div><div className="text-[7px] uppercase text-slate-600">Distância</div></div><div className="bg-slate-950 p-3 rounded-xl text-center"><div className="font-black text-orange-400">{gps.highSpeedDistance||gps.hsd||'-'}</div><div className="text-[7px] uppercase text-slate-600">Alta velocidade</div></div><div className="bg-slate-950 p-3 rounded-xl text-center"><div className="font-black text-emerald-400">{gps.topSpeed||gps.maxSpeed||'-'}</div><div className="text-[7px] uppercase text-slate-600">Vel. máxima</div></div></div>}</div>:null})()}
+
+                                    <div className="athlete-card p-5 space-y-3"><div className="grid grid-cols-2 gap-2"><select value={requestForm.type} onChange={e=>setRequestForm({...requestForm,type:e.target.value})} className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs"><option>Dor / desconforto</option><option>Solicitar fisioterapia</option><option>Solicitar avaliação médica</option><option>Recuperação / massagem</option><option>Nutrição</option><option>Psicologia</option><option>Outro</option></select><select value={requestForm.severity} onChange={e=>setRequestForm({...requestForm,severity:e.target.value})} className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs"><option>Baixa</option><option>Moderada</option><option>Alta</option></select></div><input value={requestForm.location} onChange={e=>setRequestForm({...requestForm,location:e.target.value})} placeholder="Região do corpo ou assunto" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs"/><textarea value={requestForm.message} onChange={e=>setRequestForm({...requestForm,message:e.target.value})} placeholder="Explique quando começou, intensidade e se limita movimentos..." className="w-full h-28 bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs"/><button onClick={submitMedicalRequest} disabled={requestSubmitting} className="w-full bg-red-600 text-white py-4 rounded-xl font-black uppercase text-xs">{requestSubmitting?'Enviando...':'Enviar para a comissão'}</button></div>
+                                    <div className="athlete-card p-5"><div className="flex justify-between items-center mb-3"><h3 className="font-black uppercase text-sm">Notificações</h3><span className="text-[9px] text-slate-500">{safeArray(data.notifications).filter(n=>!data.notificationReads?.[n.id]).length} nova(s)</span></div><div className="space-y-2">{safeArray(data.notifications).length===0?<p className="text-xs text-slate-500">Nenhum comunicado publicado.</p>:safeArray(data.notifications).slice(0,10).map(n=><div key={n.id} className={`p-3 rounded-xl border ${data.notificationReads?.[n.id]?'border-slate-800 opacity-60':'border-blue-500/40 bg-blue-500/10'}`}><div className="font-black text-xs">{n.title||'Comunicado'}</div><div className="text-[10px] text-slate-400 mt-1">{n.message}</div><div className="flex justify-between mt-2"><span className="text-[8px] text-slate-600">{n.createdAt?new Date(n.createdAt).toLocaleString('pt-BR'):'-'}</span>{!data.notificationReads?.[n.id]&&<button onClick={()=>markAlertAsRead(n.id)} className="text-[8px] font-black uppercase text-blue-400">Confirmar leitura</button>}</div></div>)}</div></div>
+                                    <div className="athlete-card p-5"><h3 className="font-black uppercase text-sm mb-3">Meus documentos</h3><div className="space-y-2">{safeArray(data.documents).filter(d=>['athlete','both'].includes(d.visibility)).length===0?<p className="text-xs text-slate-500">Nenhum documento disponibilizado.</p>:safeArray(data.documents).filter(d=>['athlete','both'].includes(d.visibility)).map(d=><a key={d.id} href={d.url||'#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 border border-slate-800 rounded-xl"><div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-black text-[9px]">DOC</div><div className="flex-1"><div className="font-black text-xs">{d.title}</div><div className="text-[9px] text-slate-500">{d.type} {d.expiresAt?`• até ${formatDateBR(d.expiresAt)}`:''}</div></div><span className="text-blue-400">↗</span></a>)}</div></div>
+                                    <div className="athlete-card p-5"><div className="flex justify-between items-center mb-3"><h3 className="font-black uppercase text-sm">Evolução rápida</h3><button onClick={()=>setTab('ranking')} className="text-[9px] font-black uppercase text-yellow-500">Ver ranking</button></div>{(()=>{const h=getHistory();const responses=h.filter(x=>x.hasW).length;const loads=h.filter(x=>x.rpeSub).map(x=>(Number(x.rpe)||0)*(Number(x.dur)||0));const avg=loads.length?Math.round(loads.reduce((a,b)=>a+b,0)/loads.length):0;return <div className="grid grid-cols-3 gap-2"><div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-2xl font-black text-blue-400">{responses}/7</div><div className="text-[8px] uppercase text-slate-500">Wellness</div></div><div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-2xl font-black text-orange-400">{avg||'-'}</div><div className="text-[8px] uppercase text-slate-500">Carga média</div></div><div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-2xl font-black text-emerald-400">{getDM(idx)}</div><div className="text-[8px] uppercase text-slate-500">Status</div></div></div>})()}</div>
+                                    <div className="athlete-card p-5"><h3 className="font-black uppercase text-sm mb-3">Minhas solicitações</h3><div className="space-y-2">{safeArray(data.requests).length===0?<p className="text-xs text-slate-500">Nenhuma solicitação enviada.</p>:safeArray(data.requests).slice(0,8).map(r=><div key={r.id} className="p-3 border border-slate-800 rounded-xl"><div className="flex justify-between"><span className="font-black text-xs">{r.type}</span><span className={`text-[8px] font-black uppercase ${r.status==='Concluído'?'text-emerald-400':'text-orange-400'}`}>{r.status||'Aberto'}</span></div><div className="text-[9px] text-slate-500 mt-1">{r.message}</div></div>)}</div></div>
                                 </div>
                             )}
 
@@ -1314,11 +1477,11 @@
 
                         {/* MENU INFERIOR LIBERADO PARA TODOS */}
                         <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-2 flex justify-around items-center z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] pointer-events-auto">
-                            <button onClick={()=>setTab('workout')} className={`flex flex-col items-center p-2 transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={24}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></button>
-                            <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={24}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
-                            <button onClick={()=>setShowStats(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="activity" size={24}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></button>
-                            <button onClick={()=>setTab('ranking')} className={`flex flex-col items-center p-2 transition-colors ${tab==='ranking'?'text-yellow-500':'text-slate-500'}`}><Icon name="trophy" size={24}/><span className="text-[8px] font-black uppercase mt-1">Ranking</span></button>
-                            <button onClick={()=>setShowProfile(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="target" size={24}/><span className="text-[8px] font-black uppercase mt-1">Perfil</span></button>
+                            <button onClick={()=>setTab('workout')} className={`flex flex-col items-center p-2 transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={22}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></button>
+                            <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={22}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
+                            <button onClick={()=>setTab('health')} className={`flex flex-col items-center p-2 transition-colors relative ${tab==='health'?'text-red-400':'text-slate-500'}`}><Icon name="medkit" size={22}/>{safeArray(data.notifications).some(n=>!data.notificationReads?.[n.id])&&<span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}<span className="text-[8px] font-black uppercase mt-1">Saúde</span></button>
+                            <button onClick={()=>setShowStats(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="activity" size={22}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></button>
+                            <button onClick={()=>setShowProfile(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="target" size={22}/><span className="text-[8px] font-black uppercase mt-1">Perfil</span></button>
                         </div>
                     </div>
                     
@@ -1595,5 +1758,6 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./athlete-sw.js').catch(()=>{}));}</script>
 </body>
 </html>
