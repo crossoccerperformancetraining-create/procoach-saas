@@ -1,30 +1,17 @@
-const CACHE_NAME = 'procoach-v144';
-const urlsToCache = [
-  './',
-  './index.html',
-  './atleta.html',
-  './logo.png',
-  './manifest.json'
-];
-
+const CACHE_NAME = 'procoach-main-v120';
+const CORE = ['/index.html?v=120', '/atleta.html?v=120', '/manifest.json', '/logo.png'];
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
   self.skipWaiting();
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE).catch(() => {})));
 });
-
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) return caches.delete(cacheName);
-        })
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME && k.startsWith('procoach')).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', event => {
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+  if (event.request.method !== 'GET') return;
+  event.respondWith(fetch(event.request).then(response => {
+    const copy = response.clone();
+    caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {});
+    return response;
+  }).catch(() => caches.match(event.request).then(r => r || caches.match('/index.html?v=120'))));
 });
