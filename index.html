@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Performance Suite • Versão 1.2.0</title>
+    <title>ProCoach Performance Suite • Versão 1.3.0</title>
     
-    <link rel="manifest" href="manifest.json?v=19">
-    <link rel="apple-touch-icon" href="logo.png?v=19">
-    <link rel="icon" type="image/png" href="logo.png?v=19">
+    <link rel="manifest" href="manifest.json?v=130">
+    <link rel="apple-touch-icon" href="logo.png?v=130">
+    <link rel="icon" type="image/png" href="logo.png?v=130">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
@@ -162,7 +162,7 @@
             return url.toString();
         };
 
-        // Portal da Comissão removido na versão 1.2.0.
+        // Portal da Comissão removido. Versão 1.3.0: elenco, vídeos, sessões e estatísticas.
         const getCommissionPortalUrl = () => '#';
 
 
@@ -872,7 +872,7 @@
 
         const prepareCloudPayload = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, postGameResponses, externalMetrics, ...rest }) => ({
             ...rest,
-            dataSchemaVersion: 6,
+            dataSchemaVersion: 7,
             players: normalizePlayers(players),
             trainingLog: encodeDatePlayerMapForCloud(trainingLog, players, true),
             assessments: encodePlayerMapForCloud(assessments, players, true),
@@ -938,7 +938,12 @@
                 statusUpdatedAt: data.statusUpdatedAt || null,
                 customCategories: data.customCategories || ['Ativação', 'Mobilidade', 'Força', 'Potência', 'Tático', 'Prevenção'],
                 customTargets: data.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força: Superiores', 'Força: Inferiores', 'Geral', 'Transição (Retorno DM)'],
-                exerciseHistory: safeObj(data.exerciseHistory)
+                exerciseHistory: safeObj(data.exerciseHistory),
+                sessionMetadata: safeObj(data.sessionMetadata),
+                archivedPlayers: safeArray(data.archivedPlayers),
+                athleteGroups: safeArray(data.athleteGroups),
+                videoAssignments: safeArray(data.videoAssignments),
+                competitions: safeArray(data.competitions)
             };
         };
 
@@ -1555,15 +1560,21 @@ const LineChart = ({ data, color, height = 50 }) => {
                 </div>
             );
         };
-  const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords }) => {
+  const SquadView = ({ players, setPlayers, themeColor, trainingLog, dmRecords, archivedPlayers, onArchivePlayers, onRestoreArchived }) => {
     const [viewProfile, setViewProfile] = useState(null);
     const [editPlayer, setEditPlayer] = useState(null); 
     const today = getTodayStr(); 
     const safePlayers = safeArray(players);
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [showArchived, setShowArchived] = useState(false);
+    const toggleSelected = id => setSelectedIds(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
+    const selectAllVisible = () => setSelectedIds(selectedIds.length === safePlayers.length ? [] : safePlayers.map(player => player.id));
+    const closeSelection = () => { setSelectionMode(false); setSelectedIds([]); };
 
     const downloadRosterSnapshot = (reason='manual') => {
         const snapshot = {
-            appVersion: '1.1.3',
+            appVersion: '1.3.0',
             createdAt: new Date().toISOString(),
             reason,
             team: localStorage.getItem('procoach_active_team') || 'pro',
@@ -1589,6 +1600,26 @@ const LineChart = ({ data, color, height = 50 }) => {
         setPlayers(safePlayers.filter((_,i)=>i!==index));
         setEditPlayer(null);
         showToast('Atleta removido desta equipe. Backup do elenco baixado.', '#eab308');
+    };
+
+    const archiveSelected = () => {
+        if (!selectedIds.length) return showToast('Selecione pelo menos uma atleta.', '#eab308');
+        const names = safePlayers.filter(player => selectedIds.includes(player.id)).map(player => player.name).join(', ');
+        if (!confirm(`Arquivar ${selectedIds.length} atleta(s) somente desta equipe?\n\n${names}\n\nO histórico será preservado para restauração.`)) return;
+        downloadRosterSnapshot(`antes de arquivar ${selectedIds.length} atletas`);
+        onArchivePlayers?.(selectedIds);
+        closeSelection();
+        showToast(`${selectedIds.length} atleta(s) arquivadas com histórico.`, '#10b981');
+    };
+
+    const deleteSelected = () => {
+        if (!selectedIds.length) return showToast('Selecione pelo menos uma atleta.', '#eab308');
+        const names = safePlayers.filter(player => selectedIds.includes(player.id)).map(player => player.name).join(', ');
+        if (!confirm(`EXCLUSÃO DEFINITIVA de ${selectedIds.length} atleta(s) desta equipe?\n\n${names}\n\nUse Arquivar para preservar o histórico. Um backup será baixado antes.`)) return;
+        downloadRosterSnapshot(`antes de excluir definitivamente ${selectedIds.length} atletas`);
+        setPlayers(safePlayers.filter(player => !selectedIds.includes(player.id)));
+        closeSelection();
+        showToast('Atletas excluídas somente desta equipe.', '#ef4444');
     };
 
     const restoreLastRosterSnapshot = () => {
@@ -1943,6 +1974,12 @@ const LineChart = ({ data, color, height = 50 }) => {
                     <button onClick={addP} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest">
                         <Icon name="plus" size={14}/> Adicionar Atleta
                     </button>
+                    <button onClick={()=>{setSelectionMode(!selectionMode);setSelectedIds([])}} className={`${selectionMode?'bg-emerald-600':'bg-slate-800'} text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg uppercase`}>
+                        <Icon name="check" size={14}/> {selectionMode?'Cancelar seleção':'Selecionar atletas'}
+                    </button>
+                    <button onClick={()=>setShowArchived(!showArchived)} className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-[10px] font-black shadow-lg uppercase">
+                        Arquivadas ({safeArray(archivedPlayers).length})
+                    </button>
                     <button onClick={()=>downloadRosterSnapshot('backup manual')} className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black shadow-lg uppercase hidden md:block">Backup elenco</button>
                     <button onClick={restoreLastRosterSnapshot} className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-2 rounded-lg text-[9px] font-black shadow-lg uppercase hidden md:block">Restaurar última exclusão</button>
                     <button onClick={enableFemaleHealthForSquad} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2 rounded-lg text-[10px] font-black flex items-center gap-2 shadow-lg transition-all uppercase tracking-widest hidden lg:flex" title="Ativar questionário de cólicas e saúde menstrual para esta categoria">
@@ -1961,9 +1998,13 @@ const LineChart = ({ data, color, height = 50 }) => {
                 <button onClick={enableFemaleHealthForSquad} className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg transition-all uppercase tracking-widest lg:hidden">
                     <Icon name="activity" size={14}/> Configurar equipe feminina
                 </button>
-                <button onClick={()=>window.open('resgate-elenco.html','_blank')} className="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-3 rounded-lg text-[10px] font-black flex items-center justify-center gap-2 shadow-lg uppercase">Resgatar elenco apagado</button>
             </div>
             
+            {selectionMode && <div className="sticky top-0 z-30 mb-4 bg-slate-900 text-white rounded-2xl p-3 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div><div className="text-[9px] font-black uppercase text-blue-300">Ações em lote</div><div className="font-black">{selectedIds.length} atleta(s) selecionadas</div></div>
+                <div className="flex flex-wrap gap-2"><button onClick={selectAllVisible} className="px-4 py-2 rounded-xl bg-slate-700 text-[10px] font-black uppercase">{selectedIds.length===safePlayers.length?'Limpar':'Selecionar todas'}</button><button onClick={archiveSelected} className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 text-[10px] font-black uppercase">Arquivar com histórico</button><button onClick={deleteSelected} className="px-4 py-2 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase">Excluir definitivamente</button></div>
+            </div>}
+            {showArchived && <div className="mb-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4"><div className="flex justify-between items-center mb-3"><div><h3 className="font-black uppercase text-sm dark:text-white">Arquivo do elenco</h3><p className="text-[10px] text-slate-500">Atletas fora do elenco ativo, com dados guardados para restauração.</p></div><button onClick={()=>setShowArchived(false)} className="text-slate-500"><Icon name="x"/></button></div><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">{safeArray(archivedPlayers).length?safeArray(archivedPlayers).map(entry=><div key={entry.archiveId||entry.player?.id} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3"><div className="min-w-0"><div className="font-black text-sm dark:text-white truncate">{entry.player?.name||'Atleta'}</div><div className="text-[9px] text-slate-500">Arquivada em {entry.archivedAt?new Date(entry.archivedAt).toLocaleDateString('pt-BR'):'-'}</div></div><button onClick={()=>onRestoreArchived?.(entry.archiveId)} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase">Restaurar</button></div>):<div className="text-xs text-slate-500">Nenhuma atleta arquivada nesta equipe.</div>}</div></div>}
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-4">
                 {safePlayers.map((p, i) => { 
                     if(!p) return null;
@@ -1983,8 +2024,8 @@ const LineChart = ({ data, color, height = 50 }) => {
                     const isChronicPain = daysWithPain >= 2;
 
                     return (
-                        <div key={i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${isChronicPain || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>setViewProfile(i)}>
-                            <button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500 z-20"><Icon name="edit" size={12}/></button>
+                        <div key={p.id || i} className={`bg-white dark:bg-slate-800 rounded-xl shadow border p-3 flex flex-col items-center gap-2 relative group hover:shadow-lg transition-all cursor-pointer ${selectedIds.includes(p.id)?'ring-4 ring-emerald-500 border-emerald-500':isChronicPain || p.injured || p.suspended ? 'border-red-500' : p.highlight ? 'border-yellow-400' : 'border-slate-100 dark:border-slate-700'}`} onClick={()=>selectionMode?toggleSelected(p.id):setViewProfile(i)}>
+                            {selectionMode?<div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center z-20 ${selectedIds.includes(p.id)?'bg-emerald-500 border-emerald-500 text-white':'bg-white dark:bg-slate-700 border-slate-300'}`}>{selectedIds.includes(p.id)&&<Icon name="check" size={14}/>}</div>:<button onClick={(e)=>{e.stopPropagation();setLocalData(p);setEditPlayer(i);}} className="absolute top-1 right-1 text-slate-400 hover:text-blue-500 z-20"><Icon name="edit" size={12}/></button>}
                             
                             {/* ETIQUETAS DE STATUS NA FOTO */}
                             {isChronicPain && !p.injured && !p.suspended && <div className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg animate-pulse z-10 border border-red-400">🚨 DOR CONTÍNUA</div>}
@@ -3079,7 +3120,7 @@ const renderVideoElement = (url) => {
             );
         };
 
-   const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, initialData, user }) => {
+   const WorkoutBuilderView = ({ themeColor, exercises, setExercises, library, postWorkout, setPostWorkout, players, trainingLog, exerciseHistory, setExerciseHistory, sessionMetadata, setSessionMetadata, requestedDate, initialData, user }) => {
     const [targetOptions, setTargetOptions] = useState(initialData?.customTargets || ['Ativação & Core', 'Treino Funcional', 'Força', 'Geral']);
     const fieldTargets = ['TÉCNICO', 'JOGUINHO', 'ORG. OFENSIVA', 'ORG. DEFENSIVA', 'TRANS. OFENSIVA', 'TRANS. DEFENSIVA', 'ABP OFENSIVA', 'ABP DEFENSIVA', 'TÁTICO GERAL', 'PDI', 'AQUECIMENTO'];
     
@@ -3089,6 +3130,20 @@ const renderVideoElement = (url) => {
     const [editId, setEditId] = useState(null);
     const [sessionDate, setSessionDate] = useState(getTodayStr());
     const [pontoChave, setPontoChave] = useState("");
+    const [showSessionsModal, setShowSessionsModal] = useState(false);
+    const [previewDate, setPreviewDate] = useState('');
+    const [sessionSearch, setSessionSearch] = useState('');
+    const [sessionDraft, setSessionDraft] = useState({objective:'',category:'Campo',opponent:'',competition:'',notes:'',favorite:false});
+
+    useEffect(()=>{if(requestedDate)setSessionDate(requestedDate)},[requestedDate]);
+    useEffect(()=>{
+        const meta=safeObj(sessionMetadata?.[sessionDate]);
+        setSessionDraft({objective:meta.objective||'',category:meta.category||'Campo',opponent:meta.opponent||'',competition:meta.competition||'',notes:meta.notes||'',favorite:!!meta.favorite});
+    },[sessionDate,sessionMetadata]);
+
+    const savedSessions = Object.entries(safeObj(exerciseHistory)).map(([date,items])=>({date,items:safeArray(items),meta:safeObj(sessionMetadata?.[date])})).filter(x=>x.items.length).sort((a,b)=>b.date.localeCompare(a.date));
+    const filteredSessions = savedSessions.filter(s=>{const q=sessionSearch.toLowerCase().trim(); if(!q)return true; const text=[s.date,formatDateBR(s.date),s.meta.objective,s.meta.category,s.meta.opponent,s.meta.competition,s.meta.notes,...s.items.map(x=>`${x.title||''} ${x.target||''} ${x.objective||''}`)].join(' ').toLowerCase();return text.includes(q);});
+    const previewSession = savedSessions.find(s=>s.date===previewDate);
 
     const [showLibraryModal, setShowLibraryModal] = useState(false);
     const [selectedLibItems, setSelectedLibItems] = useState([]);
@@ -3127,19 +3182,43 @@ const renderVideoElement = (url) => {
 
     const importFromDate = () => {
         if(!sessionDate) return showToast("Selecione uma data no calendário!", "#ef4444");
-        db.collection('coachData').doc(getActiveDocId(user.uid)).get().then(doc => {
-            if(doc.exists){
-                const pastWorkout = doc.data().exerciseHistory?.[sessionDate];
-                if(pastWorkout && pastWorkout.length > 0){ setExercises(pastWorkout); showToast("Treino importado com sucesso!", "#10b981"); } 
-                else { showToast("Nenhum treino encontrado nesta data.", "#eab308"); }
-            }
-        });
+        const pastWorkout = safeArray(exerciseHistory?.[sessionDate]);
+        if(pastWorkout.length){ setPreviewDate(sessionDate); setShowSessionsModal(true); }
+        else { showToast("Nenhum treino encontrado nesta data.", "#eab308"); }
+    };
+
+    const applySavedSession = (sourceDate, destinationDate=sessionDate) => {
+        const items=safeArray(exerciseHistory?.[sourceDate]);
+        if(!items.length)return showToast('Sessão sem exercícios.','#ef4444');
+        const sourceMeta=safeObj(sessionMetadata?.[sourceDate]);
+        const clonedMeta={objective:sourceMeta.objective||'',category:sourceMeta.category||'Campo',opponent:sourceMeta.opponent||'',competition:sourceMeta.competition||'',notes:sourceMeta.notes||'',favorite:!!sourceMeta.favorite};
+        setExercises(items.map((item,index)=>({...item,id:Date.now()+index})));
+        setSessionMetadata({...safeObj(sessionMetadata),[destinationDate]:{...clonedMeta,sourceDate,updatedAt:new Date().toISOString()}});
+        setSessionDraft(clonedMeta);
+        setSessionDate(destinationDate);
+        setShowSessionsModal(false); showToast(`Sessão de ${formatDateBR(sourceDate)} carregada para ${formatDateBR(destinationDate)}.`,'#10b981');
+    };
+
+    const toggleSessionFavorite = date => setSessionMetadata({...safeObj(sessionMetadata),[date]:{...safeObj(sessionMetadata?.[date]),favorite:!sessionMetadata?.[date]?.favorite}});
+
+    const getHistorySuggestion = () => {
+        if(!savedSessions.length)return showToast('Salve algumas sessões para a IA aprender com o histórico.','#eab308');
+        const today=getTodayStr(); let fatigue=0,count=0;
+        safeArray(players).forEach((_,i)=>{const w=safeObj(trainingLog?.[today]?.[i]?.wellness);if(w.sleep){fatigue+=(Number(w.fatigue)||0)+(Number(w.soreness)||0);count++;}});
+        const avg=count?fatigue/count:0;
+        const desired=avg>=9?['Recuperação','Regenerativo','Mobilidade']:avg>=6?['Técnico','Tático','Campo']:['Força','Potência','Campo'];
+        const scored=savedSessions.map(session=>{const hay=`${session.meta.category||''} ${session.meta.objective||''} ${session.items.map(x=>`${x.target||''} ${x.objective||''}`).join(' ')}`.toLowerCase();let score=session.meta.favorite?3:0;desired.forEach(key=>{if(hay.includes(key.toLowerCase()))score+=2});score+=Math.min(session.items.length,8)/8;return {...session,score};}).sort((a,b)=>b.score-a.score);
+        const best=scored[0];setPreviewDate(best.date);setShowSessionsModal(true);showToast(avg>=9?'IA: priorizei uma sessão regenerativa pelo wellness.':avg>=6?'IA: priorizei conteúdo técnico/tático moderado.':'IA: elenco disponível para conteúdo de maior intensidade.','#3b82f6');
     };
 
     const fixWorkoutForToday = () => {
-        db.collection('coachData').doc(getActiveDocId(user.uid)).set({ exerciseHistory: { [sessionDate]: exercises } }, { merge: true }).then(() => {
-            showToast(`Sessão salva para o dia ${formatDateBR(sessionDate)} no app do atleta!`, "#10b981");
-        });
+        if(!sessionDate)return showToast('Escolha a data da sessão.','#ef4444');
+        if(!safeArray(exercises).length)return showToast('Adicione exercícios antes de salvar.','#ef4444');
+        const duration=safeArray(exercises).reduce((sum,x)=>sum+(Number(x.duration)||0),0);
+        const nextHistory={...safeObj(exerciseHistory),[sessionDate]:safeArray(exercises)};
+        const nextMetadata={...safeObj(sessionMetadata),[sessionDate]:{...sessionDraft,duration,exerciseCount:safeArray(exercises).length,updatedAt:new Date().toISOString()}};
+        setExerciseHistory(nextHistory);setSessionMetadata(nextMetadata);
+        showToast(`Sessão salva em ${formatDateBR(sessionDate)} e liberada no app da atleta!`, "#10b981");
     };
 
     const exportarPDF = async () => {
@@ -3243,7 +3322,7 @@ const renderVideoElement = (url) => {
     const notificarTreino = () => {
         const dataFormatada = formatDateBR(sessionDate);
         let focoTexto = getAiSuggestion().replace(/🚨 IA: |⚠️ IA: |✅ IA: /g, '');
-        const text = `⚽ *FALA RAPAZIADA!* ⚽\n\nA sessão de treino do dia *${dataFormatada}* já está liberada e detalhada no App.\n\n🎯 *Diretriz:* ${focoTexto}\n\nAssistam aos vídeos da vídeo-análise e confiram a prancheta antes de irmos pro campo. Já vão mentalizando o trabalho!\n\n🔐 Acesse pelo seu link individual do Portal do Atleta enviado pela comissão.`;
+        const text = `⚽ *FALA RAPAZIADA!* ⚽\n\nA sessão de treino do dia *${dataFormatada}* já está liberada e detalhada no App.\n\n🎯 *Diretriz:* ${focoTexto}\n\nAssistam aos vídeos da vídeo-análise e confiram a prancheta antes de irmos pro campo. Já vão mentalizando o trabalho!\n\n🔐 Acesse pelo seu link individual do Portal do Atleta enviado pela equipe técnica.`;
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(whatsappUrl, '_blank');
         showToast("Redirecionando para o WhatsApp...", "#10b981");
@@ -3337,6 +3416,8 @@ const renderVideoElement = (url) => {
     return (
         <div className="p-6 h-full overflow-y-auto animate-fade-in custom-scroll flex flex-col gap-6 relative">
             
+            {showSessionsModal && <div className="fixed inset-0 bg-slate-950/90 z-[125] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-3xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden shadow-2xl"><div className="p-5 border-b dark:border-slate-700 flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase tracking-[.25em] text-blue-500">Histórico e reutilização</div><h3 className="text-xl font-black uppercase dark:text-white">Biblioteca de Sessões</h3></div><button onClick={()=>setShowSessionsModal(false)} className="text-slate-400"><Icon name="x"/></button></div><div className="p-4 border-b dark:border-slate-700"><input value={sessionSearch} onChange={e=>setSessionSearch(e.target.value)} placeholder="Buscar por data, objetivo, exercício, adversário ou competição..." className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-800 dark:text-white text-xs"/></div><div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3"><div className="overflow-y-auto custom-scroll p-4 border-r dark:border-slate-700 space-y-2">{filteredSessions.map(session=><button key={session.date} onClick={()=>setPreviewDate(session.date)} className={`w-full text-left p-3 rounded-xl border ${previewDate===session.date?'border-blue-500 bg-blue-50 dark:bg-blue-900/20':'border-slate-200 dark:border-slate-700 dark:bg-slate-800'}`}><div className="flex justify-between"><span className="font-black text-xs dark:text-white">{formatDateBR(session.date)}</span><span className="text-yellow-500">{session.meta.favorite?'★':'☆'}</span></div><div className="text-[10px] text-slate-500 mt-1 truncate">{session.meta.objective||session.meta.category||'Sessão sem título'}</div><div className="text-[9px] text-slate-400">{session.items.length} exercícios • {session.meta.duration||session.items.reduce((a,x)=>a+(Number(x.duration)||0),0)} min</div></button>)}{!filteredSessions.length&&<div className="p-8 text-center text-slate-400 text-xs">Nenhuma sessão encontrada.</div>}</div><div className="lg:col-span-2 overflow-y-auto custom-scroll p-5">{previewSession?<div><div className="flex flex-col md:flex-row justify-between gap-3 mb-4"><div><div className="text-[9px] font-black uppercase text-blue-500">Sessão de {formatDateBR(previewSession.date)}</div><h4 className="text-2xl font-black dark:text-white">{previewSession.meta.objective||previewSession.meta.category||'Treino salvo'}</h4><div className="text-[10px] text-slate-500">{previewSession.meta.competition||''} {previewSession.meta.opponent?`• vs ${previewSession.meta.opponent}`:''}</div></div><button onClick={()=>toggleSessionFavorite(previewSession.date)} className="px-4 py-2 rounded-xl bg-yellow-100 text-yellow-700 font-black text-xs">{previewSession.meta.favorite?'★ Favorita':'☆ Favoritar'}</button></div>{previewSession.meta.notes&&<p className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs dark:text-slate-300 mb-4">{previewSession.meta.notes}</p>}<div className="space-y-2">{previewSession.items.map((item,i)=><div key={item.id||i} className="p-3 border dark:border-slate-700 rounded-xl flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-blue-500">{item.target||item.type||'Exercício'}</div><div className="font-black text-sm dark:text-white">{i+1}. {item.title||'Atividade'}</div><div className="text-[10px] text-slate-500">{item.objective||item.description||''}</div></div><div className="text-xs font-black text-slate-500 whitespace-nowrap">{item.duration?`${item.duration} min`:''}</div></div>)}</div><div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5"><button onClick={()=>applySavedSession(previewSession.date,sessionDate)} className="py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-xs">Aplicar na data selecionada</button><button onClick={()=>applySavedSession(previewSession.date,getTodayStr())} className="py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-xs">Duplicar para hoje</button></div></div>:<div className="h-full flex items-center justify-center text-slate-400">Selecione uma sessão para visualizar.</div>}</div></div></div></div>}
+
             {/* MODAL DA GALERIA DA BIBLIOTECA - OTIMIZADA */}
             {showLibraryModal && (
                 <div className="fixed inset-0 bg-slate-950/90 z-[120] flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
@@ -3425,9 +3506,9 @@ const renderVideoElement = (url) => {
                         <div className="text-[10px] font-black uppercase text-slate-400 mb-1 flex items-center gap-1"><Icon name="calendar" size={12}/> Data da Sessão (Planejar ou Copiar)</div>
                         <div className="flex gap-2">
                             <input type="date" className="bg-slate-700 text-white text-xs p-2 rounded-lg outline-none border border-slate-600 focus:border-blue-500" value={sessionDate} onChange={e=>setSessionDate(e.target.value)} />
-                            <button onClick={importFromDate} className="bg-slate-600 hover:bg-slate-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1 transition-all" title="Puxar treino desta data">
-                                <Icon name="refresh" size={14}/> PUXAR
-                            </button>
+                            <button onClick={importFromDate} className="bg-slate-600 hover:bg-slate-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1 transition-all" title="Ver treino salvo nesta data"><Icon name="refresh" size={14}/> VER DATA</button>
+                            <button onClick={()=>setShowSessionsModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1"><Icon name="folder" size={14}/> SESSÕES</button>
+                            <button onClick={getHistorySuggestion} className="bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black px-4 py-2 rounded-lg flex items-center gap-1"><Icon name="brain" size={14}/> IA SUGERIR</button>
                         </div>
                     </div>
                 </div>
@@ -3440,6 +3521,8 @@ const renderVideoElement = (url) => {
                     </button>
                 </div>
             </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 no-print"><div className="grid grid-cols-1 md:grid-cols-5 gap-3"><div className="md:col-span-2"><label className="text-[9px] uppercase font-black text-slate-400">Objetivo da sessão</label><input value={sessionDraft.objective} onChange={e=>setSessionDraft({...sessionDraft,objective:e.target.value})} placeholder="Ex: organização defensiva" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-900 dark:text-white text-xs"/></div><div><label className="text-[9px] uppercase font-black text-slate-400">Categoria</label><select value={sessionDraft.category} onChange={e=>setSessionDraft({...sessionDraft,category:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-900 dark:text-white text-xs"><option>Campo</option><option>Academia</option><option>Recuperação</option><option>Pré-jogo</option><option>Pós-jogo</option><option>Individual</option></select></div><div><label className="text-[9px] uppercase font-black text-slate-400">Competição</label><input value={sessionDraft.competition} onChange={e=>setSessionDraft({...sessionDraft,competition:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-900 dark:text-white text-xs"/></div><div><label className="text-[9px] uppercase font-black text-slate-400">Adversário</label><input value={sessionDraft.opponent} onChange={e=>setSessionDraft({...sessionDraft,opponent:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-900 dark:text-white text-xs"/></div></div><div className="flex gap-3 mt-3"><textarea value={sessionDraft.notes} onChange={e=>setSessionDraft({...sessionDraft,notes:e.target.value})} placeholder="Resumo, pontos-chave e observações da sessão" className="flex-1 h-16 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-900 dark:text-white text-xs"/><label className="flex items-center gap-2 px-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-[10px] font-black uppercase"><input type="checkbox" checked={sessionDraft.favorite} onChange={e=>setSessionDraft({...sessionDraft,favorite:e.target.checked})}/> Favorita</label></div></div>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
@@ -4342,12 +4425,15 @@ const ExecutiveDecisionPanel = ({ players, trainingLog, dmRecords, attendanceLog
     );
 };
 
-const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, themeColor }) => {
+const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, videoAssignments, themeColor }) => {
     const safePlayers = safeArray(players);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchPlayer, setSearchPlayer] = useState('');
+    const [positionFilter, setPositionFilter] = useState('Todas');
+    const playerPositions=['Todas',...new Set(safePlayers.map(item=>item?.position||item?.pos).filter(Boolean))];
     useEffect(() => { if (selectedIndex >= safePlayers.length) setSelectedIndex(0); }, [safePlayers.length]);
-    const visiblePlayers = safePlayers.map((item, index) => ({ item, index })).filter(({ item }) => String(item?.name || '').toLowerCase().includes(searchPlayer.toLowerCase()));
+    const visiblePlayers = safePlayers.map((item, index) => ({ item, index })).filter(({ item }) => String(item?.name || '').toLowerCase().includes(searchPlayer.toLowerCase()) && (positionFilter==='Todas'||String(item?.position||item?.pos||'')===positionFilter));
+    const movePlayer = step => { if(!safePlayers.length)return; setSelectedIndex(current=>(current+step+safePlayers.length)%safePlayers.length); };
     const player = safePlayers[selectedIndex];
     if (!player) return <div className="p-8 text-center text-slate-500">Cadastre um atleta para abrir o Perfil 360º.</div>;
     const today = getTodayStr();
@@ -4373,6 +4459,13 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
     const latestAssessment = history[0] || {};
     const injuries = safeArray(dmRecords).filter(record => Number(record?.playerId) === selectedIndex || record?.playerUid === player.id);
     const activeInjury = injuries.find(record => record.status === 'Active');
+    const playerVideos = safeArray(videoAssignments).filter(item=>safeArray(item.recipientIds).map(String).includes(String(player.id)));
+    const timelineEvents = [
+        ...history.map(item=>({date:item.date||item.createdAt,title:'Avaliação registrada',detail:[item.weight?`${item.weight} kg`:'',item.fms_total?`FMS ${item.fms_total}`:''].filter(Boolean).join(' • ')||'Avaliação física e de desempenho'})),
+        ...injuries.map(item=>({date:item.dateIn||item.createdAt,title:item.status==='Active'?'Entrada no DM':'Registro médico',detail:item.location||item.type||'Acompanhamento médico'})),
+        ...matchEntries.map(item=>({date:item.date,title:'Participação em jogo',detail:`${Number(item.mins)||0} minutos registrados`})),
+        ...playerVideos.map(item=>({date:String(item.createdAt||'').slice(0,10),title:'Vídeo técnico enviado',detail:item.title||item.category||'Conteúdo individual'}))
+    ].filter(item=>item.date).sort((x,y)=>String(y.date).localeCompare(String(x.date))).slice(0,20);
     const todayWellness = safeObj(trainingLog?.[today]?.[selectedIndex]?.wellness);
     const riskReasons = [];
     if (activeInjury || player.injured) riskReasons.push('Atleta indisponível no departamento médico');
@@ -4387,13 +4480,14 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
             <div className="flex flex-col lg:flex-row gap-5">
                 <aside className="lg:w-72 shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm h-fit">
                     <div className="text-[10px] font-black uppercase text-slate-400 mb-3">Selecionar atleta</div>
-                    <input value={searchPlayer} onChange={e=>setSearchPlayer(e.target.value)} placeholder="Buscar pelo nome..." className="w-full mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white outline-none focus:border-blue-500" />
+                    <input value={searchPlayer} onChange={e=>setSearchPlayer(e.target.value)} placeholder="Buscar pelo nome..." className="w-full mb-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white outline-none focus:border-blue-500" />
+                    <select value={positionFilter} onChange={e=>setPositionFilter(e.target.value)} className="w-full mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white"><option value="Todas">Todas as posições</option>{playerPositions.filter(x=>x!=='Todas').map(x=><option key={x}>{x}</option>)}</select>
                     <div className="max-h-[65vh] overflow-y-auto custom-scroll space-y-1">{visiblePlayers.map(({item,index})=><button key={item.id || index} onClick={()=>setSelectedIndex(index)} className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all ${selectedIndex===index?'bg-blue-600 text-white shadow':'hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-200'}`}><div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">{item.image?<img src={item.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-2 text-slate-400"/>}</div><div className="min-w-0"><div className="text-xs font-black truncate uppercase">{item.name}</div><div className={`text-[9px] font-bold truncate ${selectedIndex===index?'text-blue-100':'text-slate-400'}`}>{item.position || item.pos || 'Atleta'}</div></div></button>)}</div>
                 </aside>
                 <main className="flex-1 min-w-0 space-y-5">
                     <div className="bg-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl relative overflow-hidden">
                         <div className="absolute inset-y-0 right-0 w-40 opacity-10" style={{background:`linear-gradient(135deg, transparent, ${themeColor})`}}></div>
-                        <div className="relative flex flex-col md:flex-row md:items-center gap-5"><div className="w-24 h-24 rounded-2xl bg-slate-700 overflow-hidden border-2 border-white/20 shrink-0">{player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={52} className="m-5 text-slate-400"/>}</div><div className="flex-1"><div className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Perfil 360º do atleta</div><h2 className="text-3xl font-black uppercase mt-1">{player.name}</h2><div className="flex flex-wrap gap-2 mt-3 text-[10px] font-bold"><span className="bg-white/10 px-2 py-1 rounded">{player.position || player.pos || 'Sem posição'}</span><span className="bg-white/10 px-2 py-1 rounded">Nº {player.number || '-'}</span><span className={`px-2 py-1 rounded ${riskTone==='red'?'bg-red-600':riskTone==='yellow'?'bg-yellow-500 text-slate-900':'bg-emerald-600'}`}>{riskTone==='red'?'ALTO RISCO':riskTone==='yellow'?'ATENÇÃO':'DISPONÍVEL'}</span></div></div></div>
+                        <div className="relative flex flex-col md:flex-row md:items-center gap-5"><div className="w-24 h-24 rounded-2xl bg-slate-700 overflow-hidden border-2 border-white/20 shrink-0">{player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={52} className="m-5 text-slate-400"/>}</div><div className="flex-1"><div className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Perfil 360º do atleta</div><h2 className="text-3xl font-black uppercase mt-1">{player.name}</h2><div className="flex flex-wrap gap-2 mt-3 text-[10px] font-bold"><span className="bg-white/10 px-2 py-1 rounded">{player.position || player.pos || 'Sem posição'}</span><span className="bg-white/10 px-2 py-1 rounded">Nº {player.number || '-'}</span><span className={`px-2 py-1 rounded ${riskTone==='red'?'bg-red-600':riskTone==='yellow'?'bg-yellow-500 text-slate-900':'bg-emerald-600'}`}>{riskTone==='red'?'ALTO RISCO':riskTone==='yellow'?'ATENÇÃO':'DISPONÍVEL'}</span></div></div><div className="flex gap-2 shrink-0"><button onClick={()=>movePlayer(-1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">‹</button><button onClick={()=>movePlayer(1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">›</button></div></div>
                     </div>
                     <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">{summaryCard('Carga 7 dias', total7, 'U.A. acumuladas')}{summaryCard('Carga 28 dias', total28, 'U.A. acumuladas')}{summaryCard('Agudo : crônico', acuteChronic || '-', acuteChronic>=1.5?'Zona de atenção':'Referência individual')}{summaryCard('Frequência 28d', attendanceRate?`${attendanceRate}%`:'-', `${presentCount}/${attendanceStatuses.length} registros`)}{summaryCard('Minutos em jogos', totalMinutes, `${matchEntries.length} partidas registradas`)}</div>
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -4404,6 +4498,7 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
                         <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Última avaliação</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[['Data',formatDateBR(latestAssessment.date)],['Peso',latestAssessment.weight?`${latestAssessment.weight} kg`:'-'],['FMS',latestAssessment.fms_total||'-'],['1RM',latestAssessment.squat_rm?`${latestAssessment.squat_rm} kg`:'-'],['30 m',latestAssessment.speed30?`${latestAssessment.speed30} s`:'-'],['SJ',latestAssessment.sj?`${latestAssessment.sj} cm`:'-'],['Resistência',latestAssessment.soccer_test||'-'],['Scout',latestAssessment.scout_tech||'-']].map(([label,value])=><div key={label} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl"><div className="text-[8px] uppercase font-black text-slate-400">{label}</div><div className="font-black dark:text-white mt-1">{value}</div></div>)}</div></section>
                         <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Histórico médico</h3><div className="space-y-2 max-h-48 overflow-y-auto custom-scroll">{injuries.length?injuries.map(record=><div key={record.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3"><div className="flex justify-between gap-2"><div className="text-[10px] font-black dark:text-white">{record.location || record.type || 'Registro médico'}</div><span className={`text-[8px] font-black px-2 py-1 rounded ${record.status==='Active'?'bg-red-100 text-red-700':'bg-emerald-100 text-emerald-700'}`}>{record.status==='Active'?'ATIVO':'ALTA'}</span></div><div className="text-[9px] text-slate-500 mt-1">Entrada: {formatDateBR(record.dateIn)} · Saída: {formatDateBR(record.dateOut)}</div></div>):<div className="text-xs text-slate-400">Sem histórico médico registrado.</div>}</div></section>
                     </div>
+                    <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><div className="flex items-center justify-between gap-3 mb-4"><div><h3 className="text-xs font-black uppercase dark:text-white">Linha do tempo da atleta</h3><p className="text-[9px] text-slate-500 mt-1">Avaliações, jogos, ocorrências médicas e vídeos em ordem cronológica.</p></div><span className="text-[9px] font-black uppercase text-blue-500">{timelineEvents.length} eventos</span></div><div className="space-y-2 max-h-80 overflow-y-auto custom-scroll">{timelineEvents.length?timelineEvents.map((event,index)=><div key={`${event.date}_${event.title}_${index}`} className="flex gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700"><div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0"></div><div className="min-w-0 flex-1"><div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"><div className="text-[10px] font-black dark:text-white">{event.title}</div><div className="text-[8px] font-black text-slate-400">{formatDateBR(String(event.date).slice(0,10))}</div></div><div className="text-[9px] text-slate-500 mt-1">{event.detail}</div></div></div>):<div className="text-xs text-slate-400">Ainda não há eventos suficientes para montar a linha do tempo.</div>}</div></section>
                 </main>
             </div>
         </div>
@@ -5651,7 +5746,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             viewer: { label: 'Somente leitura', permissions: ['dashboard','reports'] }
         };
         const TAB_PERMISSION = {
-            home:'dashboard', alerts:'dashboard', micro:'training', workout:'training', macro:'training', squad:'squad', profile360:'squad', contracts:'director', documents:'medical', wellness:'performance', pse:'performance', freq:'squad', dm:'medical', clinical:'clinical', care:'care', family:'consent', commitments:'squad', postgame:'performance', integrations:'integration', assessment:'performance', match:'performance', selection:'performance', gameday:'performance', reports:'reports', print:'reports', library:'training', scout:'scout', director:'director', access:'access', audit:'access', clubs:'clubs'
+            home:'dashboard', alerts:'dashboard', micro:'training', workout:'training', calendar:'training', macro:'training', videos:'training', competitions:'performance', squad:'squad', profile360:'squad', contracts:'director', documents:'medical', wellness:'performance', pse:'performance', freq:'squad', dm:'medical', clinical:'clinical', care:'care', family:'consent', commitments:'squad', postgame:'performance', integrations:'integration', assessment:'performance', match:'performance', selection:'performance', gameday:'performance', reports:'reports', print:'reports', library:'training', scout:'scout', director:'director', access:'access', audit:'access', clubs:'clubs'
         };
         const roleCan = (role, permission) => {
             const permissions = ROLE_CATALOG[role]?.permissions || [];
@@ -5748,16 +5843,99 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             </div>;
         };
 
+
+        const TrainingCalendarView = ({ exerciseHistory, sessionMetadata, trainingLog, attendanceLog, players, onOpenWorkout, themeColor }) => {
+            const today=getTodayStr();
+            const [month,setMonth]=useState(today.slice(0,7));
+            const [selectedDate,setSelectedDate]=useState(today);
+            const [year,monthNumber]=month.split('-').map(Number);
+            const daysInMonth=new Date(year,monthNumber,0).getDate();
+            const firstWeekday=new Date(year,monthNumber-1,1).getDay();
+            const cells=[...Array(firstWeekday).fill(null),...Array.from({length:daysInMonth},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`)];
+            while(cells.length%7)cells.push(null);
+            const changeMonth=step=>{const d=new Date(year,monthNumber-1+step,1);const next=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;setMonth(next);setSelectedDate(`${next}-01`);};
+            const getMetrics=date=>{
+                const exercises=safeArray(exerciseHistory?.[date]); const meta=safeObj(sessionMetadata?.[date]); const logs=safeObj(trainingLog?.[date]); const ps=safeArray(players);
+                const loads=ps.map((_,i)=>calcDailyLoad(logs?.[i])).filter(value=>value>0); const wellness=ps.filter((_,i)=>safeObj(logs?.[i]?.wellness).sleep).length;
+                const attendance=ps.map((_,i)=>attendanceLog?.[date]?.[i]).filter(Boolean); const present=attendance.filter(status=>['P','T'].includes(status)).length;
+                return {exercises,meta,avgLoad:loads.length?Math.round(loads.reduce((a,b)=>a+b,0)/loads.length):0,wellness,present,attendanceCount:attendance.length,duration:Number(meta.duration)||exercises.reduce((sum,item)=>sum+(Number(item.duration)||0),0)};
+            };
+            const selected=getMetrics(selectedDate); const monthLabel=new Date(year,monthNumber-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6"><div><div className="text-[9px] font-black uppercase tracking-[.25em] text-indigo-500">Histórico de trabalho</div><h2 className="text-2xl font-black uppercase dark:text-white">Calendário Inteligente</h2><p className="text-xs text-slate-500">Consulte exercícios, duração, carga, wellness e frequência de qualquer data.</p></div><button onClick={()=>{setMonth(today.slice(0,7));setSelectedDate(today)}} className="px-4 py-3 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase">Ir para hoje</button></div><div className="grid grid-cols-1 xl:grid-cols-3 gap-5"><section className={`${phase3Card} p-4 xl:col-span-2`}><div className="flex items-center justify-between gap-3 mb-4"><button onClick={()=>changeMonth(-1)} className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 dark:text-white font-black">‹</button><h3 className="font-black uppercase dark:text-white capitalize">{monthLabel}</h3><button onClick={()=>changeMonth(1)} className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 dark:text-white font-black">›</button></div><div className="grid grid-cols-7 gap-1 mb-1">{['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(day=><div key={day} className="text-center text-[8px] font-black uppercase text-slate-400 py-2">{day}</div>)}</div><div className="grid grid-cols-7 gap-1">{cells.map((date,index)=>{if(!date)return <div key={`empty_${index}`} className="min-h-20 md:min-h-28 rounded-xl bg-slate-50/30 dark:bg-slate-900/20"></div>;const metrics=getMetrics(date);const hasSession=metrics.exercises.length>0;const active=date===selectedDate;return <button key={date} onClick={()=>setSelectedDate(date)} className={`min-h-20 md:min-h-28 rounded-xl border p-2 text-left transition-all ${active?'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50 dark:bg-indigo-900/20':hasSession?'border-emerald-300 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/10':'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}><div className="flex justify-between"><span className={`text-[10px] font-black ${date===today?'text-indigo-600':'dark:text-white'}`}>{Number(date.slice(-2))}</span>{metrics.meta.favorite&&<span className="text-yellow-500 text-xs">★</span>}</div>{hasSession?<><div className="text-[8px] font-black uppercase text-emerald-600 mt-2 line-clamp-2">{metrics.meta.objective||metrics.meta.category||'Treino'}</div><div className="text-[8px] text-slate-500 mt-1">{metrics.exercises.length} ex. • {metrics.duration} min</div>{metrics.avgLoad>0&&<div className="text-[8px] text-indigo-500 mt-1">Carga {metrics.avgLoad}</div>}</>:<div className="text-[8px] text-slate-300 dark:text-slate-600 mt-4">Sem sessão</div>}</button>})}</div></section><aside className={`${phase3Card} p-5 h-fit`}><div className="text-[9px] font-black uppercase text-indigo-500">{formatDateBR(selectedDate)}</div><h3 className="text-xl font-black dark:text-white mt-1">{selected.meta.objective||selected.meta.category||(selected.exercises.length?'Sessão registrada':'Sem treino salvo')}</h3>{selected.meta.opponent&&<div className="text-[10px] text-slate-500 mt-1">Adversário: {selected.meta.opponent}</div>}{selected.meta.competition&&<div className="text-[10px] text-slate-500">Competição: {selected.meta.competition}</div>}<div className="grid grid-cols-2 gap-2 mt-4">{[['Exercícios',selected.exercises.length],['Duração',selected.duration?`${selected.duration} min`:'-'],['Carga média',selected.avgLoad||'-'],['Wellness',`${selected.wellness}/${safeArray(players).length}`],['Presentes',selected.attendanceCount?`${selected.present}/${selected.attendanceCount}`:'-'],['Favorita',selected.meta.favorite?'Sim':'Não']].map(([label,value])=><div key={label} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900"><div className="text-[8px] font-black uppercase text-slate-400">{label}</div><div className="font-black dark:text-white mt-1">{value}</div></div>)}</div>{selected.meta.notes&&<p className="text-[10px] text-slate-500 mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 whitespace-pre-wrap">{selected.meta.notes}</p>}<div className="space-y-2 mt-4 max-h-72 overflow-y-auto custom-scroll">{selected.exercises.map((item,index)=><div key={item.id||index} className="border dark:border-slate-700 rounded-xl p-3"><div className="text-[8px] font-black uppercase text-indigo-500">{item.target||item.type||'Exercício'}</div><div className="text-[10px] font-black dark:text-white mt-1">{index+1}. {item.title||'Atividade'}</div><div className="text-[9px] text-slate-500 mt-1">{item.duration?`${item.duration} min`:''} {item.objective||item.description||''}</div></div>)}{!selected.exercises.length&&<div className="text-xs text-slate-400 py-4">Nenhum exercício salvo nesta data.</div>}</div><button onClick={()=>onOpenWorkout(selectedDate)} className="w-full mt-5 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Abrir no construtor de treino</button></aside></div></div></div>;
+        };
+
+        const getFootballSector = position => {
+            const text=String(position||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            if(/goleir|zagueir|lateral|defes/.test(text)) return 'Defesa';
+            if(/volante|meia|meio|medio/.test(text)) return 'Meio-campo';
+            if(/atac|ponta|centroav/.test(text)) return 'Ataque';
+            return 'Outros';
+        };
+
+        const VideoCenterView = ({ players, athleteGroups, setAthleteGroups, videoAssignments, setVideoAssignments, athleteNotificationReads, themeColor }) => {
+            const ps=safeArray(players); const assignments=[...safeArray(videoAssignments)].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))); const groups=[...safeArray(athleteGroups)];
+            const positions=[...new Set(ps.map(p=>p.position||p.pos).filter(Boolean))].sort();
+            const [form,setForm]=useState({title:'',urls:'',description:'',category:'Análise individual',dueDate:'',targetMode:'manual',targetValue:''});
+            const [manualIds,setManualIds]=useState([]); const [showForm,setShowForm]=useState(true);
+            const [groupName,setGroupName]=useState(''); const [groupPlayerIds,setGroupPlayerIds]=useState([]); const [showGroupEditor,setShowGroupEditor]=useState(false);
+            const toggle=id=>setManualIds(cur=>cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]);
+            const resolveRecipients=()=>{
+                if(form.targetMode==='all') return ps.map(p=>p.id);
+                if(form.targetMode==='position') return ps.filter(p=>String(p.position||p.pos||'')===form.targetValue).map(p=>p.id);
+                if(form.targetMode==='sector') return ps.filter(p=>getFootballSector(p.position||p.pos)===form.targetValue).map(p=>p.id);
+                if(form.targetMode==='group') return safeArray(groups.find(group=>group.id===form.targetValue)?.playerIds).filter(id=>ps.some(p=>String(p.id)===String(id)));
+                return manualIds;
+            };
+            const saveGroup=()=>{if(!groupName.trim())return showToast('Informe o nome do grupo.','#ef4444');if(!groupPlayerIds.length)return showToast('Selecione atletas para o grupo.','#ef4444');const item={id:`group_${Date.now()}`,name:groupName.trim(),playerIds:groupPlayerIds,createdAt:new Date().toISOString()};setAthleteGroups([item,...groups]);setGroupName('');setGroupPlayerIds([]);showToast('Grupo permanente criado.','#10b981');};
+            const removeGroup=id=>{if(confirm('Excluir este grupo permanente? Os vídeos já enviados não serão alterados.'))setAthleteGroups(groups.filter(group=>group.id!==id));};
+            const save=()=>{
+                const urls=String(form.urls||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+                const recipientIds=resolveRecipients();
+                if(!form.title.trim()||!urls.length) return showToast('Informe o título e pelo menos um link.','#ef4444');
+                if(!recipientIds.length) return showToast('Selecione quem receberá os vídeos.','#ef4444');
+                const item={id:`video_${Date.now()}`,title:form.title.trim(),urls,description:form.description.trim(),category:form.category,dueDate:form.dueDate||'',targetMode:form.targetMode,targetValue:form.targetValue||'',recipientIds,createdAt:new Date().toISOString()};
+                setVideoAssignments([item,...assignments]); setForm({title:'',urls:'',description:'',category:'Análise individual',dueDate:'',targetMode:'manual',targetValue:''}); setManualIds([]); showToast(`Vídeos enviados para ${recipientIds.length} atleta(s).`,'#10b981');
+            };
+            const remove=id=>{if(confirm('Excluir esta publicação de vídeo?'))setVideoAssignments(assignments.filter(item=>item.id!==id));};
+            const readCount=item=>safeArray(item.recipientIds).filter(pid=>safeObj(athleteNotificationReads?.[pid])[`video_${item.id}`]).length;
+            const recipientNames=item=>safeArray(item.recipientIds).map(id=>ps.find(p=>p.id===id)?.name).filter(Boolean);
+            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="flex flex-col md:flex-row justify-between gap-3 mb-6"><div><div className="text-[9px] font-black uppercase tracking-[.25em] text-red-500">Vídeo e aprendizagem</div><h2 className="text-2xl font-black uppercase dark:text-white">Central de Vídeos</h2><p className="text-xs text-slate-500">Envie vários vídeos para atletas, posições, setores, grupos permanentes ou todo o elenco.</p></div><div className="flex gap-2"><button onClick={()=>setShowGroupEditor(!showGroupEditor)} className="px-4 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Grupos</button><button onClick={()=>setShowForm(!showForm)} className="px-4 py-3 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase">{showForm?'Fechar publicação':'Nova publicação'}</button></div></div>
+            {showGroupEditor&&<div className={`${phase3Card} p-5 mb-6`}><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-black uppercase text-sm dark:text-white">Grupos permanentes</h3><p className="text-[9px] text-slate-500">Exemplos: titulares, bola parada defensiva ou retorno de lesão.</p></div><span className="text-[9px] font-black text-indigo-500">{groups.length} grupos</span></div><input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Nome do grupo" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs mb-3"/><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 max-h-52 overflow-y-auto custom-scroll">{ps.map(p=><button key={p.id} onClick={()=>setGroupPlayerIds(current=>current.includes(p.id)?current.filter(id=>id!==p.id):[...current,p.id])} className={`p-2 rounded-xl border text-left text-[10px] font-black ${groupPlayerIds.includes(p.id)?'bg-indigo-600 text-white border-indigo-600':'bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700'}`}>{p.name}</button>)}</div><button onClick={saveGroup} className="w-full mt-3 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Salvar grupo</button>{groups.length>0&&<div className="flex flex-wrap gap-2 mt-4">{groups.map(group=><div key={group.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border dark:border-slate-700"><span className="text-[9px] font-black dark:text-white">{group.name} ({safeArray(group.playerIds).length})</span><button onClick={()=>removeGroup(group.id)} className="text-red-500 text-xs">×</button></div>)}</div>}</div>}
+            {showForm&&<div className={`${phase3Card} p-5 mb-6`}><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label className="text-[9px] font-black uppercase text-slate-400">Título</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Correções defensivas — Débora" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Categoria</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option>Análise individual</option><option>Análise por setor</option><option>Adversário</option><option>Técnico</option><option>Tático</option><option>Motivacional</option><option>Recuperação</option></select></div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Links — um por linha</label><textarea value={form.urls} onChange={e=>setForm({...form,urls:e.target.value})} placeholder={'https://youtube.com/...\nhttps://drive.google.com/...'} className="w-full h-24 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Orientação técnica</label><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="O que a atleta deve observar?" className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Prazo para assistir</label><input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Destinatários</label><select value={form.targetMode} onChange={e=>setForm({...form,targetMode:e.target.value,targetValue:''})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option value="manual">Selecionar atletas</option><option value="position">Por posição</option><option value="sector">Por setor</option><option value="group">Grupo permanente</option><option value="all">Elenco inteiro</option></select></div></div>
+            {form.targetMode==='position'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha a posição</option>{positions.map(x=><option key={x}>{x}</option>)}</select></div>}
+            {form.targetMode==='sector'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha o setor</option>{['Defesa','Meio-campo','Ataque','Outros'].map(x=><option key={x}>{x}</option>)}</select></div>}
+            {form.targetMode==='group'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha o grupo permanente</option>{groups.map(group=><option key={group.id} value={group.id}>{group.name} ({safeArray(group.playerIds).length})</option>)}</select>{!groups.length&&<div className="text-[9px] text-amber-500 mt-2">Crie um grupo no botão “Grupos”.</div>}</div>}
+            {form.targetMode==='manual'&&<div className="mt-4"><div className="flex justify-between mb-2"><span className="text-[9px] uppercase font-black text-slate-400">Seleção manual ({manualIds.length})</span><button onClick={()=>setManualIds(manualIds.length===ps.length?[]:ps.map(p=>p.id))} className="text-[9px] font-black uppercase text-blue-500">{manualIds.length===ps.length?'Limpar':'Todas'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 max-h-56 overflow-y-auto custom-scroll">{ps.map(p=><button key={p.id} onClick={()=>toggle(p.id)} className={`p-2 rounded-xl border text-left flex items-center gap-2 ${manualIds.includes(p.id)?'bg-blue-600 text-white border-blue-600':'bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700'}`}><span className="w-7 h-7 rounded-full bg-slate-300 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user" size={14} className="m-1.5"/>}</span><span className="text-[10px] font-black truncate">{p.name}</span></button>)}</div></div>}
+            <button onClick={save} className="w-full mt-4 py-4 bg-red-600 text-white rounded-xl font-black uppercase text-xs">Publicar no aplicativo das atletas</button></div>}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">{assignments.length?assignments.map(item=>{const names=recipientNames(item);const read=readCount(item);return <div key={item.id} className={`${phase3Card} p-5`}><div className="flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-red-500">{item.category||'Vídeo'}</div><h3 className="font-black dark:text-white">{item.title}</h3><div className="text-[9px] text-slate-500 mt-1">{new Date(item.createdAt).toLocaleString('pt-BR')} {item.dueDate?`• prazo ${formatDateBR(item.dueDate)}`:''}</div></div><button onClick={()=>remove(item.id)} className="text-red-500"><Icon name="trash"/></button></div>{item.description&&<p className="text-xs text-slate-600 dark:text-slate-300 mt-3 whitespace-pre-wrap">{item.description}</p>}<div className="flex flex-wrap gap-2 mt-3">{safeArray(item.urls).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase">Abrir vídeo {i+1}</a>)}</div><div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900"><div className="flex justify-between text-[10px] font-black"><span className="dark:text-white">Visualizações confirmadas</span><span className="text-emerald-500">{read}/{safeArray(item.recipientIds).length}</span></div><div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full mt-2 overflow-hidden"><div className="h-full bg-emerald-500" style={{width:`${safeArray(item.recipientIds).length?read/safeArray(item.recipientIds).length*100:0}%`}}></div></div><div className="text-[9px] text-slate-500 mt-2 line-clamp-2">{names.join(', ')||'Destinatários removidos do elenco'}</div></div></div>}):<div className="col-span-full p-12 text-center text-slate-400 border-2 border-dashed rounded-2xl">Nenhuma publicação de vídeo ainda.</div>}</div></div></div>;
+        };
+
+        const CompetitionsView = ({ competitions, setCompetitions, themeColor }) => {
+            const empty={id:'',name:'',season:new Date().getFullYear().toString(),matches:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0,position:'',notes:''};
+            const [form,setForm]=useState(empty); const list=[...safeArray(competitions)];
+            const num=k=>Number(form[k])||0; const played=num('matches')||num('wins')+num('draws')+num('losses'); const points=num('wins')*3+num('draws'); const efficiency=played?Math.round(points/(played*3)*100):0;
+            const save=()=>{if(!form.name.trim())return showToast('Informe a competição.','#ef4444');const item={...form,id:form.id||`comp_${Date.now()}`,matches:played,wins:num('wins'),draws:num('draws'),losses:num('losses'),goalsFor:num('goalsFor'),goalsAgainst:num('goalsAgainst'),updatedAt:new Date().toISOString()};setCompetitions([...list.filter(x=>x.id!==item.id),item]);setForm(empty);showToast('Competição atualizada.','#10b981');};
+            const totals=list.reduce((a,c)=>({matches:a.matches+(Number(c.matches)||0),wins:a.wins+(Number(c.wins)||0),draws:a.draws+(Number(c.draws)||0),losses:a.losses+(Number(c.losses)||0),gf:a.gf+(Number(c.goalsFor)||0),ga:a.ga+(Number(c.goalsAgainst)||0)}),{matches:0,wins:0,draws:0,losses:0,gf:0,ga:0});
+            const totalEff=totals.matches?Math.round((totals.wins*3+totals.draws)/(totals.matches*3)*100):0;
+            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="mb-6"><div className="text-[9px] font-black uppercase tracking-[.25em] text-emerald-500">Resultados do clube</div><h2 className="text-2xl font-black uppercase dark:text-white">Competições</h2><p className="text-xs text-slate-500">Jogos, resultados, gols, saldo e aproveitamento por torneio.</p></div><div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">{[['Jogos',totals.matches],['Vitórias',totals.wins],['Empates',totals.draws],['Derrotas',totals.losses],['Gols pró',totals.gf],['Gols contra',totals.ga],['Aproveitamento',`${totalEff}%`]].map(([l,v])=><div key={l} className={`${phase3Card} p-4`}><div className="text-[8px] font-black uppercase text-slate-400">{l}</div><div className="text-2xl font-black dark:text-white">{v}</div></div>)}</div><div className="grid grid-cols-1 xl:grid-cols-3 gap-6"><div className={`${phase3Card} p-5`}><h3 className="font-black uppercase text-sm dark:text-white mb-4">Cadastrar / atualizar</h3><div className="grid grid-cols-2 gap-3"><div className="col-span-2"><label className="text-[9px] uppercase font-black text-slate-400">Competição</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] uppercase font-black text-slate-400">Temporada</label><input value={form.season} onChange={e=>setForm({...form,season:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] uppercase font-black text-slate-400">Posição</label><input value={form.position} onChange={e=>setForm({...form,position:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>{[['wins','Vitórias'],['draws','Empates'],['losses','Derrotas'],['goalsFor','Gols feitos'],['goalsAgainst','Gols sofridos']].map(([k,l])=><div key={k}><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><input type="number" min="0" value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}</div><div className="mt-3 p-3 rounded-xl bg-slate-900 text-white flex justify-between text-xs font-black"><span>{played} jogos</span><span>{efficiency}% aproveitamento</span><span>saldo {num('goalsFor')-num('goalsAgainst')}</span></div><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Resumo da campanha" className="w-full h-20 mt-3 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/><button onClick={save} className="w-full mt-3 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-xs">Salvar competição</button></div><div className="xl:col-span-2 space-y-3">{list.length?list.sort((a,b)=>String(b.season).localeCompare(String(a.season))).map(c=>{const m=Number(c.matches)||Number(c.wins)+Number(c.draws)+Number(c.losses);const pct=m?Math.round(((Number(c.wins)*3+Number(c.draws))/(m*3))*100):0;return <div key={c.id} className={`${phase3Card} p-5`}><div className="flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-emerald-500">{c.season} {c.position?`• posição ${c.position}`:''}</div><h3 className="text-lg font-black dark:text-white">{c.name}</h3></div><div className="flex gap-2"><button onClick={()=>setForm({...empty,...c})} className="text-blue-500"><Icon name="edit"/></button><button onClick={()=>confirm('Excluir competição?')&&setCompetitions(list.filter(x=>x.id!==c.id))} className="text-red-500"><Icon name="trash"/></button></div></div><div className="grid grid-cols-4 md:grid-cols-8 gap-2 mt-4">{[['J',m],['V',c.wins],['E',c.draws],['D',c.losses],['GP',c.goalsFor],['GC',c.goalsAgainst],['SG',(Number(c.goalsFor)||0)-(Number(c.goalsAgainst)||0)],['AP',`${pct}%`]].map(([l,v])=><div key={l} className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900 text-center"><div className="text-[8px] font-black text-slate-400">{l}</div><div className="font-black dark:text-white">{v}</div></div>)}</div>{c.notes&&<p className="text-xs text-slate-500 mt-3">{c.notes}</p>}</div>}):<div className="p-12 text-center text-slate-400 border-2 border-dashed rounded-2xl">Cadastre a primeira competição.</div>}</div></div></div></div>;
+        };
+
         const OpponentScoutView = ({ opponents, setOpponents, scoutReports, setScoutReports, nextGame, setNextGame, themeColor }) => {
-            const empty={id:'',name:'',formation:'4-3-3',style:'',strengths:'',weaknesses:'',keyPlayers:'',setPieces:'',pressing:'',buildUp:'',transitions:'',videoUrl:'',notes:'',tags:''};
+            const empty={id:'',name:'',formation:'4-3-3',style:'',strengths:'',weaknesses:'',keyPlayers:'',setPieces:'',pressing:'',buildUp:'',transitions:'',videoUrl:'',notes:'',tags:'',matches:0,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0,lastResults:'',summary:''};
             const [form,setForm]=useState(empty); const [selectedId,setSelectedId]=useState(opponents?.[0]?.id||'');
             const selected=safeArray(opponents).find(o=>o.id===selectedId);
             useEffect(()=>{if(selected)setForm({...empty,...selected});},[selectedId]);
-            const save=()=>{if(!form.name.trim())return showToast('Informe o adversário.','#ef4444'); const item={...form,id:form.id||`opp_${Date.now()}`,updatedAt:new Date().toISOString()}; setOpponents([...safeArray(opponents).filter(o=>o.id!==item.id),item]); setSelectedId(item.id); setForm(item); showToast('Scout salvo.','#10b981');};
+            const n=k=>Number(form[k])||0; const played=n('matches')||n('wins')+n('draws')+n('losses'); const pct=played?Math.round((n('wins')*3+n('draws'))/(played*3)*100):0;
+            const results=String(form.lastResults||'').toUpperCase().split(/[,;\s-]+/).map(x=>x.trim()).filter(x=>['V','E','D'].includes(x));
+            const currentStreak=()=>{if(!results.length)return '-';const first=results[0];let count=0;for(const r of results){if(r===first)count++;else break;}return `${count} ${first==='V'?'vitória(s)':first==='E'?'empate(s)':'derrota(s)'}`};
+            const save=()=>{if(!form.name.trim())return showToast('Informe o adversário.','#ef4444'); const item={...form,id:form.id||`opp_${Date.now()}`,matches:played,wins:n('wins'),draws:n('draws'),losses:n('losses'),goalsFor:n('goalsFor'),goalsAgainst:n('goalsAgainst'),lastResults:results.join(','),updatedAt:new Date().toISOString()}; setOpponents([...safeArray(opponents).filter(o=>o.id!==item.id),item]); setSelectedId(item.id); setForm(item); showToast('Scout salvo.','#10b981');};
             const saveReport=()=>{if(!selectedId)return; const report={date:nextGame?.date||getTodayStr(),opponentId:selectedId,gamePlan:scoutReports?.[selectedId]?.gamePlan||'',defensivePlan:scoutReports?.[selectedId]?.defensivePlan||'',offensivePlan:scoutReports?.[selectedId]?.offensivePlan||'',setPiecePlan:scoutReports?.[selectedId]?.setPiecePlan||'',individualTasks:scoutReports?.[selectedId]?.individualTasks||'',updatedAt:new Date().toISOString()}; setScoutReports({...safeObj(scoutReports),[selectedId]:report}); setNextGame({...safeObj(nextGame),opponent:selected?.name||form.name,opponentId:selectedId}); showToast('Plano de jogo conectado ao próximo jogo.','#10b981');};
             const report=safeObj(scoutReports?.[selectedId]); const updateReport=(k,v)=>setScoutReports({...safeObj(scoutReports),[selectedId]:{...report,[k]:v}});
-            const share=()=>{const o=selected||form;const r=safeObj(scoutReports?.[selectedId]);const text=`🔎 *SCOUT PROCOACH — ${o.name||'ADVERSÁRIO'}*\nSistema: ${o.formation||'-'}\n\n✅ Forças: ${o.strengths||'-'}\n⚠️ Vulnerabilidades: ${o.weaknesses||'-'}\n🎯 Plano ofensivo: ${r.offensivePlan||'-'}\n🛡️ Plano defensivo: ${r.defensivePlan||'-'}\n⚽ Bolas paradas: ${r.setPiecePlan||'-'}`;navigator.clipboard?.writeText(text).then(()=>showToast('Scout copiado.','#10b981'));};
-            return <div className="h-full overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="flex flex-col md:flex-row justify-between gap-3 mb-6"><div><h2 className="text-2xl font-black uppercase dark:text-white">Scout de Adversários</h2><p className="text-xs text-slate-500">Banco de inteligência, padrões de jogo e plano operacional.</p></div><div className="flex gap-2"><select value={selectedId} onChange={e=>setSelectedId(e.target.value)} className="p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-800 dark:text-white text-xs font-bold"><option value="">Novo adversário</option>{safeArray(opponents).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select><button onClick={()=>{setSelectedId('');setForm(empty)}} className="px-4 bg-slate-800 text-white rounded-xl text-xs font-black">NOVO</button></div></div><div className="grid grid-cols-1 xl:grid-cols-2 gap-6"><div className={`${phase3Card} p-5`}><h3 className="font-black uppercase text-sm mb-4 dark:text-white">Dossiê do adversário</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{[['name','Nome'],['formation','Sistema base'],['style','Modelo/estilo'],['keyPlayers','Jogadores-chave'],['pressing','Pressão'],['buildUp','Saída de bola'],['transitions','Transições'],['setPieces','Bolas paradas'],['videoUrl','Link de vídeo'],['tags','Tags']].map(([k,l])=><div key={k}><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><input value={form[k]||''} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}</div>{[['strengths','Forças'],['weaknesses','Vulnerabilidades'],['notes','Observações gerais']].map(([k,l])=><div key={k} className="mt-3"><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><textarea value={form[k]||''} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}<button onClick={save} className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-xs">Salvar adversário</button></div><div className={`${phase3Card} p-5`}><div className="flex justify-between items-center mb-4"><h3 className="font-black uppercase text-sm dark:text-white">Plano de jogo</h3><button onClick={share} className="text-[9px] font-black uppercase text-green-600">Copiar resumo</button></div>{[['gamePlan','Diretriz central'],['offensivePlan','Plano ofensivo'],['defensivePlan','Plano defensivo'],['setPiecePlan','Bolas paradas'],['individualTasks','Tarefas individuais']].map(([k,l])=><div key={k} className="mb-3"><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><textarea value={report[k]||''} onChange={e=>updateReport(k,e.target.value)} className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}<button disabled={!selectedId} onClick={saveReport} className="w-full py-3 bg-emerald-600 disabled:bg-slate-500 text-white rounded-xl font-black uppercase text-xs">Conectar ao próximo jogo</button></div></div></div>;
+            const share=()=>{const o=selected||form;const r=safeObj(scoutReports?.[selectedId]);const text=`🔎 *SCOUT PROCOACH — ${o.name||'ADVERSÁRIO'}*\nSistema: ${o.formation||'-'}\nRetrospecto: ${o.wins||0}V • ${o.draws||0}E • ${o.losses||0}D • ${o.goalsFor||0}:${o.goalsAgainst||0} gols\nÚltimos jogos: ${o.lastResults||'-'}\n\n✅ Forças: ${o.strengths||'-'}\n⚠️ Vulnerabilidades: ${o.weaknesses||'-'}\n🧠 Resumo: ${o.summary||o.notes||'-'}\n🎯 Plano ofensivo: ${r.offensivePlan||'-'}\n🛡️ Plano defensivo: ${r.defensivePlan||'-'}\n⚽ Bolas paradas: ${r.setPiecePlan||'-'}`;navigator.clipboard?.writeText(text).then(()=>showToast('Scout copiado.','#10b981'));};
+            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="flex flex-col md:flex-row justify-between gap-3 mb-6"><div><h2 className="text-2xl font-black uppercase dark:text-white">Scout de Adversários</h2><p className="text-xs text-slate-500">Retrospecto, padrões de jogo, resumo técnico e plano operacional.</p></div><div className="flex gap-2"><select value={selectedId} onChange={e=>setSelectedId(e.target.value)} className="p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-800 dark:text-white text-xs font-bold"><option value="">Novo adversário</option>{safeArray(opponents).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select><button onClick={()=>{setSelectedId('');setForm(empty)}} className="px-4 bg-slate-800 text-white rounded-xl text-xs font-black">NOVO</button></div></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">{[['Jogos',played],['Vitórias',n('wins')],['Empates',n('draws')],['Derrotas',n('losses')],['Gols pró',n('goalsFor')],['Gols contra',n('goalsAgainst')],['Aproveitamento',`${pct}%`],['Sequência',currentStreak()]].map(([l,v])=><div key={l} className={`${phase3Card} p-3`}><div className="text-[8px] uppercase font-black text-slate-400">{l}</div><div className="text-lg font-black dark:text-white mt-1">{v}</div></div>)}</div>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6"><div className={`${phase3Card} p-5`}><h3 className="font-black uppercase text-sm mb-4 dark:text-white">Dossiê do adversário</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{[['name','Nome'],['formation','Sistema base'],['style','Modelo/estilo'],['keyPlayers','Jogadores-chave'],['pressing','Pressão'],['buildUp','Saída de bola'],['transitions','Transições'],['setPieces','Bolas paradas'],['videoUrl','Link de vídeo'],['tags','Tags']].map(([k,l])=><div key={k}><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><input value={form[k]||''} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}</div><div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">{[['wins','Vitórias'],['draws','Empates'],['losses','Derrotas'],['goalsFor','Gols feitos'],['goalsAgainst','Gols sofridos']].map(([k,l])=><div key={k}><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><input type="number" min="0" value={form[k]||0} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}<div><label className="text-[9px] uppercase font-black text-slate-400">Últimos resultados</label><input value={form.lastResults||''} onChange={e=>setForm({...form,lastResults:e.target.value})} placeholder="V,V,E,D,V" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div></div>{[['strengths','Forças'],['weaknesses','Vulnerabilidades'],['summary','Resumo técnico'],['notes','Observações gerais']].map(([k,l])=><div key={k} className="mt-3"><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><textarea value={form[k]||''} onChange={e=>setForm({...form,[k]:e.target.value})} className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}<button onClick={save} className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-xs">Salvar adversário</button></div>
+            <div className={`${phase3Card} p-5`}><div className="flex justify-between items-center mb-4"><h3 className="font-black uppercase text-sm dark:text-white">Plano de jogo</h3><button onClick={share} className="text-[9px] font-black uppercase text-green-600">Copiar resumo</button></div>{[['gamePlan','Diretriz central'],['offensivePlan','Plano ofensivo'],['defensivePlan','Plano defensivo'],['setPiecePlan','Bolas paradas'],['individualTasks','Tarefas individuais']].map(([k,l])=><div key={k} className="mb-3"><label className="text-[9px] uppercase font-black text-slate-400">{l}</label><textarea value={report[k]||''} onChange={e=>updateReport(k,e.target.value)} className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div>)}<button disabled={!selectedId} onClick={saveReport} className="w-full py-3 bg-emerald-600 disabled:bg-slate-500 text-white rounded-xl font-black uppercase text-xs">Conectar ao próximo jogo</button></div></div></div></div>;
         };
 
         const DirectorPortalView = ({ players, trainingLog, dmRecords, attendanceLog, matchMinutes, assessments, selectionPlans, nextGame, organization, header, themeColor }) => {
@@ -5774,7 +5952,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             const [name,setName]=useState(''); const [shortName,setShortName]=useState(''); const [country,setCountry]=useState(organization?.country||'Brasil');
             const workspaces=safeArray(profile?.workspaces);
             const saveOrg=()=>{setOrganization({...safeObj(organization),name:organization?.name||name||'Meu Clube',shortName:organization?.shortName||shortName,country,updatedAt:new Date().toISOString(),plan:organization?.plan||'Performance'});showToast('Identidade do clube atualizada.','#10b981');};
-            const createWorkspace=async()=>{if(!name.trim())return showToast('Informe o nome do clube.','#ef4444');const slug=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30)||'clube';const id=`${user.uid}_club_${slug}_${Date.now().toString(36).slice(-4)}`;const item={id,name:name.trim(),shortName:shortName.trim(),createdAt:new Date().toISOString(),ownerUid:user.uid};await db.collection('coachData').doc(id).set({ownerUid:user.uid,organization:item,dataSchemaVersion:6,players:[],trainingLog:{},assessments:{},dmRecords:[],attendanceLog:{},matchMinutes:{},days:DEFAULT_DAYS,themeColor:'#1e3a8a',darkMode:true},{merge:true});const next={...safeObj(profile),workspaces:[...workspaces,item]};await db.collection('procoachProfiles').doc(user.uid).set(next,{merge:true});setProfile(next);setName('');setShortName('');showToast('Novo clube criado.','#10b981');};
+            const createWorkspace=async()=>{if(!name.trim())return showToast('Informe o nome do clube.','#ef4444');const slug=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,30)||'clube';const id=`${user.uid}_club_${slug}_${Date.now().toString(36).slice(-4)}`;const item={id,name:name.trim(),shortName:shortName.trim(),createdAt:new Date().toISOString(),ownerUid:user.uid};await db.collection('coachData').doc(id).set({ownerUid:user.uid,organization:item,dataSchemaVersion:7,players:[],trainingLog:{},assessments:{},dmRecords:[],attendanceLog:{},matchMinutes:{},days:DEFAULT_DAYS,themeColor:'#1e3a8a',darkMode:true},{merge:true});const next={...safeObj(profile),workspaces:[...workspaces,item]};await db.collection('procoachProfiles').doc(user.uid).set(next,{merge:true});setProfile(next);setName('');setShortName('');showToast('Novo clube criado.','#10b981');};
             const switchTo=id=>{localStorage.setItem('procoach_active_workspace',id);localStorage.setItem('procoach_active_team','pro');const url=new URL(window.location.href);url.searchParams.set('workspace',id);window.location.href=url.toString();};
             return <div className="h-full overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="mb-6"><h2 className="text-2xl font-black uppercase dark:text-white">Gestão Multi-Clube</h2><p className="text-xs text-slate-500">Fundação SaaS para administrar organizações e categorias independentes.</p></div><div className="grid grid-cols-1 xl:grid-cols-2 gap-6"><div className={`${phase3Card} p-5`}><h3 className="font-black uppercase text-sm dark:text-white mb-4">Clubes e espaços de trabalho</h3><div className="space-y-2 mb-5">{workspaces.map(w=><button key={w.id} onClick={()=>switchTo(w.id)} className={`w-full text-left p-4 rounded-xl border ${activeWorkspace===w.id?'border-blue-500 bg-blue-50 dark:bg-blue-900/20':'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'}`}><div className="font-black dark:text-white">{w.name}</div><div className="text-[9px] text-slate-500">{w.id} {activeWorkspace===w.id?'• ATIVO':''}</div></button>)}</div><div className="grid grid-cols-2 gap-2"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Novo clube" className="p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/><input value={shortName} onChange={e=>setShortName(e.target.value)} placeholder="Sigla" className="p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><button onClick={createWorkspace} className="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-xs">Criar organização independente</button></div><div className={`${phase3Card} p-5`}><h3 className="font-black uppercase text-sm dark:text-white mb-4">Identidade e plano</h3><div className="space-y-3"><input value={organization?.name||''} onChange={e=>setOrganization({...safeObj(organization),name:e.target.value})} placeholder="Nome oficial" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/><input value={organization?.shortName||''} onChange={e=>setOrganization({...safeObj(organization),shortName:e.target.value})} placeholder="Nome curto" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/><input value={country} onChange={e=>setCountry(e.target.value)} placeholder="País" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/><div className="p-4 bg-slate-900 text-white rounded-xl"><div className="text-[9px] font-black uppercase text-blue-300">Plano atual</div><div className="text-2xl font-black">{organization?.plan||'Performance'}</div><div className="text-[10px] text-slate-400">Estrutura pronta para cobrança, limites e personalização por clube.</div></div></div><button onClick={saveOrg} className="w-full mt-4 bg-emerald-600 text-white py-3 rounded-xl font-black uppercase text-xs">Salvar identidade</button></div></div></div>;
         };
@@ -5820,9 +5998,16 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             const [postGameResponses, setPostGameResponses] = useState(initialData?.postGameResponses || {});
             const [integrationSettings, setIntegrationSettings] = useState(initialData?.integrationSettings || {});
             const [externalMetrics, setExternalMetrics] = useState(initialData?.externalMetrics || {});
+            const [exerciseHistory, setExerciseHistory] = useState(initialData?.exerciseHistory || {});
+            const [sessionMetadata, setSessionMetadata] = useState(initialData?.sessionMetadata || {});
+            const [archivedPlayers, setArchivedPlayers] = useState(initialData?.archivedPlayers || []);
+            const [athleteGroups, setAthleteGroups] = useState(initialData?.athleteGroups || []);
+            const [videoAssignments, setVideoAssignments] = useState(initialData?.videoAssignments || []);
+            const [competitions, setCompetitions] = useState(initialData?.competitions || []);
             const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('procoach_sidebar_collapsed') === '1');
             const [globalSearch, setGlobalSearch] = useState('');
             const [favoriteTabs, setFavoriteTabs] = useState(()=>{try{return JSON.parse(localStorage.getItem('procoach_favorite_tabs')||'[]')}catch(e){return []}});
+            const [workoutRequestedDate, setWorkoutRequestedDate] = useState('');
             const currentRole = resolveWorkspaceRole(user, { ...initialData, memberRoles }, workspaceId);
             const canTab = key => roleCan(currentRole, TAB_PERMISSION[key] || 'dashboard');
             
@@ -5846,6 +6031,56 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     setDmRecords(current => remapDmRecordsForRosterChange(current, previousPlayers, nextPlayers));
                 }
                 setPlayers(nextPlayers);
+            };
+
+            const archivePlayerIds = (playerIds) => {
+                const ids = new Set(safeArray(playerIds).map(String));
+                if (!ids.size) return;
+                const currentPlayers = normalizePlayers(players);
+                const indices = currentPlayers.map((player,index)=>ids.has(String(player.id))?index:-1).filter(index=>index>=0);
+                const snapshots = indices.map(index => {
+                    const player = currentPlayers[index];
+                    const pullDateMap = source => Object.fromEntries(Object.entries(safeObj(source)).filter(([,day])=>safeObj(day)[index]!==undefined).map(([date,day])=>[date,safeObj(day)[index]]));
+                    return {
+                        archiveId:`archive_${player.id}_${Date.now()}_${index}`,
+                        archivedAt:new Date().toISOString(), teamId:activeTeam,
+                        player,
+                        trainingLog:pullDateMap(trainingLog), attendanceLog:pullDateMap(attendanceLog), matchMinutes:pullDateMap(matchMinutes), postGameResponses:pullDateMap(postGameResponses), externalMetrics:pullDateMap(externalMetrics),
+                        assessments:safeObj(assessments)[index],
+                        dmRecords:safeArray(dmRecords).filter(record=>String(record?.playerUid||'')===String(player.id)||Number(record?.playerId)===index)
+                    };
+                });
+                setArchivedPlayers(current => [...snapshots, ...safeArray(current)]);
+                setPlayersSafely(currentPlayers.filter(player=>!ids.has(String(player.id))));
+                setAuditLog(log=>appendAuditEntry(log,user,'ATLETAS ARQUIVADAS',`${snapshots.length} atleta(s) na equipe ${activeTeam}`));
+            };
+
+            const restoreArchivedPlayer = (archiveId) => {
+                const entry = safeArray(archivedPlayers).find(item=>item.archiveId===archiveId);
+                if (!entry?.player) return;
+                if (players.some(player=>String(player.id)===String(entry.player.id))) return showToast('Esta atleta já está no elenco ativo.','#eab308');
+                const previousPlayers = normalizePlayers(players);
+                const nextPlayers = normalizePlayers([...previousPlayers, entry.player]);
+                const stableId = entry.player.id;
+                const restoreDateMap = (current, archivedMap) => {
+                    const cloud = encodeDatePlayerMapForCloud(current, previousPlayers, false);
+                    Object.entries(safeObj(archivedMap)).forEach(([date,value])=>{ cloud[date]={...safeObj(cloud[date]),[stableId]:value}; });
+                    return decodeDatePlayerMapForUI(cloud,nextPlayers);
+                };
+                const assessmentCloud = encodePlayerMapForCloud(assessments, previousPlayers, false);
+                if (entry.assessments !== undefined) assessmentCloud[stableId]=entry.assessments;
+                const dmCloud = [...encodeDmRecordsForCloud(dmRecords, previousPlayers), ...safeArray(entry.dmRecords).map(record=>({...record,playerUid:stableId,playerId:stableId}))];
+                setTrainingLog(current=>restoreDateMap(current,entry.trainingLog));
+                setAttendanceLog(current=>restoreDateMap(current,entry.attendanceLog));
+                setMatchMinutes(current=>restoreDateMap(current,entry.matchMinutes));
+                setPostGameResponses(current=>restoreDateMap(current,entry.postGameResponses));
+                setExternalMetrics(current=>restoreDateMap(current,entry.externalMetrics));
+                setAssessments(decodePlayerMapForUI(assessmentCloud,nextPlayers));
+                setDmRecords(decodeDmRecordsForUI(dmCloud,nextPlayers));
+                setPlayers(nextPlayers);
+                setArchivedPlayers(current=>safeArray(current).filter(item=>item.archiveId!==archiveId));
+                setAuditLog(log=>appendAuditEntry(log,user,'ATLETA RESTAURADA',entry.player.name||stableId));
+                showToast(`${entry.player.name} voltou ao elenco com o histórico.`,'#10b981');
             };
 
             // Robô Cobrador Automático (Nudge Bot)
@@ -5916,6 +6151,12 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     setPostGameResponses(initialData.postGameResponses || {});
                     setIntegrationSettings(initialData.integrationSettings || {});
                     setExternalMetrics(initialData.externalMetrics || {});
+                    setExerciseHistory(initialData.exerciseHistory || {});
+                    setSessionMetadata(initialData.sessionMetadata || {});
+                    setArchivedPlayers(initialData.archivedPlayers || []);
+                    setAthleteGroups(initialData.athleteGroups || []);
+                    setVideoAssignments(initialData.videoAssignments || []);
+                    setCompetitions(initialData.competitions || []);
                     setThemeColor(initialData.themeColor || '#1e3a8a');
                     setDarkMode(!!initialData.darkMode);
                     setLogo(initialData.logo || null);
@@ -5954,7 +6195,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     const dataToSave = prepareCloudPayload({
                         themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics,
                         header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals,
-                        ownerUid: initialData?.ownerUid || user.uid, workspaceRootId: activeWorkspace || user.uid, teamId: activeTeam, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings,
+                        ownerUid: initialData?.ownerUid || user.uid, workspaceRootId: activeWorkspace || user.uid, teamId: activeTeam, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, exerciseHistory, sessionMetadata, archivedPlayers, athleteGroups, videoAssignments, competitions,
                         postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent,
                         trainingStatus: initialData?.trainingStatus || 'pre'
                     });
@@ -5967,7 +6208,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         });
                 }, 800);
                 return () => clearTimeout(timeoutId);
-            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics, header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam, activeWorkspace, workspaceId]);
+            }, [themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics, header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, exerciseHistory, sessionMetadata, archivedPlayers, athleteGroups, videoAssignments, competitions, postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent, user, activeTeam, activeWorkspace, workspaceId]);
            const dispararAlerta = async () => {
                 const now = Date.now();
                 setLastAlertSent(now);
@@ -5999,7 +6240,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     const dataToExport = prepareCloudPayload({
                         themeColor, players, trainingLog, assessments, dmRecords, matchMinutes, attendanceLog, postGameResponses, externalMetrics,
                         header, logo, darkMode, days, exercises, library, macrocycle, selectionPlans, assessmentGoals,
-                        ownerUid: initialData?.ownerUid || user.uid, workspaceRootId: activeWorkspace || user.uid, teamId: activeTeam, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings,
+                        ownerUid: initialData?.ownerUid || user.uid, workspaceRootId: activeWorkspace || user.uid, teamId: activeTeam, memberRoles, organization, opponents, scoutReports, directorSettings, athleteAccess, auditLog, athleteDocuments, athleteRequests, notificationCenter, athleteNotificationReads, resolvedAlerts, printSettings, guardianProfiles, guardianAccess, careAppointments, consentTemplates, consentRecords, teamCommitments, commitmentResponses, integrationSettings, exerciseHistory, sessionMetadata, archivedPlayers, athleteGroups, videoAssignments, competitions,
                         postWorkout, coachMsg, videoUrl, nextGame, lastAlertSent,
                         trainingStatus: initialData?.trainingStatus || 'pre'
                     });
@@ -6061,20 +6302,26 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     setPostGameResponses(imported.postGameResponses || {});
                     setIntegrationSettings(imported.integrationSettings || {});
                     setExternalMetrics(imported.externalMetrics || {});
+                    setExerciseHistory(imported.exerciseHistory || {});
+                    setSessionMetadata(imported.sessionMetadata || {});
+                    setArchivedPlayers(imported.archivedPlayers || []);
+                    setAthleteGroups(imported.athleteGroups || []);
+                    setVideoAssignments(imported.videoAssignments || []);
+                    setCompetitions(imported.competitions || []);
                     setPostWorkout(imported.postWorkout || 'Livre');
                     setCoachMsg(imported.coachMsg || '');
                     setVideoUrl(imported.videoUrl || '');
                     setNextGame(imported.nextGame || { logistics: '' });
                     setLastAlertSent(imported.lastAlertSent || 0);
-                    showToast("Dados restaurados e migrados para o esquema integrado V6! 🔄");
+                    showToast("Dados restaurados e migrados para o esquema integrado V7! 🔄");
                 }
             };
 
             const navGroups = [
-                { label: 'Operação', items: [['home','Central'],['alerts','Alertas'],['micro','Microciclo'],['workout','Treino'],['macro','Temporada']] },
+                { label: 'Operação', items: [['home','Central'],['alerts','Alertas'],['micro','Microciclo'],['workout','Treino'],['calendar','Calendário'],['videos','Vídeos'],['macro','Temporada']] },
                 { label: 'Gestão do elenco', items: [['squad','Elenco'],['profile360','Perfil 360º'],['contracts','Contratos'],['documents','Documentos'],['family','Família/LGPD'],['wellness','Wellness'],['pse','PSE'],['freq','Frequência'],['dm','DM/RTP'],['clinical','Clínico']] },
                 { label: 'Operação humana', items: [['care','Agenda Clínica'],['commitments','Compromissos']] },
-                { label: 'Performance', items: [['assessment','Avaliações'],['match','Pré-jogo'],['selection','Convocação'],['gameday','Jogo'],['postgame','Pós-jogo'],['reports','Relatórios'],['print','Impressão'],['library','Biblioteca'],['integrations','Integrações']] },
+                { label: 'Performance', items: [['competitions','Competições'],['assessment','Avaliações'],['match','Pré-jogo'],['selection','Convocação'],['gameday','Jogo'],['postgame','Pós-jogo'],['reports','Relatórios'],['print','Impressão'],['library','Biblioteca'],['integrations','Integrações']] },
                 { label: 'Enterprise', items: [['scout','Adversários'],['director','Diretoria'],['access','Acessos'],['audit','Auditoria'],['clubs','Clubes']] }
             ].map(group => ({ ...group, items: group.items.filter(([key]) => canTab(key)) })).filter(group => group.items.length);
             const allNavItems = navGroups.flatMap(group=>group.items.map(([key,label])=>({key,label,group:group.label})));
@@ -6097,7 +6344,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V1.1.3 ESTÁVEL</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V1.3.0 FINALIZAÇÃO</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
@@ -6204,8 +6451,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         )}
                         <div className="h-full min-h-0">
 {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} assessments={assessments} matchMinutes={matchMinutes} nextGame={nextGame} setNextGame={setNextGame} header={header} setHeader={setHeader} onNavigate={setTab} user={user} workspaceId={workspaceId || getActiveDocId(user.uid)} teamCommitments={teamCommitments} setTeamCommitments={setTeamCommitments} />}
-                            {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} themeColor={themeColor} />}
-                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} />}
+                            {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} videoAssignments={videoAssignments} themeColor={themeColor} />}
+                            {tab === 'squad' && <SquadView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} archivedPlayers={archivedPlayers} onArchivePlayers={archivePlayerIds} onRestoreArchived={restoreArchivedPlayer} />}
                             {tab === 'micro' && <MicrocycleSeasonView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} library={library} macrocycle={macrocycle} setMacrocycle={setMacrocycle} />}
                             {tab === 'wellness' && <WellnessDashboard players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} user={user} />}
                             {tab === 'pse' && <PSEView players={players} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} />}
@@ -6217,7 +6464,10 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             {tab === 'reports' && <ReportsView players={players} trainingLog={trainingLog} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} header={header} logo={logo} themeColor={themeColor} />}
                             {tab === 'library' && <LibraryPhase2Suite themeColor={themeColor} library={library} setLibrary={setLibrary} initialData={initialData} user={user} />}
                             {tab === 'macro' && <SeasonPlannerPhase2 themeColor={themeColor} macrocycle={macrocycle} setMacrocycle={setMacrocycle} user={user} days={days} setDays={setDays} />}
-                            {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} initialData={initialData} user={user} />}
+                            {tab === 'workout' && <WorkoutBuilderView themeColor={themeColor} exercises={exercises} setExercises={setExercises} library={library} postWorkout={postWorkout} setPostWorkout={setPostWorkout} players={players} trainingLog={trainingLog} exerciseHistory={exerciseHistory} setExerciseHistory={setExerciseHistory} sessionMetadata={sessionMetadata} setSessionMetadata={setSessionMetadata} requestedDate={workoutRequestedDate} initialData={initialData} user={user} />}
+                            {tab === 'calendar' && <TrainingCalendarView exerciseHistory={exerciseHistory} sessionMetadata={sessionMetadata} trainingLog={trainingLog} attendanceLog={attendanceLog} players={players} themeColor={themeColor} onOpenWorkout={date=>{setWorkoutRequestedDate(date);setTab('workout')}} />}
+                            {tab === 'videos' && <VideoCenterView players={players} athleteGroups={athleteGroups} setAthleteGroups={setAthleteGroups} videoAssignments={videoAssignments} setVideoAssignments={setVideoAssignments} athleteNotificationReads={athleteNotificationReads} themeColor={themeColor} />}
+                            {tab === 'competitions' && <CompetitionsView competitions={competitions} setCompetitions={setCompetitions} themeColor={themeColor} />}
                             {tab === 'freq' && <AttendanceView players={players} themeColor={themeColor} attendanceLog={attendanceLog} setAttendanceLog={setAttendanceLog} dmRecords={dmRecords} user={user} />}
                             {tab === 'alerts' && <AlertsCenterView user={user} workspaceId={workspaceId} players={players} trainingLog={trainingLog} dmRecords={dmRecords} attendanceLog={attendanceLog} athleteRequests={athleteRequests} setAthleteRequests={setAthleteRequests} resolvedAlerts={resolvedAlerts} setResolvedAlerts={setResolvedAlerts} notificationCenter={notificationCenter} setNotificationCenter={setNotificationCenter} careAppointments={careAppointments} teamCommitments={teamCommitments} commitmentResponses={commitmentResponses} onNavigate={setTab} />}
                             {tab === 'contracts' && <ContractsView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} />}
