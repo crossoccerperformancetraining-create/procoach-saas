@@ -1,7 +1,7 @@
 {
   "name": "ProCoach Performance Suite",
   "short_name": "ProCoach",
-  "start_url": "/index.html?v=120",
+  "start_url": "/index.html?v=130",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#1e3a8a",
