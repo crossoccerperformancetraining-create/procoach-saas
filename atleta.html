@@ -111,10 +111,25 @@
 
         // Compatibilidade de dados V2: player.id é a chave oficial.
         // O índice numérico continua sendo gravado temporariamente para versões antigas.
-        const normalizePortalPlayers = (players) => safeArray(players).map((player, index) => ({
-            ...safeObj(player),
-            id: String(player?.id || `atl_${index}_${String(player?.name || 'atleta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'atleta'}`)
-        }));
+        const portalPlayerSlug = (player) => String(player?.name || 'atleta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'atleta';
+        const portalPlayerFingerprint = (player) => {
+            const source = [player?.name, player?.birthDate, player?.dob, player?.email, player?.phone, player?.shirtNumber, player?.number].filter(Boolean).join('|').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            let hash = 2166136261;
+            for (let i = 0; i < source.length; i++) { hash ^= source.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+            return (hash >>> 0).toString(36);
+        };
+        const normalizePortalPlayers = (players) => safeArray(players).map((player, index) => {
+            const raw = safeObj(player);
+            const id = String(raw.id || `atl_${portalPlayerFingerprint(raw)}_${portalPlayerSlug(raw)}`);
+            const formerIndexId = `atl_${index}_${portalPlayerSlug(raw)}`;
+            const legacyIds = [...new Set([...(Array.isArray(raw.legacyIds) ? raw.legacyIds.map(String) : []), raw.id ? null : formerIndexId].filter(Boolean))].filter(alias => alias !== id);
+            return { ...raw, id, legacyIds };
+        });
+        const portalPlayerMatchesId = (player, requestedId) => {
+            if (!player || !requestedId) return false;
+            const value = String(requestedId);
+            return String(player.id) === value || safeArray(player.legacyIds).map(String).includes(value);
+        };
 
         const getPlayerStableId = (players, index) => {
             const player = safeArray(players)[index];
@@ -336,7 +351,7 @@
                 const d=payload||{}; const normalizedPlayers=normalizePortalPlayers(d.players || (d.player ? [d.player] : []));
                 const requestedUid=selectedPlayerUidRef.current||playerUid;
                 setData({ dataSchemaVersion:Number(d.dataSchemaVersion)||6, players:normalizedPlayers, log:d.trainingLog||d.log||{}, ex:d.exercises||d.ex||[], exHistory:d.exerciseHistory||d.exHistory||{}, act:d.activationExercises||d.act||[], dm:d.dmRecords||d.dm||[], ass:d.assessments||d.ass||{}, matchM:d.matchMinutes||d.matchM||{}, postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, postW:d.postWorkout||d.postW||'IA', nextG:d.nextGame||d.nextG||{}, coachMsg:d.coachMsg||'', color:d.themeColor||d.color||'#1e3a8a', id:d.workspaceId||d.id||activeCoachDocId, videoUrl:d.videoUrl||'', logo:d.logo||null, teamName:d.teamName||(d.header&&d.header.teamName)||'PROCOACH', days:d.days||[], lastAlertSent:d.lastAlertSent||0, trainingStatus:d.trainingStatus||'pre', notifications:d.notificationCenter||d.notifications||[], documents:d.athleteDocuments||d.documents||[], requests:d.athleteRequests||d.requests||[], notificationReads:d.athleteNotificationReads||d.notificationReads||{}, appointments:d.careAppointments||d.appointments||[], commitments:d.teamCommitments||d.commitments||[], commitmentResponses:d.commitmentResponses||{}, consentTemplates:d.consentTemplates||[], consentRecords:d.consentRecords||{}, privateHealth:d.privateHealth||{}, guardianProfile:d.guardianProfile||{}, videoAssignments:safeArray(d.videoAssignments).filter(item=>!requestedUid||safeArray(item.recipientIds).map(String).includes(String(requestedUid))) });
-                let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>String(p.id)===String(requestedUid)):0; if(foundIndex<0&&normalizedPlayers.length===1)foundIndex=0;
+                let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>portalPlayerMatchesId(p, requestedUid)):0; if(foundIndex<0&&normalizedPlayers.length===1)foundIndex=0;
                 if(foundIndex>=0){ setIdx(foundIndex); selectedPlayerUidRef.current=normalizedPlayers[foundIndex].id; setIsPriv(true); } setLoading(false);
             };
 
@@ -378,7 +393,7 @@
 
                         let foundIndex = -1;
                         if (requestedUid) {
-                            foundIndex = normalizedPlayers.findIndex(p => p && String(p.id) === String(requestedUid));
+                            foundIndex = normalizedPlayers.findIndex(p => portalPlayerMatchesId(p, requestedUid));
                         } else if (Number.isInteger(playerIndex)) {
                             foundIndex = playerIndex;
                         }
@@ -387,6 +402,12 @@
                             setIdx(foundIndex);
                             selectedPlayerUidRef.current = normalizedPlayers[foundIndex].id;
                             setIsPriv(!coachPreview);
+                            if (requestedUid && String(requestedUid) !== String(normalizedPlayers[foundIndex].id) && !coachPreview) {
+                                const canonicalUrl = new URL(window.location.href);
+                                canonicalUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
+                                canonicalUrl.searchParams.delete('p');
+                                window.history.replaceState({}, '', canonicalUrl.toString());
+                            }
                             // Converte silenciosamente links antigos ?p= para o formato estável ?uid=.
                             if (!playerUid && normalizedPlayers[foundIndex]?.id && !coachPreview) {
                                 const nextUrl = new URL(window.location.href);
