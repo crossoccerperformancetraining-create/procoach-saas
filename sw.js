@@ -1,4 +1,4 @@
-const CACHE_NAME = 'procoach-cache-v140';
+const CACHE_NAME = 'procoach-cache-v141';
 const CORE = ['/index.html?v=131', '/atleta.html?v=131', '/manifest.json', '/athlete-manifest.json', '/logo.png'];
 self.addEventListener('install', event => {
   self.skipWaiting();
