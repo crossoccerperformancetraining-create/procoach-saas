@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Atleta | ProCoach 2.0.1</title>
-    <link rel="manifest" href="athlete-manifest.json?v=201">
+    <title>Portal do Atleta | ProCoach 2.0.2</title>
+    <link rel="manifest" href="athlete-manifest.json?v=202">
     <meta name="theme-color" content="#020617">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,7 +43,7 @@
         .athlete-safe-bottom { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
         .athlete-card { background: rgba(15,23,42,.72); border: 1px solid #1e293b; border-radius: 24px; }
 
-        /* ProCoach 2.0.1 — polimento do Portal da Atleta */
+        /* ProCoach 2.0.2 — estabilidade de acesso e reconexão */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
         button, [role="button"], input, select, textarea { font: inherit; }
@@ -81,6 +81,13 @@
         const { useState, useEffect, useMemo, useRef } = React;
         const firebaseConfig = { apiKey: "AIzaSyDP3yVMqP_4C2CyVRzLW7jTYzCAAMJXIco", authDomain: "prosaude-e9130.firebaseapp.com", projectId: "prosaude-e9130" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); const db = firebase.firestore(); const auth = firebase.auth();
+        // Mantém a última cópia válida do portal disponível em oscilações de rede.
+        // A chamada é tolerante a navegadores sem suporte e a múltiplas abas abertas.
+        try {
+            db.enablePersistence({ synchronizeTabs: true }).catch(error => {
+                if (!['failed-precondition', 'unimplemented'].includes(error?.code)) console.warn('Persistência offline do portal:', error);
+            });
+        } catch (error) { console.warn('Persistência offline indisponível:', error); }
         
         const urlParams = new URLSearchParams(window.location.search);
         const rawCoachId = urlParams.get('id'); 
@@ -356,95 +363,203 @@
             const [postGameForm,setPostGameForm]=useState({perceivedPerformance:7,matchRpe:5,minutes:0,recovery:5,pain:0,painLocation:'',comments:''});
             const [offlineCount,setOfflineCount]=useState(0);
             const [cyclePending,setCyclePending]=useState(false);
+            const [portalStatus,setPortalStatus]=useState('loading');
+            const [syncMessage,setSyncMessage]=useState('');
+            const [retryKey,setRetryKey]=useState(0);
+            const [isOnline,setIsOnline]=useState(typeof navigator === 'undefined' ? true : navigator.onLine);
             const [authUser, setAuthUser] = useState(null); const [authLoading, setAuthLoading] = useState(secureMode);
             const [loginMode, setLoginMode] = useState('login'); const [loginEmail, setLoginEmail] = useState(''); const [loginPassword, setLoginPassword] = useState(''); const [loginError, setLoginError] = useState('');
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null); const selectedPlayerUidRef = useRef(playerUid || null);
+            const hasPortalDataRef = useRef(false);
 
             useEffect(() => auth.onAuthStateChanged(user => { setAuthUser(user); setAuthLoading(false); }), []);
+            useEffect(() => {
+                const handleOffline = () => {
+                    setIsOnline(false);
+                    setSyncMessage(hasPortalDataRef.current ? 'Sem internet. Exibindo a última versão sincronizada.' : 'Sem internet. Conecte-se para carregar o perfil.');
+                    setPortalStatus(hasPortalDataRef.current ? 'offline-cached' : 'offline');
+                    if (!hasPortalDataRef.current) setLoading(false);
+                };
+                const handleOnline = () => {
+                    setIsOnline(true);
+                    setSyncMessage(hasPortalDataRef.current ? 'Conexão restabelecida. Atualizando dados…' : 'Conexão restabelecida. Tentando novamente…');
+                    setPortalStatus(hasPortalDataRef.current ? 'syncing-cached' : 'loading');
+                    if (!hasPortalDataRef.current) setLoading(true);
+                    setRetryKey(value => value + 1);
+                };
+                window.addEventListener('offline', handleOffline);
+                window.addEventListener('online', handleOnline);
+                return () => { window.removeEventListener('offline', handleOffline); window.removeEventListener('online', handleOnline); };
+            }, []);
             useEffect(()=>{if(!secureMode||!authUser||!activeCoachDocId||!playerUid)return;window.OneSignalDeferred=window.OneSignalDeferred||[];window.OneSignalDeferred.push(async OneSignal=>{try{await OneSignal.login(`${guardianMode?'guardian':'athlete'}:${activeCoachDocId}:${playerUid}`)}catch(e){console.warn('OneSignal login',e)}})},[authUser,activeCoachDocId,playerUid,guardianMode]);
+
+            const retryPortal = () => {
+                setLoginError('');
+                setSyncMessage('');
+                setPortalStatus('loading');
+                setLoading(true);
+                setRetryKey(value => value + 1);
+            };
+
+            const markPortalReady = (normalizedPlayers, foundIndex, fromCache=false) => {
+                setIdx(foundIndex);
+                selectedPlayerUidRef.current = normalizedPlayers[foundIndex].id;
+                setIsPriv(!coachPreview);
+                hasPortalDataRef.current = true;
+                const cached = fromCache || !navigator.onLine;
+                setPortalStatus(cached ? (navigator.onLine ? 'syncing-cached' : 'offline-cached') : 'ready');
+                setSyncMessage(cached ? (navigator.onLine ? 'Abrindo os dados salvos enquanto sincronizamos…' : 'Sem internet. Exibindo a última versão sincronizada.') : '');
+                setLoading(false);
+            };
 
             const applyPortalPayload = (payload) => {
                 const d=payload||{}; const normalizedPlayers=normalizePortalPlayers(d.players || (d.player ? [d.player] : []));
                 const requestedUid=selectedPlayerUidRef.current||playerUid;
-                setData({ dataSchemaVersion:Number(d.dataSchemaVersion)||6, players:normalizedPlayers, log:d.trainingLog||d.log||{}, ex:d.exercises||d.ex||[], exHistory:d.exerciseHistory||d.exHistory||{}, act:d.activationExercises||d.act||[], dm:d.dmRecords||d.dm||[], ass:d.assessments||d.ass||{}, matchM:d.matchMinutes||d.matchM||{}, postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, postW:d.postWorkout||d.postW||'IA', nextG:d.nextGame||d.nextG||{}, coachMsg:d.coachMsg||'', color:d.themeColor||d.color||'#1e3a8a', id:d.workspaceId||d.id||activeCoachDocId, videoUrl:d.videoUrl||'', logo:d.logo||null, teamName:d.teamName||(d.header&&d.header.teamName)||'PROCOACH', days:d.days||[], lastAlertSent:d.lastAlertSent||0, trainingStatus:d.trainingStatus||'pre', notifications:d.notificationCenter||d.notifications||[], documents:d.athleteDocuments||d.documents||[], requests:d.athleteRequests||d.requests||[], notificationReads:d.athleteNotificationReads||d.notificationReads||{}, appointments:d.careAppointments||d.appointments||[], commitments:d.teamCommitments||d.commitments||[], commitmentResponses:d.commitmentResponses||{}, consentTemplates:d.consentTemplates||[], consentRecords:d.consentRecords||{}, privateHealth:d.privateHealth||{}, guardianProfile:d.guardianProfile||{}, videoAssignments:safeArray(d.videoAssignments).filter(item=>!requestedUid||safeArray(item.recipientIds).map(String).includes(String(requestedUid))) });
-                let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>portalPlayerMatchesId(p, requestedUid)):0; if(foundIndex<0&&normalizedPlayers.length===1)foundIndex=0;
-                if(foundIndex>=0){ setIdx(foundIndex); selectedPlayerUidRef.current=normalizedPlayers[foundIndex].id; setIsPriv(true); } setLoading(false);
+                const nextData={ dataSchemaVersion:Number(d.dataSchemaVersion)||6, players:normalizedPlayers, log:d.trainingLog||d.log||{}, ex:d.exercises||d.ex||[], exHistory:d.exerciseHistory||d.exHistory||{}, act:d.activationExercises||d.act||[], dm:d.dmRecords||d.dm||[], ass:d.assessments||d.ass||{}, matchM:d.matchMinutes||d.matchM||{}, postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, postW:d.postWorkout||d.postW||'IA', nextG:d.nextGame||d.nextG||{}, coachMsg:d.coachMsg||'', color:d.themeColor||d.color||'#1e3a8a', id:d.workspaceId||d.id||activeCoachDocId, videoUrl:d.videoUrl||'', logo:d.logo||null, teamName:d.teamName||(d.header&&d.header.teamName)||'PROCOACH', days:d.days||[], lastAlertSent:d.lastAlertSent||0, trainingStatus:d.trainingStatus||'pre', notifications:d.notificationCenter||d.notifications||[], documents:d.athleteDocuments||d.documents||[], requests:d.athleteRequests||d.requests||[], notificationReads:d.athleteNotificationReads||d.notificationReads||{}, appointments:d.careAppointments||d.appointments||[], commitments:d.teamCommitments||d.commitments||[], commitmentResponses:d.commitmentResponses||{}, consentTemplates:d.consentTemplates||[], consentRecords:d.consentRecords||{}, privateHealth:d.privateHealth||{}, guardianProfile:d.guardianProfile||{}, videoAssignments:safeArray(d.videoAssignments).filter(item=>!requestedUid||safeArray(item.recipientIds).map(String).includes(String(requestedUid))) };
+                let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>portalPlayerMatchesId(p, requestedUid)):0;
+                if(foundIndex<0&&normalizedPlayers.length===1)foundIndex=0;
+                if(foundIndex>=0&&normalizedPlayers[foundIndex]){
+                    setData(nextData);
+                    markPortalReady(normalizedPlayers,foundIndex,false);
+                } else {
+                    setData(nextData);
+                    setIdx(null);
+                    setIsPriv(!coachPreview);
+                    setPortalStatus('not-found');
+                    setSyncMessage('O servidor confirmou que este identificador não pertence a uma atleta ativa.');
+                    setLoading(false);
+                }
             };
 
             useEffect(() => {
-                if (!activeCoachDocId) {
+                let cancelled = false;
+                let unsubscribe = null;
+                const waitTimer = window.setTimeout(() => {
+                    if (cancelled || hasPortalDataRef.current) return;
+                    const offline = !navigator.onLine;
                     setLoading(false);
-                    showToast("Erro: Link de acesso incompleto.", "#ef4444");
-                    return;
-                }
-                if (secureMode) {
-                    if (authLoading || !authUser) { setLoading(false); return; }
-                    let cancelled=false;
-                    const loadSecure=async()=>{ try { const endpoint=guardianMode?'/api/guardian-data':'/api/athlete-data'; const result=await apiRequest(`${endpoint}?workspaceId=${encodeURIComponent(activeCoachDocId)}&playerId=${encodeURIComponent(playerUid||'')}`); if(!cancelled) applyPortalPayload(result); } catch(err) { console.error(err); if(!cancelled){setLoginError(err.message);setLoading(false);} } };
-                    loadSecure(); const timer=setInterval(loadSecure,30000); return()=>{cancelled=true;clearInterval(timer);};
-                }
-                const unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot(doc => {
-                    if (doc.exists) {
-                        const d = doc.data();
-                        const normalizedPlayers = normalizePortalPlayers(d.players);
-                        const requestedUid = selectedPlayerUidRef.current || playerUid;
-                        setData({ 
-                            dataSchemaVersion: Number(d.dataSchemaVersion) || 1,
-                            players: normalizedPlayers, log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{}, 
-                            act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{}, 
-                            postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'', 
-                            color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null, 
-                            teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [], 
-                            lastAlertSent: d.lastAlertSent || 0,
-                            trainingStatus: d.trainingStatus || 'pre',
-                            notifications: safeArray(d.notificationCenter).filter(n=>!n.target||n.target==='all'||String(n.target)===String(requestedUid||playerUid||'')),
-                            documents: safeArray(safeObj(d.athleteDocuments)[requestedUid||playerUid] || []),
-                            requests: safeArray(safeObj(d.athleteRequests)[requestedUid||playerUid] || []),
-                            notificationReads: safeObj(safeObj(d.athleteNotificationReads)[requestedUid||playerUid]),
-                            videoAssignments: safeArray(d.videoAssignments).filter(item=>safeArray(item.recipientIds).map(String).includes(String(requestedUid||playerUid||''))),
-                            appointments: safeArray(d.careAppointments).filter(a=>String(a.playerId)===String(requestedUid||playerUid)&&a.visibleToAthlete!==false),
-                            commitments: safeArray(d.teamCommitments).filter(c=>!c.target||c.target==='all'||String(c.target)===String(requestedUid||playerUid)),
-                            commitmentResponses: safeObj(d.commitmentResponses), consentTemplates:safeArray(d.consentTemplates).filter(t=>t.active!==false&&['athlete','both'].includes(t.audience||'both')), consentRecords:safeObj(safeObj(d.consentRecords)[requestedUid||playerUid]), postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, privateHealth:{}
-                        });
+                    setPortalStatus(offline ? 'offline' : 'sync-error');
+                    setSyncMessage(offline ? 'Sem internet. Conecte-se para carregar o perfil.' : 'A sincronização demorou mais que o esperado. Tente novamente.');
+                }, 12000);
 
-                        let foundIndex = -1;
-                        if (requestedUid) {
-                            foundIndex = normalizedPlayers.findIndex(p => portalPlayerMatchesId(p, requestedUid));
-                        } else if (Number.isInteger(playerIndex)) {
-                            foundIndex = playerIndex;
-                        }
-
-                        if (foundIndex >= 0 && normalizedPlayers[foundIndex]) {
-                            setIdx(foundIndex);
-                            selectedPlayerUidRef.current = normalizedPlayers[foundIndex].id;
-                            setIsPriv(!coachPreview);
-                            if (requestedUid && String(requestedUid) !== String(normalizedPlayers[foundIndex].id) && !coachPreview) {
-                                const canonicalUrl = new URL(window.location.href);
-                                canonicalUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
-                                canonicalUrl.searchParams.delete('p');
-                                window.history.replaceState({}, '', canonicalUrl.toString());
-                            }
-                            // Converte silenciosamente links antigos ?p= para o formato estável ?uid=.
-                            if (!playerUid && normalizedPlayers[foundIndex]?.id && !coachPreview) {
-                                const nextUrl = new URL(window.location.href);
-                                nextUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
-                                nextUrl.searchParams.delete('p');
-                                window.history.replaceState({}, '', nextUrl.toString());
-                            }
-                        } else if (coachPreview) {
-                            setIdx(null);
-                            setIsPriv(false);
-                            setStep(1);
-                        } else {
-                            setIdx(null);
-                            setIsPriv(true);
-                        }
+                const stopWaiting = () => window.clearTimeout(waitTimer);
+                const handleReadError = (error) => {
+                    console.error('Falha ao sincronizar Portal do Atleta:', error);
+                    stopWaiting();
+                    if (cancelled) return;
+                    const code=String(error?.code||error?.message||'').toLowerCase();
+                    const offline=!navigator.onLine || ['unavailable','deadline-exceeded','network','failed to fetch'].some(term=>code.includes(term));
+                    setIsOnline(!offline);
+                    if(hasPortalDataRef.current){
+                        setPortalStatus(offline?'offline-cached':'sync-warning');
+                        setSyncMessage(offline?'Sem internet. Exibindo a última versão sincronizada.':'A conexão oscilou. Os últimos dados válidos continuam disponíveis.');
+                        showToast('Conexão instável. Mantendo os últimos dados salvos.','⚠️');
+                    } else {
+                        setPortalStatus(offline?'offline':'sync-error');
+                        setSyncMessage(offline?'Sem internet. Conecte-se e toque em tentar novamente.':'Não foi possível sincronizar agora. Nenhum dado foi removido.');
                     }
                     setLoading(false);
-                }, () => { setLoading(false); });
-                return () => unsubscribe();
-            }, [activeCoachDocId, playerIndex, playerUid, coachPreview, secureMode, authUser, authLoading]); 
+                };
+
+                if (!activeCoachDocId) {
+                    stopWaiting();
+                    setPortalStatus('invalid-link');
+                    setSyncMessage('O endereço está incompleto. Solicite à comissão técnica um novo link individual.');
+                    setLoading(false);
+                    return () => { cancelled=true; };
+                }
+
+                if (secureMode) {
+                    if (authLoading || !authUser) { stopWaiting(); setLoading(false); return () => { cancelled=true; }; }
+                    const loadSecure=async()=>{
+                        try {
+                            const endpoint=guardianMode?'/api/guardian-data':'/api/athlete-data';
+                            const result=await apiRequest(`${endpoint}?workspaceId=${encodeURIComponent(activeCoachDocId)}&playerId=${encodeURIComponent(playerUid||'')}`);
+                            if(!cancelled){ stopWaiting(); applyPortalPayload(result); }
+                        } catch(err) { if(!cancelled) handleReadError(err); }
+                    };
+                    loadSecure();
+                    const timer=setInterval(loadSecure,30000);
+                    return()=>{cancelled=true;stopWaiting();clearInterval(timer);};
+                }
+
+                unsubscribe = db.collection('coachData').doc(activeCoachDocId).onSnapshot({ includeMetadataChanges: true }, doc => {
+                    if(cancelled) return;
+                    const fromCache=Boolean(doc.metadata?.fromCache);
+                    setIsOnline(navigator.onLine);
+
+                    if (!doc.exists) {
+                        if (fromCache) {
+                            setLoading(navigator.onLine);
+                            setPortalStatus(navigator.onLine?'loading':'offline');
+                            setSyncMessage(navigator.onLine?'Confirmando o perfil no servidor…':'Sem internet. Não foi possível confirmar este perfil.');
+                            return;
+                        }
+                        stopWaiting();
+                        setIdx(null); setIsPriv(!coachPreview); setPortalStatus('not-found');
+                        setSyncMessage('O espaço da equipe ou o perfil não existe mais.'); setLoading(false);
+                        return;
+                    }
+
+                    const d = doc.data();
+                    const normalizedPlayers = normalizePortalPlayers(d.players);
+                    const requestedUid = selectedPlayerUidRef.current || playerUid;
+                    const nextData={
+                        dataSchemaVersion: Number(d.dataSchemaVersion) || 1,
+                        players: normalizedPlayers, log: d.trainingLog||{}, ex: d.exercises||[], exHistory: d.exerciseHistory||{},
+                        act: d.activationExercises||[], dm: d.dmRecords||[], ass: d.assessments||{}, matchM: d.matchMinutes||{},
+                        postW: d.postWorkout||'IA', nextG: d.nextGame||{}, coachMsg: d.coachMsg||d.coachMessage||'',
+                        color: d.themeColor||'#1e3a8a', id: doc.id, videoUrl: d.videoUrl||'', logo: d.logo||null,
+                        teamName: (d.header && d.header.teamName) ? d.header.teamName : 'PROCOACH', days: d.days || [],
+                        lastAlertSent: d.lastAlertSent || 0,
+                        trainingStatus: d.trainingStatus || 'pre',
+                        notifications: safeArray(d.notificationCenter).filter(n=>!n.target||n.target==='all'||String(n.target)===String(requestedUid||playerUid||'')),
+                        documents: safeArray(safeObj(d.athleteDocuments)[requestedUid||playerUid] || []),
+                        requests: safeArray(safeObj(d.athleteRequests)[requestedUid||playerUid] || []),
+                        notificationReads: safeObj(safeObj(d.athleteNotificationReads)[requestedUid||playerUid]),
+                        videoAssignments: safeArray(d.videoAssignments).filter(item=>safeArray(item.recipientIds).map(String).includes(String(requestedUid||playerUid||''))),
+                        appointments: safeArray(d.careAppointments).filter(a=>String(a.playerId)===String(requestedUid||playerUid)&&a.visibleToAthlete!==false),
+                        commitments: safeArray(d.teamCommitments).filter(c=>!c.target||c.target==='all'||String(c.target)===String(requestedUid||playerUid)),
+                        commitmentResponses: safeObj(d.commitmentResponses), consentTemplates:safeArray(d.consentTemplates).filter(t=>t.active!==false&&['athlete','both'].includes(t.audience||'both')), consentRecords:safeObj(safeObj(d.consentRecords)[requestedUid||playerUid]), postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, privateHealth:{}
+                    };
+
+                    let foundIndex = -1;
+                    if (requestedUid) foundIndex = normalizedPlayers.findIndex(p => portalPlayerMatchesId(p, requestedUid));
+                    else if (Number.isInteger(playerIndex)) foundIndex = playerIndex;
+
+                    if (foundIndex >= 0 && normalizedPlayers[foundIndex]) {
+                        stopWaiting();
+                        setData(nextData);
+                        markPortalReady(normalizedPlayers,foundIndex,fromCache);
+                        if (requestedUid && String(requestedUid) !== String(normalizedPlayers[foundIndex].id) && !coachPreview) {
+                            const canonicalUrl = new URL(window.location.href);
+                            canonicalUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
+                            canonicalUrl.searchParams.delete('p');
+                            window.history.replaceState({}, '', canonicalUrl.toString());
+                        }
+                        if (!playerUid && normalizedPlayers[foundIndex]?.id && !coachPreview) {
+                            const nextUrl = new URL(window.location.href);
+                            nextUrl.searchParams.set('uid', normalizedPlayers[foundIndex].id);
+                            nextUrl.searchParams.delete('p');
+                            window.history.replaceState({}, '', nextUrl.toString());
+                        }
+                    } else if (fromCache) {
+                        // Um cache antigo pode ainda não conter uma atleta recém-criada ou renormalizada.
+                        // Só declaramos "não encontrada" após confirmação do servidor.
+                        setLoading(navigator.onLine);
+                        setPortalStatus(navigator.onLine?'loading':'offline');
+                        setSyncMessage(navigator.onLine?'Confirmando o identificador da atleta no servidor…':'Sem internet. Não foi possível confirmar este perfil com os dados salvos.');
+                    } else if (coachPreview) {
+                        stopWaiting(); setData(nextData); setIdx(null); setIsPriv(false); setStep(1); setPortalStatus('ready'); setLoading(false);
+                    } else {
+                        stopWaiting(); setData(nextData); setIdx(null); setIsPriv(true); setPortalStatus('not-found');
+                        setSyncMessage('O servidor confirmou que este link não corresponde a uma atleta ativa. Solicite um novo link individual.'); setLoading(false);
+                    }
+                }, handleReadError);
+
+                return () => { cancelled=true;stopWaiting();if(unsubscribe)unsubscribe(); };
+            }, [activeCoachDocId, playerIndex, playerUid, coachPreview, secureMode, authUser, authLoading, retryKey]); 
 
             useEffect(() => {
                 if (idx !== null) {
@@ -718,16 +833,33 @@
                 return <GuardianPortal data={data} setData={setData} onSubmit={guardianSubmit}/>;
             }
 
-            if(!data.id || (idx !== null && !data.players[idx])) return (
-                <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
-                    <div className="text-red-500 mb-4 animate-pulse"><Icon name="alert" size={48} /></div>
-                    <h2 className="text-xl font-black uppercase mb-2">Atleta Não Encontrado</h2>
-                    <p className="text-xs text-slate-400 font-bold max-w-xs mb-8">O perfil que tentaste acessar não existe ou foi removido do sistema.</p>
-                    {!isPriv && (
-                        <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center gap-2 transition-colors">
-                            <Icon name="arrowLeft" size={14}/> VOLTAR AO ELENCO
-                        </button>
-                    )}
+            if(['offline','sync-error'].includes(portalStatus) && !hasPortalDataRef.current) return (
+                <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-5 border ${isOnline?'bg-orange-500/10 border-orange-500/30 text-orange-400':'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}><Icon name={isOnline?'alert':'refresh'} size={40}/></div>
+                    <h2 className="text-xl font-black uppercase mb-2">{isOnline?'Falha na sincronização':'Sem conexão'}</h2>
+                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed mb-7">{syncMessage || 'Não foi possível carregar o perfil agora. Os dados não foram removidos.'}</p>
+                    <button onClick={retryPortal} className="bg-blue-600 hover:bg-blue-500 px-7 py-4 rounded-xl font-black text-xs uppercase flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/30"><Icon name="refresh" size={15}/> Tentar novamente</button>
+                    <div className="mt-5 text-[9px] text-slate-600 uppercase tracking-widest">Não é necessário cadastrar a atleta novamente</div>
+                </div>
+            );
+
+            if(portalStatus==='invalid-link') return (
+                <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
+                    <div className="text-orange-400 mb-4"><Icon name="alert" size={48}/></div>
+                    <h2 className="text-xl font-black uppercase mb-2">Link incompleto</h2>
+                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed">{syncMessage}</p>
+                </div>
+            );
+
+            if(portalStatus==='not-found' || (portalStatus==='ready' && (!data.id || (idx !== null && !data.players[idx])))) return (
+                <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
+                    <div className="text-red-500 mb-4"><Icon name="alert" size={48} /></div>
+                    <h2 className="text-xl font-black uppercase mb-2">Atleta não encontrada</h2>
+                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed mb-7">{syncMessage || 'O servidor confirmou que este link não corresponde a uma atleta ativa.'}</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button onClick={retryPortal} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 transition-all active:scale-95"><Icon name="refresh" size={14}/> Tentar novamente</button>
+                        {!isPriv && <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1); setPortalStatus('ready');}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 transition-colors"><Icon name="arrowLeft" size={14}/> Voltar ao elenco</button>}
+                    </div>
                 </div>
             );
 
@@ -897,6 +1029,7 @@
 
             return (
                 <React.Fragment>
+                    {['offline-cached','syncing-cached','sync-warning'].includes(portalStatus) && <div className={`fixed top-3 left-1/2 -translate-x-1/2 z-[9998] max-w-[calc(100%-24px)] px-4 py-2 rounded-full border shadow-2xl backdrop-blur-md text-[9px] font-black uppercase tracking-wide flex items-center gap-2 ${portalStatus==='offline-cached'?'bg-slate-900/95 border-blue-500/40 text-blue-300':portalStatus==='sync-warning'?'bg-slate-900/95 border-orange-500/40 text-orange-300':'bg-slate-900/95 border-emerald-500/40 text-emerald-300'}`}><Icon name={portalStatus==='syncing-cached'?'refresh':'alert'} size={12}/><span className="truncate">{syncMessage}</span>{portalStatus!=='syncing-cached'&&<button onClick={retryPortal} className="ml-1 underline text-white">Atualizar</button>}</div>}
                     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
                         {DateSelectorUI}
                         <div className="p-6 shrink-0 rounded-b-[40px] shadow-2xl relative overflow-hidden z-10 transition-all duration-700" style={{ background: headerGradient }}>
@@ -922,7 +1055,7 @@
                                 
                                 {!isPriv && (
                                     <div className="flex flex-col gap-2 shrink-0">
-                                        <button onClick={()=>{ const link = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(data.id)}&uid=${encodeURIComponent(getPlayerStableId(data.players, idx))}`; navigator.clipboard?.writeText(link).then(()=>showToast('Link individual copiado!', '🔗')).catch(()=>window.prompt('Copie o link individual:', link)); }} className="flex items-center justify-center gap-1 bg-blue-600/80 border border-blue-400/40 px-3 py-1.5 rounded-full text-white hover:bg-blue-500 transition-colors text-[9px] font-bold uppercase shadow-sm"><Icon name="share" size={12}/> LINK</button>
+                                        <button onClick={()=>{ const linkUrl = new URL(window.location.pathname, window.location.origin); linkUrl.searchParams.set('id', data.id); linkUrl.searchParams.set('uid', getPlayerStableId(data.players, idx)); linkUrl.searchParams.set('v', '202'); const link = linkUrl.toString(); navigator.clipboard?.writeText(link).then(()=>showToast('Link individual copiado!', '🔗')).catch(()=>window.prompt('Copie o link individual:', link)); }} className="flex items-center justify-center gap-1 bg-blue-600/80 border border-blue-400/40 px-3 py-1.5 rounded-full text-white hover:bg-blue-500 transition-colors text-[9px] font-bold uppercase shadow-sm"><Icon name="share" size={12}/> LINK</button>
                                         <button onClick={()=>{selectedPlayerUidRef.current = null; setIdx(null); setStep(1);}} className="flex items-center justify-center gap-1 bg-black/30 border border-slate-600 px-3 py-1.5 rounded-full text-white/80 hover:text-white hover:bg-black/50 transition-colors text-[9px] font-bold uppercase shadow-sm"><Icon name="arrowLeft" size={12}/> VOLTAR</button>
                                     </div>
                                 )}
