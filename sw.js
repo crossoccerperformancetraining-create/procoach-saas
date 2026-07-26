@@ -1,5 +1,5 @@
-const CACHE_NAME = 'procoach-cache-v201';
-const CORE = ['/index.html?v=201', '/atleta.html?v=201', '/manifest.json?v=201', '/athlete-manifest.json?v=201'];
+const CACHE_NAME = 'procoach-cache-v202';
+const CORE = ['/index.html?v=202', '/atleta.html?v=202', '/manifest.json?v=202', '/athlete-manifest.json?v=202'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -20,6 +20,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   if (event.request.mode === 'navigate') {
+    const offlineShell = url.pathname.endsWith('/atleta.html') ? '/atleta.html?v=202' : '/index.html?v=202';
     event.respondWith(
       fetch(event.request)
         .then(response => {
@@ -27,7 +28,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {});
           return response;
         })
-        .catch(() => caches.match(event.request).then(r => r || caches.match('/index.html?v=201')))
+        .catch(() => caches.match(event.request).then(r => r || caches.match(offlineShell)))
     );
     return;
   }
