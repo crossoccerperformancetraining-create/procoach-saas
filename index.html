@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Performance Suite • Versão 2.0.1</title>
+    <title>ProCoach Performance Suite • Versão 2.0.2</title>
     
-    <link rel="manifest" href="manifest.json?v=201">
-    <link rel="apple-touch-icon" href="logo.png?v=201">
-    <link rel="icon" type="image/png" href="logo.png?v=201">
+    <link rel="manifest" href="manifest.json?v=202">
+    <link rel="apple-touch-icon" href="logo.png?v=202">
+    <link rel="icon" type="image/png" href="logo.png?v=202">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -97,7 +97,7 @@
             .tactical-mobile-canvas { min-width: 720px; }
         }
 
-        /* ProCoach 2.0.1 — sistema visual, acessibilidade e responsividade */
+        /* ProCoach 2.0.2 — hotfix de estabilidade do Portal da Atleta */
         :root { --pc-radius-sm: 10px; --pc-radius: 14px; --pc-radius-lg: 20px; --pc-shadow: 0 8px 24px rgba(15,23,42,.08); --pc-shadow-hover: 0 12px 30px rgba(15,23,42,.14); --pc-focus: #2563eb; }
         *, *::before, *::after { box-sizing: border-box; }
         html { text-rendering: optimizeLegibility; -webkit-text-size-adjust: 100%; }
@@ -193,11 +193,11 @@
             if (docId) url.searchParams.set('id', String(docId));
             if (playerId) url.searchParams.set('uid', String(playerId));
             if (preview) url.searchParams.set('view', 'coach');
-            url.searchParams.set('v', '120');
+            url.searchParams.set('v', '202');
             return url.toString();
         };
 
-        // Portal da Comissão removido. Versão 2.0.1: elenco, vídeos, sessões e estatísticas.
+        // Portal da Comissão removido. Versão 2.0.2: elenco, vídeos, sessões e estatísticas.
         const getCommissionPortalUrl = () => '#';
 
 
@@ -6495,7 +6495,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V2.0.1 POLIMENTO</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V2.0.2 ACESSO ESTÁVEL</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
@@ -6673,7 +6673,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     url.search = '';
                     url.searchParams.set('root', ownedWorkspace);
                     url.searchParams.set('team', 'pro');
-                    url.searchParams.set('v', '120');
+                    url.searchParams.set('v', '202');
                     window.location.replace(url.toString());
                 };
                 return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-red-500 mb-4"/><h1 className="text-2xl font-black uppercase">Espaço de trabalho diferente</h1><p className="text-sm text-slate-400 max-w-md mt-2">O login foi aceito, mas este dispositivo abriu outro clube ou categoria. Volte ao seu espaço principal sem alterar a senha e sem recadastrar atletas.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
