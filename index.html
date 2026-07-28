@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Performance Suite • Versão 2.0.3</title>
+    <title>ProCoach Performance Suite • Versão 2.0.4</title>
     
-    <link rel="manifest" href="manifest.json?v=203">
-    <link rel="apple-touch-icon" href="logo.png?v=203">
-    <link rel="icon" type="image/png" href="logo.png?v=203">
+    <link rel="manifest" href="manifest.json?v=204">
+    <link rel="apple-touch-icon" href="logo.png?v=204">
+    <link rel="icon" type="image/png" href="logo.png?v=204">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -97,7 +97,7 @@
             .tactical-mobile-canvas { min-width: 720px; }
         }
 
-        /* ProCoach 2.0.3 — hotfix de estabilidade do Portal da Atleta */
+        /* ProCoach 2.0.4 — hotfix de estabilidade do Portal da Atleta */
         :root { --pc-radius-sm: 10px; --pc-radius: 14px; --pc-radius-lg: 20px; --pc-shadow: 0 8px 24px rgba(15,23,42,.08); --pc-shadow-hover: 0 12px 30px rgba(15,23,42,.14); --pc-focus: #2563eb; }
         *, *::before, *::after { box-sizing: border-box; }
         html { text-rendering: optimizeLegibility; -webkit-text-size-adjust: 100%; }
@@ -197,7 +197,7 @@
             return url.toString();
         };
 
-        // Portal da Comissão removido. Versão 2.0.3: elenco, vídeos, sessões e estatísticas.
+        // Portal da Comissão removido. Versão 2.0.4: elenco, vídeos, sessões e estatísticas.
         const getCommissionPortalUrl = () => '#';
 
 
@@ -6495,7 +6495,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V2.0.3 ACESSO ESTÁVEL</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V2.0.4 ACESSO ESTÁVEL</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
