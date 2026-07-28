@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Atleta | ProCoach 2.0.2</title>
-    <link rel="manifest" href="athlete-manifest.json?v=202">
+    <title>Portal do Atleta | ProCoach 2.0.3</title>
+    <link rel="manifest" href="athlete-manifest.json?v=203">
     <meta name="theme-color" content="#020617">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,7 +43,7 @@
         .athlete-safe-bottom { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
         .athlete-card { background: rgba(15,23,42,.72); border: 1px solid #1e293b; border-radius: 24px; }
 
-        /* ProCoach 2.0.2 — estabilidade de acesso e reconexão */
+        /* ProCoach 2.0.3 — estabilidade de acesso e reconexão */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
         button, [role="button"], input, select, textarea { font: inherit; }
@@ -89,7 +89,37 @@
             });
         } catch (error) { console.warn('Persistência offline indisponível:', error); }
         
-        const urlParams = new URLSearchParams(window.location.search);
+        // O PWA instalado abre por um endereço fixo. Guardamos o último acesso individual
+        // para restaurar id/uid quando o ícone é aberto sem os parâmetros da atleta.
+        const LAST_ACCESS_KEY = 'procoach_athlete_last_access_v1';
+        const originalUrlParams = new URLSearchParams(window.location.search);
+        const hasCurrentIdentity = Boolean(originalUrlParams.get('id')) && (Boolean(originalUrlParams.get('uid')) || Number.isInteger(parseInt(originalUrlParams.get('p'))));
+        if (hasCurrentIdentity) {
+            try {
+                localStorage.setItem(LAST_ACCESS_KEY, JSON.stringify({
+                    id: originalUrlParams.get('id'), uid: originalUrlParams.get('uid') || '', p: originalUrlParams.get('p') || '',
+                    mode: originalUrlParams.get('mode') || '', secure: originalUrlParams.get('secure') || '',
+                    savedAt: Date.now()
+                }));
+            } catch (_) {}
+        }
+        let urlParams = originalUrlParams;
+        if (!hasCurrentIdentity) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(LAST_ACCESS_KEY) || 'null');
+                if (saved?.id && (saved?.uid || saved?.p)) {
+                    urlParams = new URLSearchParams(originalUrlParams);
+                    urlParams.set('id', saved.id);
+                    if (saved.uid) { urlParams.set('uid', saved.uid); urlParams.delete('p'); }
+                    else if (saved.p) urlParams.set('p', saved.p);
+                    if (saved.mode) urlParams.set('mode', saved.mode);
+                    if (saved.secure) urlParams.set('secure', saved.secure);
+                    urlParams.set('v', '203');
+                    const restoredUrl = `${window.location.pathname}?${urlParams.toString()}${window.location.hash || ''}`;
+                    window.history.replaceState({}, '', restoredUrl);
+                }
+            } catch (_) {}
+        }
         const rawCoachId = urlParams.get('id'); 
         const playerIndex = parseInt(urlParams.get('p')); 
         const playerUid = urlParams.get('uid'); 
@@ -632,15 +662,25 @@
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
             const refreshOfflineCount=async()=>{try{const items=await offlineQueueList();setOfflineCount(items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx)).length)}catch(e){setOfflineCount(0)}};
-            const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe']);
+            const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe','postGame','appointmentResponse','commitmentResponse','notificationAck','medicationAck']);
             const submitSecureAction = async (action, payload) => {
-                const item={id:`offline_${Date.now()}_${Math.random().toString(36).slice(2)}`,workspaceId:activeCoachDocId,playerId:getPlayerStableId(data.players,idx),action,payload,date:selectedDate,createdAt:new Date().toISOString()};
+                const mutationId=`offline_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const item={id:mutationId,workspaceId:activeCoachDocId,playerId:getPlayerStableId(data.players,idx),action,payload:{...payload,clientMutationId:mutationId},date:selectedDate,createdAt:new Date().toISOString()};
                 const queue=async()=>{if(!OFFLINE_QUEUE_ACTIONS.has(action)){const error=new Error('Esta informação sensível exige conexão segura para ser enviada.');error.status=0;throw error;}await offlineQueueAdd(item);await refreshOfflineCount();showToast('Sem conexão: registro guardado para envio automático.','📶');return {queued:true}};
                 if(!navigator.onLine)return queue();
-                try{return await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action,payload,date:item.date})}catch(e){if((!navigator.onLine||!e.status||e.status>=500)&&OFFLINE_QUEUE_ACTIONS.has(action))return queue();throw e}
+                try{return await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action,payload:item.payload,date:item.date,clientMutationId:item.id})}catch(e){if((!navigator.onLine||!e.status||e.status>=500)&&OFFLINE_QUEUE_ACTIONS.has(action))return queue();throw e}
             };
-            const flushOfflineQueue=async()=>{if(!secureMode||!auth.currentUser||!navigator.onLine)return;let items=[];try{items=await offlineQueueList()}catch(e){return}for(const item of items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx))){try{await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action:item.action,payload:item.payload,date:item.date});await offlineQueueDelete(item.id)}catch(e){if(!e.status||e.status>=500)break;await offlineQueueDelete(item.id)}}await refreshOfflineCount()};
-            useEffect(()=>{refreshOfflineCount();const online=()=>flushOfflineQueue();window.addEventListener('online',online);if(navigator.onLine)flushOfflineQueue();return()=>window.removeEventListener('online',online)},[idx,activeCoachDocId,authUser]);
+            const flushOfflineQueue=async()=>{if(!secureMode||!auth.currentUser||!navigator.onLine)return;let items=[];try{items=await offlineQueueList()}catch(e){return}for(const item of items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx))){try{await apiRequest('/api/athlete-submit',{workspaceId:item.workspaceId,playerId:item.playerId,action:item.action,payload:item.payload,date:item.date,clientMutationId:item.id});await offlineQueueDelete(item.id)}catch(e){if(!e.status||e.status>=500)break;await offlineQueueDelete(item.id)}}await refreshOfflineCount()};
+            useEffect(()=>{
+                refreshOfflineCount();
+                const sync=()=>{ if(navigator.onLine) flushOfflineQueue(); };
+                const visible=()=>{ if(document.visibilityState==='visible') sync(); };
+                window.addEventListener('online',sync);
+                document.addEventListener('visibilitychange',visible);
+                const timer=setInterval(sync,30000);
+                sync();
+                return()=>{window.removeEventListener('online',sync);document.removeEventListener('visibilitychange',visible);clearInterval(timer)};
+            },[idx,activeCoachDocId,authUser]);
             const submitMedicalRequest = async () => {
                 if(requestSubmitting||!requestForm.message.trim()) return showToast('Descreva o que está sentindo.','⚠️');
                 setRequestSubmitting(true); const request={...requestForm,id:`req_${Date.now()}`,createdAt:new Date().toISOString(),status:'Aberto'};
@@ -847,7 +887,8 @@
                 <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
                     <div className="text-orange-400 mb-4"><Icon name="alert" size={48}/></div>
                     <h2 className="text-xl font-black uppercase mb-2">Link incompleto</h2>
-                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed">{syncMessage}</p>
+                    <p className="text-xs text-slate-400 font-bold max-w-sm leading-relaxed mb-7">{syncMessage}</p>
+                    <button onClick={()=>{try{localStorage.removeItem(LAST_ACCESS_KEY)}catch(_){};window.location.reload()}} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-xl font-black text-xs uppercase">Limpar acesso salvo</button>
                 </div>
             );
 
