@@ -3,8 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Atleta | ProCoach 2.0.3</title>
-    <link rel="manifest" href="athlete-manifest.json?v=203">
+    <title>Portal do Atleta | ProCoach 2.0.4</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=204">
+    <script>
+    // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
+    // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
+    (function () {
+        const KEY = 'procoach_athlete_last_access_v2';
+        const LEGACY_KEY = 'procoach_athlete_last_access_v1';
+        const CACHE = 'procoach-athlete-identity-v2';
+        const CACHE_URL = '/__procoach_athlete_access_v2';
+        const params = new URLSearchParams(location.search);
+        const access = {
+            id: params.get('id') || '', uid: params.get('uid') || '', p: params.get('p') || '',
+            mode: params.get('mode') || '', secure: params.get('secure') || '',
+            invite: params.get('invite') || '', guardianInvite: params.get('guardianInvite') || '',
+            savedAt: Date.now()
+        };
+        const valid = access.id && (access.uid || /^\d+$/.test(access.p));
+        window.__PROCOACH_ACCESS_KEY__ = KEY;
+        window.__PROCOACH_ACCESS_CACHE__ = { name: CACHE, url: CACHE_URL };
+        if (!valid) return;
+        const serialized = JSON.stringify(access);
+        try { localStorage.setItem(KEY, serialized); localStorage.setItem(LEGACY_KEY, serialized); } catch (_) {}
+        try {
+            const secure = location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = 'procoach_athlete_access=' + encodeURIComponent(serialized) + '; Path=/; Max-Age=31536000; SameSite=Lax' + secure;
+        } catch (_) {}
+        if ('caches' in window) caches.open(CACHE).then(c => c.put(CACHE_URL, new Response(serialized, {headers:{'content-type':'application/json'}}))).catch(()=>{});
+
+        // Manifesto específico do acesso atual: corrige novas instalações no Android/Chrome.
+        try {
+            const start = '/atleta.html?' + params.toString();
+            const appId = '/atleta.html?installed=' + encodeURIComponent(access.id + ':' + (access.uid || access.p));
+            const manifest = {
+                name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
+                start_url: start, scope: '/', id: appId, display: 'standalone',
+                background_color: '#020617', theme_color: '#020617',
+                icons: [{src:'/logo.png?v=204',sizes:'512x512',type:'image/png'}]
+            };
+            const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+            document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
+        } catch (_) {}
+    })();
+    </script>
     <meta name="theme-color" content="#020617">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,7 +85,7 @@
         .athlete-safe-bottom { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
         .athlete-card { background: rgba(15,23,42,.72); border: 1px solid #1e293b; border-radius: 24px; }
 
-        /* ProCoach 2.0.3 — estabilidade de acesso e reconexão */
+        /* ProCoach 2.0.4 — estabilidade de acesso e reconexão */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
         button, [role="button"], input, select, textarea { font: inherit; }
@@ -89,34 +131,28 @@
             });
         } catch (error) { console.warn('Persistência offline indisponível:', error); }
         
-        // O PWA instalado abre por um endereço fixo. Guardamos o último acesso individual
-        // para restaurar id/uid quando o ícone é aberto sem os parâmetros da atleta.
-        const LAST_ACCESS_KEY = 'procoach_athlete_last_access_v1';
+        // Identidade individual do Portal da Atleta (v2.0.4).
+        // O script no <head> salva acessos válidos. Aqui restauramos localStorage/cookie
+        // imediatamente; athlete-start.html cobre Cache Storage e migração de instalações antigas.
+        const LAST_ACCESS_KEY = window.__PROCOACH_ACCESS_KEY__ || 'procoach_athlete_last_access_v2';
         const originalUrlParams = new URLSearchParams(window.location.search);
-        const hasCurrentIdentity = Boolean(originalUrlParams.get('id')) && (Boolean(originalUrlParams.get('uid')) || Number.isInteger(parseInt(originalUrlParams.get('p'))));
-        if (hasCurrentIdentity) {
+        const hasCurrentIdentity = Boolean(originalUrlParams.get('id')) && (Boolean(originalUrlParams.get('uid')) || /^\d+$/.test(originalUrlParams.get('p') || ''));
+        const readCookieAccess = () => {
             try {
-                localStorage.setItem(LAST_ACCESS_KEY, JSON.stringify({
-                    id: originalUrlParams.get('id'), uid: originalUrlParams.get('uid') || '', p: originalUrlParams.get('p') || '',
-                    mode: originalUrlParams.get('mode') || '', secure: originalUrlParams.get('secure') || '',
-                    savedAt: Date.now()
-                }));
-            } catch (_) {}
-        }
+                const row = document.cookie.split('; ').find(x => x.startsWith('procoach_athlete_access='));
+                return row ? JSON.parse(decodeURIComponent(row.split('=').slice(1).join('='))) : null;
+            } catch (_) { return null; }
+        };
         let urlParams = originalUrlParams;
         if (!hasCurrentIdentity) {
             try {
-                const saved = JSON.parse(localStorage.getItem(LAST_ACCESS_KEY) || 'null');
-                if (saved?.id && (saved?.uid || saved?.p)) {
+                const saved = JSON.parse(localStorage.getItem(LAST_ACCESS_KEY) || localStorage.getItem('procoach_athlete_last_access_v1') || 'null') || readCookieAccess();
+                if (saved?.id && (saved?.uid || /^\d+$/.test(String(saved?.p || '')))) {
                     urlParams = new URLSearchParams(originalUrlParams);
-                    urlParams.set('id', saved.id);
-                    if (saved.uid) { urlParams.set('uid', saved.uid); urlParams.delete('p'); }
-                    else if (saved.p) urlParams.set('p', saved.p);
-                    if (saved.mode) urlParams.set('mode', saved.mode);
-                    if (saved.secure) urlParams.set('secure', saved.secure);
-                    urlParams.set('v', '203');
-                    const restoredUrl = `${window.location.pathname}?${urlParams.toString()}${window.location.hash || ''}`;
-                    window.history.replaceState({}, '', restoredUrl);
+                    ['id','uid','p','mode','secure','invite','guardianInvite'].forEach(k => { if (saved[k] !== undefined && saved[k] !== '') urlParams.set(k, saved[k]); });
+                    if (saved.uid) urlParams.delete('p');
+                    urlParams.set('v', '204');
+                    window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}${window.location.hash || ''}`);
                 }
             } catch (_) {}
         }
@@ -1983,6 +2019,6 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=204',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 </body>
 </html>

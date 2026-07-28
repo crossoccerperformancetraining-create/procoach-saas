@@ -1,7 +1,7 @@
 {
   "name": "Portal do Atleta — ProCoach",
   "short_name": "ProCoach Atleta",
-  "start_url": "/athlete-start.html?v=203",
+  "start_url": "/athlete-start.html?v=204",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
@@ -12,7 +12,7 @@
       "type": "image/png"
     }
   ],
-  "version": "2.0.3",
+  "version": "2.0.4",
   "scope": "/",
   "id": "/athlete-start.html"
 }

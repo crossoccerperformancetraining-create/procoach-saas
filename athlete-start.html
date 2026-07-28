@@ -1,32 +1,17 @@
 <!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#020617">
-<title>ProCoach Atleta</title>
-<style>
-html,body{height:100%;margin:0;background:#020617;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}main{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}.card{max-width:390px}.icon{font-size:56px}.title{font-size:24px;font-weight:900;text-transform:uppercase;margin:18px 0 10px}.text{color:#94a3b8;font-size:14px;line-height:1.55;font-weight:700}.btn{display:inline-block;margin-top:24px;border:0;border-radius:14px;background:#2563eb;color:#fff;padding:15px 24px;font-weight:900;text-transform:uppercase;font-size:12px}.muted{margin-top:14px;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-</style>
-</head>
-<body><main><div class="card"><div class="icon" id="icon">⏳</div><div class="title" id="title">Abrindo ProCoach</div><div class="text" id="text">Recuperando seu último acesso individual…</div><button class="btn" id="retry" hidden>Atualizar</button><div class="muted">Portal da atleta • v2.0.3</div></div></main>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#020617"><title>ProCoach Atleta</title>
+<style>html,body{height:100%;margin:0;background:#020617;color:#fff;font-family:Inter,system-ui,-apple-system,sans-serif}main{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}.card{max-width:410px}.icon{font-size:56px}.title{font-size:24px;font-weight:900;text-transform:uppercase;margin:18px 0 10px}.text{color:#94a3b8;font-size:14px;line-height:1.55;font-weight:700}.btn{display:inline-block;margin-top:24px;border:0;border-radius:14px;background:#2563eb;color:#fff;padding:15px 24px;font-weight:900;text-transform:uppercase;font-size:12px;min-height:48px}.muted{margin-top:14px;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.08em}</style></head>
+<body><main><div class="card"><div class="icon" id="icon">⏳</div><div class="title" id="title">Abrindo ProCoach</div><div class="text" id="text">Recuperando seu último acesso individual…</div><button class="btn" id="retry" hidden>Atualizar</button><div class="muted">Portal da atleta • v2.0.4</div></div></main>
 <script>
-(function(){
- const KEY='procoach_athlete_last_access_v1';
+(async function(){
+ const KEY='procoach_athlete_last_access_v2', LEGACY='procoach_athlete_last_access_v1', CACHE='procoach-athlete-identity-v2', CACHE_URL='/__procoach_athlete_access_v2';
  const retry=document.getElementById('retry');
- const open=()=>{
-   let saved=null; try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
-   if(saved&&saved.id&&(saved.uid||saved.p)){
-      const q=new URLSearchParams({id:saved.id,v:'203'});
-      if(saved.uid)q.set('uid',saved.uid);else q.set('p',saved.p);
-      if(saved.mode)q.set('mode',saved.mode);if(saved.secure)q.set('secure',saved.secure);
-      location.replace('/atleta.html?'+q.toString()); return;
-   }
-   document.getElementById('icon').textContent=navigator.onLine?'⚠️':'📶';
-   document.getElementById('title').textContent=navigator.onLine?'Acesso não identificado':'Sem conexão';
-   document.getElementById('text').textContent=navigator.onLine?'Abra uma vez o link individual enviado pela comissão. Depois disso, o ícone abrirá seu perfil automaticamente.':'Conecte-se à internet e toque em Atualizar. Se este aparelho já acessou o perfil antes, ele será restaurado automaticamente.';
-   retry.hidden=false;
- };
- retry.onclick=()=>location.reload(); window.addEventListener('online',open); open();
+ const valid=x=>x&&x.id&&(x.uid||/^\d+$/.test(String(x.p||'')));
+ const cookie=()=>{try{const r=document.cookie.split('; ').find(x=>x.startsWith('procoach_athlete_access='));return r?JSON.parse(decodeURIComponent(r.split('=').slice(1).join('='))):null}catch(_){return null}};
+ const cached=async()=>{try{if(!('caches'in window))return null;const r=await caches.open(CACHE).then(c=>c.match(CACHE_URL));return r?await r.json():null}catch(_){return null}};
+ const locate=async()=>{let x=null;try{x=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(LEGACY)||'null')}catch(_){};if(!valid(x))x=cookie();if(!valid(x))x=await cached();return valid(x)?x:null};
+ const open=async()=>{const saved=await locate();if(saved){try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(_){}const q=new URLSearchParams({id:saved.id,v:'204'});['uid','p','mode','secure','invite','guardianInvite'].forEach(k=>{if(saved[k]!==undefined&&saved[k]!=='' )q.set(k,saved[k])});if(saved.uid)q.delete('p');location.replace('/atleta.html?'+q.toString());return}
+ document.getElementById('icon').textContent=navigator.onLine?'⚠️':'📶';document.getElementById('title').textContent=navigator.onLine?'Acesso não identificado':'Sem conexão';document.getElementById('text').textContent=navigator.onLine?'Abra novamente o link individual enviado pela comissão. A versão 2.0.4 salvará esse perfil para as próximas aberturas pelo ícone.':'Este aparelho ainda não possui um perfil recuperável. Conecte-se à internet, abra o link individual uma vez e depois use o ícone normalmente.';retry.hidden=false};
+ retry.onclick=open;window.addEventListener('online',open);await open();
 })();
 </script></body></html>
