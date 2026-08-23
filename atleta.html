@@ -117,6 +117,59 @@
         }
     </script>
 <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 py-3 rounded-full shadow-2xl z-[9999] hidden text-xs font-bold text-center"></div>
+
+    <!-- ProCoach: aviso global de conectividade do Portal da Atleta -->
+    <div
+        id="network-status-banner"
+        role="status"
+        aria-live="polite"
+        hidden
+        style="
+            position:fixed;
+            top:0;
+            left:0;
+            right:0;
+            z-index:10000;
+            padding:10px 14px;
+            text-align:center;
+            font-size:12px;
+            font-weight:900;
+            letter-spacing:.02em;
+            color:white;
+            background:#1d4ed8;
+            box-shadow:0 4px 16px rgba(0,0,0,.28);
+        "
+    ></div>
+
+    <script>
+    (function () {
+        const banner = document.getElementById('network-status-banner');
+        if (!banner) return;
+        let hideTimer = null;
+
+        const showOffline = () => {
+            if (hideTimer) clearTimeout(hideTimer);
+            banner.textContent = '📶 Sem internet — usando os últimos dados salvos';
+            banner.style.background = '#1d4ed8';
+            banner.hidden = false;
+        };
+
+        const showReconnected = () => {
+            if (hideTimer) clearTimeout(hideTimer);
+            banner.textContent = '✓ Conexão restabelecida — sincronizando…';
+            banner.style.background = '#047857';
+            banner.hidden = false;
+            hideTimer = setTimeout(() => {
+                if (navigator.onLine) banner.hidden = true;
+            }, 3500);
+        };
+
+        if (!navigator.onLine) showOffline();
+        window.addEventListener('offline', showOffline);
+        window.addEventListener('online', showReconnected);
+    })();
+    </script>
+
     <div id="root" class="h-full w-full flex flex-col"></div>
     
     <script type="text/babel">
@@ -928,7 +981,9 @@
                 </div>
             );
 
-            if(portalStatus==='not-found' || (portalStatus==='ready' && (!data.id || (idx !== null && !data.players[idx])))) return (
+            // Evita falso "Atleta não encontrada" durante estados transitórios de rede/renderização.
+            // Esta tela só é exibida quando o fluxo de sincronização confirmou explicitamente not-found.
+            if(portalStatus==='not-found') return (
                 <div className="h-[100dvh] flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center">
                     <div className="text-red-500 mb-4"><Icon name="alert" size={48} /></div>
                     <h2 className="text-xl font-black uppercase mb-2">Atleta não encontrada</h2>
