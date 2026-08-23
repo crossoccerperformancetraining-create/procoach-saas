@@ -6733,5 +6733,387 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<RootApp />);
     </script>
+
+    <!-- ProCoach 2.0.4 — Central Técnica Executiva integrada -->
+    <script>
+
+/**
+ * ProCoach — Central Técnica Executiva (add-on)
+ * Compatível com o index.html 2.0.4 sem alterar a estrutura React existente.
+ *
+ * Instalação:
+ *   <script src="coach-dashboard-addon.js?v=1"></script>
+ * imediatamente antes de </body> no index.html.
+ */
+(function () {
+  'use strict';
+
+  const APP_ID = 'pc-executive-dashboard-addon';
+  if (document.getElementById(APP_ID)) return;
+
+  const todayStr = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  };
+
+  const safeArray = (v) => Array.isArray(v) ? v : [];
+  const safeObj = (v) => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+  const normalizePlayerId = (p, index) => String(p?.id || index);
+  const getPlayerLog = (day, p, index) => {
+    const d = safeObj(day);
+    const id = normalizePlayerId(p, index);
+    return safeObj(d[id] ?? d[String(index)] ?? {});
+  };
+
+  const calcReadiness = (w) => {
+    const x = safeObj(w);
+    const vals = [x.sleep, x.stress, x.fatigue, x.soreness, x.mood].map(Number).filter(Number.isFinite);
+    if (!vals.length) return null;
+    // Portal usa escalas em que valores altos de estresse/fadiga/dor reduzem prontidão.
+    // Mantemos cálculo simples e transparente para triagem, não decisão clínica.
+    const sleep = Number(x.sleep) || 0;
+    const mood = Number(x.mood) || 0;
+    const stress = Number(x.stress) || 0;
+    const fatigue = Number(x.fatigue) || 0;
+    const soreness = Number(x.soreness) || 0;
+    const positive = ((sleep + mood) / 14) * 50;
+    const negative = (1 - Math.min(1, (stress + fatigue + soreness) / 21)) * 50;
+    return Math.max(0, Math.min(100, Math.round(positive + negative)));
+  };
+
+  const getWorkspaceDocId = () => {
+    const user = window.firebase?.auth?.()?.currentUser;
+    if (!user) return null;
+    const root = String(localStorage.getItem('procoach_active_workspace') || user.uid || '').trim();
+    const rawTeam = String(localStorage.getItem('procoach_active_team') || 'pro').trim().toLowerCase();
+    const team = rawTeam.replace(/[^a-z0-9_-]/g, '') || 'pro';
+    return team === 'pro' ? root : `${root}_${team}`;
+  };
+
+  const state = {
+    open: false,
+    data: null,
+    docId: null,
+    unsub: null,
+    filter: 'all',
+    selectedPlayer: null,
+    search: ''
+  };
+
+  const style = document.createElement('style');
+  style.textContent = `
+    #${APP_ID}{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+    #${APP_ID} *{box-sizing:border-box}
+    .pcx-fab{position:fixed;right:18px;bottom:18px;z-index:10020;border:0;border-radius:999px;background:#0f172a;color:#fff;padding:13px 17px;font-size:12px;font-weight:900;box-shadow:0 12px 32px rgba(15,23,42,.32);cursor:pointer}
+    .pcx-fab .pcx-badge{display:inline-flex;min-width:20px;height:20px;padding:0 6px;margin-left:7px;align-items:center;justify-content:center;border-radius:999px;background:#ef4444;font-size:10px}
+    .pcx-backdrop{position:fixed;inset:0;z-index:10030;background:rgba(2,6,23,.72);backdrop-filter:blur(8px);display:none}
+    .pcx-backdrop.show{display:block}
+    .pcx-panel{position:absolute;inset:3vh 3vw;max-width:1500px;margin:auto;background:#f8fafc;color:#0f172a;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.35);display:flex;flex-direction:column}
+    .dark .pcx-panel{background:#0f172a;color:#f8fafc}
+    .pcx-top{padding:18px 22px;background:#0f172a;color:white;display:flex;align-items:center;gap:14px;border-bottom:1px solid #334155}
+    .pcx-title{font-size:18px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+    .pcx-sub{font-size:10px;color:#94a3b8;margin-top:3px}
+    .pcx-close{margin-left:auto;border:1px solid #475569;background:#1e293b;color:white;border-radius:12px;width:42px;height:42px;font-size:20px;cursor:pointer}
+    .pcx-body{padding:18px;overflow:auto;flex:1}
+    .pcx-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+    .pcx-card{background:white;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.05)}
+    .dark .pcx-card{background:#111827;border-color:#334155}
+    .pcx-kpi{grid-column:span 3}
+    .pcx-wide{grid-column:span 8}
+    .pcx-side{grid-column:span 4}
+    .pcx-label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#64748b}
+    .pcx-value{font-size:30px;font-weight:950;margin-top:7px}
+    .pcx-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #e2e8f0}
+    .dark .pcx-row{border-color:#273244}
+    .pcx-row:last-child{border-bottom:0}
+    .pcx-avatar{width:38px;height:38px;border-radius:999px;object-fit:cover;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;overflow:hidden;flex:none}
+    .dark .pcx-avatar{background:#334155}
+    .pcx-grow{flex:1;min-width:0}
+    .pcx-name{font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pcx-meta{font-size:9px;color:#64748b;margin-top:2px}
+    .pcx-pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 8px;font-size:8px;font-weight:900;text-transform:uppercase;white-space:nowrap}
+    .pcx-red{background:#fee2e2;color:#b91c1c}.pcx-orange{background:#ffedd5;color:#c2410c}.pcx-green{background:#dcfce7;color:#166534}.pcx-blue{background:#dbeafe;color:#1d4ed8}.pcx-slate{background:#e2e8f0;color:#475569}
+    .dark .pcx-red{background:#450a0a;color:#fca5a5}.dark .pcx-orange{background:#431407;color:#fdba74}.dark .pcx-green{background:#052e16;color:#86efac}.dark .pcx-blue{background:#172554;color:#93c5fd}.dark .pcx-slate{background:#334155;color:#cbd5e1}
+    .pcx-filterbar{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+    .pcx-filter{border:1px solid #cbd5e1;background:white;color:#334155;border-radius:999px;padding:8px 11px;font-size:9px;font-weight:900;text-transform:uppercase;cursor:pointer}
+    .dark .pcx-filter{background:#111827;color:#cbd5e1;border-color:#475569}
+    .pcx-filter.active{background:#2563eb;color:white;border-color:#2563eb}
+    .pcx-search{width:100%;border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:12px;padding:11px 12px;font-size:13px;outline:none}
+    .dark .pcx-search{background:#0b1220;color:white;border-color:#475569}
+    .pcx-progress{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:7px}.pcx-progress>i{display:block;height:100%;background:#2563eb;border-radius:inherit}
+    .dark .pcx-progress{background:#334155}
+    .pcx-btn{border:0;border-radius:10px;padding:8px 10px;font-size:9px;font-weight:900;text-transform:uppercase;cursor:pointer;background:#0f172a;color:white}
+    .pcx-empty{padding:24px;text-align:center;color:#64748b;font-size:11px}
+    .pcx-sectiontitle{font-size:13px;font-weight:950;text-transform:uppercase;margin-bottom:4px}
+    @media(max-width:900px){
+      .pcx-panel{inset:0;border-radius:0}
+      .pcx-kpi,.pcx-wide,.pcx-side{grid-column:span 12}
+      .pcx-fab{right:12px;bottom:88px}
+    }
+  `;
+  document.head.appendChild(style);
+
+  const root = document.createElement('div');
+  root.id = APP_ID;
+  root.innerHTML = `
+    <button class="pcx-fab" type="button">Central Técnica <span class="pcx-badge" hidden>0</span></button>
+    <div class="pcx-backdrop" aria-hidden="true">
+      <section class="pcx-panel" role="dialog" aria-modal="true" aria-label="Central Técnica Executiva">
+        <header class="pcx-top">
+          <div>
+            <div class="pcx-title">Central Técnica</div>
+            <div class="pcx-sub">Home executiva • alertas • adesão • filtros • ficha rápida</div>
+          </div>
+          <button class="pcx-close" type="button" aria-label="Fechar">×</button>
+        </header>
+        <div class="pcx-body"><div class="pcx-empty">Carregando dados da equipe…</div></div>
+      </section>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  const fab = root.querySelector('.pcx-fab');
+  const badge = root.querySelector('.pcx-badge');
+  const backdrop = root.querySelector('.pcx-backdrop');
+  const body = root.querySelector('.pcx-body');
+  const closeBtn = root.querySelector('.pcx-close');
+
+  const derive = () => {
+    const d = safeObj(state.data);
+    const players = safeArray(d.players);
+    const today = todayStr();
+    const day = safeObj(safeObj(d.trainingLog || d.log)[today]);
+    const requestsByPlayer = safeObj(d.athleteRequests);
+    const commitments = safeArray(d.teamCommitments);
+    const responses = safeObj(d.commitmentResponses);
+    const notifications = safeArray(d.notificationCenter);
+    const reads = safeObj(d.athleteNotificationReads);
+
+    const rows = players.map((p, index) => {
+      const id = normalizePlayerId(p, index);
+      const log = getPlayerLog(day, p, index);
+      const w = safeObj(log.wellness);
+      const readiness = calcReadiness(w);
+      const rpe = Math.max(Number(log.rpe_am)||0, Number(log.rpe_pm)||0, Number(log.rpe)||0);
+      const wellnessDone = Object.keys(w).length > 0;
+      const rpeDone = rpe > 0 || Boolean(log.rpeSubmitted || log.rpe_am_submitted || log.rpe_pm_submitted);
+      const requests = safeArray(requestsByPlayer[id] || requestsByPlayer[String(index)]).filter(r => !['closed','resolved','done'].includes(String(r.status||'').toLowerCase()));
+      const pain = Number(w.soreness)||0;
+      const fatigue = Number(w.fatigue)||0;
+      const stress = Number(w.stress)||0;
+      const critical = (readiness !== null && readiness < 45) || pain >= 6 || fatigue >= 6 || stress >= 6 || rpe >= 9 || requests.length > 0;
+
+      const pendingCommitments = commitments.filter(c => {
+        if (c.requiresAck === false) return false;
+        if (c.date && c.date < today) return false;
+        const targetOk = !c.target || c.target === 'all' || String(c.target) === id;
+        if (!targetOk) return false;
+        const rec = safeObj(responses[c.id]);
+        return !safeObj(rec[id]).response && !safeObj(rec[String(index)]).response;
+      });
+
+      const unread = notifications.filter(n => {
+        const targetOk = !n.target || n.target === 'all' || String(n.target) === id;
+        if (!targetOk) return false;
+        return !safeObj(reads[id] || reads[String(index)])[n.id];
+      });
+
+      return {
+        p,index,id,log,w,readiness,rpe,wellnessDone,rpeDone,requests,pain,fatigue,stress,
+        critical,pendingCommitments,unread,
+        pendingCount: (wellnessDone?0:1) + (rpeDone?0:1) + pendingCommitments.length + unread.length
+      };
+    });
+
+    const total = rows.length;
+    const wellnessCount = rows.filter(x=>x.wellnessDone).length;
+    const rpeCount = rows.filter(x=>x.rpeDone).length;
+    const criticalCount = rows.filter(x=>x.critical).length;
+    const noResponseCount = rows.filter(x=>!x.wellnessDone).length;
+    const requestCount = rows.reduce((s,x)=>s+x.requests.length,0);
+    const adherence = total ? Math.round(((wellnessCount + rpeCount) / (total*2))*100) : 0;
+    const avgReadinessVals = rows.map(x=>x.readiness).filter(x=>x!==null);
+    const avgReadiness = avgReadinessVals.length ? Math.round(avgReadinessVals.reduce((a,b)=>a+b,0)/avgReadinessVals.length) : null;
+
+    return { rows,total,wellnessCount,rpeCount,criticalCount,noResponseCount,requestCount,adherence,avgReadiness,today };
+  };
+
+  const statusPill = (r) => {
+    if (r.critical) return `<span class="pcx-pill pcx-red">Alerta</span>`;
+    if (!r.wellnessDone) return `<span class="pcx-pill pcx-orange">Sem wellness</span>`;
+    if (!r.rpeDone) return `<span class="pcx-pill pcx-blue">RPE pendente</span>`;
+    return `<span class="pcx-pill pcx-green">OK</span>`;
+  };
+
+  const matchesFilter = (r) => {
+    if (state.filter === 'alerts') return r.critical;
+    if (state.filter === 'noresponse') return !r.wellnessDone;
+    if (state.filter === 'requests') return r.requests.length > 0;
+    if (state.filter === 'highrpe') return r.rpe >= 8;
+    if (state.filter === 'pending') return r.pendingCount > 0;
+    return true;
+  };
+
+  const renderPlayerDetail = (r) => {
+    if (!r) return '';
+    return `
+      <div class="pcx-card pcx-side">
+        <div class="pcx-label">Ficha rápida</div>
+        <div style="display:flex;align-items:center;gap:11px;margin-top:10px">
+          <div class="pcx-avatar">${r.p.image ? `<img src="${esc(r.p.image)}" style="width:100%;height:100%;object-fit:cover">` : esc((r.p.name||'A').slice(0,2).toUpperCase())}</div>
+          <div class="pcx-grow"><div class="pcx-name" style="font-size:15px">${esc(r.p.name||'Atleta')}</div><div class="pcx-meta">${esc(r.p.position||r.p.pos||'')} ${r.p.number||r.p.shirtNumber ? '• #'+esc(r.p.number||r.p.shirtNumber) : ''}</div></div>
+          ${statusPill(r)}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+          <div style="padding:10px;border-radius:12px;background:rgba(148,163,184,.10)"><div class="pcx-label">Prontidão</div><div style="font-size:20px;font-weight:950;margin-top:4px">${r.readiness===null?'—':r.readiness+'%'}</div></div>
+          <div style="padding:10px;border-radius:12px;background:rgba(148,163,184,.10)"><div class="pcx-label">RPE</div><div style="font-size:20px;font-weight:950;margin-top:4px">${r.rpe||'—'}</div></div>
+          <div style="padding:10px;border-radius:12px;background:rgba(148,163,184,.10)"><div class="pcx-label">Dor</div><div style="font-size:20px;font-weight:950;margin-top:4px">${r.pain||'—'}</div></div>
+          <div style="padding:10px;border-radius:12px;background:rgba(148,163,184,.10)"><div class="pcx-label">Pendências</div><div style="font-size:20px;font-weight:950;margin-top:4px">${r.pendingCount}</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="pcx-sectiontitle">Sinais de atenção</div>
+          ${r.requests.length ? `<div class="pcx-row"><span class="pcx-pill pcx-red">${r.requests.length} solicitação(ões)</span></div>` : ''}
+          ${r.fatigue>=6 ? `<div class="pcx-row"><span class="pcx-pill pcx-orange">Fadiga ${r.fatigue}</span></div>` : ''}
+          ${r.pain>=6 ? `<div class="pcx-row"><span class="pcx-pill pcx-red">Dor ${r.pain}</span></div>` : ''}
+          ${r.rpe>=8 ? `<div class="pcx-row"><span class="pcx-pill pcx-orange">RPE ${r.rpe}</span></div>` : ''}
+          ${!r.critical && !r.requests.length ? `<div class="pcx-empty">Sem alerta importante identificado hoje.</div>` : ''}
+        </div>
+      </div>
+    `;
+  };
+
+  const render = () => {
+    if (!state.data) {
+      body.innerHTML = `<div class="pcx-empty">Aguardando dados do workspace…</div>`;
+      return;
+    }
+    const m = derive();
+    badge.hidden = m.criticalCount === 0;
+    badge.textContent = String(m.criticalCount);
+
+    const q = state.search.trim().toLowerCase();
+    let filtered = m.rows.filter(matchesFilter).filter(r => !q || String(r.p.name||'').toLowerCase().includes(q));
+    const selected = m.rows.find(r=>r.id===state.selectedPlayer) || filtered[0] || m.rows[0] || null;
+    if (selected && !state.selectedPlayer) state.selectedPlayer = selected.id;
+
+    body.innerHTML = `
+      <div class="pcx-grid">
+        <div class="pcx-card pcx-kpi"><div class="pcx-label">Atletas com alerta</div><div class="pcx-value" style="color:${m.criticalCount?'#dc2626':'#16a34a'}">${m.criticalCount}</div><div class="pcx-meta">dor, fadiga, RPE, prontidão ou solicitação</div></div>
+        <div class="pcx-card pcx-kpi"><div class="pcx-label">Sem wellness hoje</div><div class="pcx-value">${m.noResponseCount}</div><div class="pcx-meta">${m.total ? Math.round((m.wellnessCount/m.total)*100) : 0}% responderam</div></div>
+        <div class="pcx-card pcx-kpi"><div class="pcx-label">Adesão diária</div><div class="pcx-value">${m.adherence}%</div><div class="pcx-progress"><i style="width:${m.adherence}%"></i></div></div>
+        <div class="pcx-card pcx-kpi"><div class="pcx-label">Prontidão média</div><div class="pcx-value">${m.avgReadiness===null?'—':m.avgReadiness+'%'}</div><div class="pcx-meta">${m.requestCount} solicitação(ões) aberta(s)</div></div>
+
+        <div class="pcx-card pcx-wide">
+          <div style="display:flex;align-items:end;gap:12px;flex-wrap:wrap">
+            <div class="pcx-grow"><div class="pcx-label">Elenco</div><div class="pcx-sectiontitle" style="margin-top:3px">Filtro operacional</div></div>
+            <div style="min-width:220px;flex:1"><input class="pcx-search" placeholder="Buscar atleta…" value="${esc(state.search)}"></div>
+          </div>
+          <div class="pcx-filterbar">
+            ${[
+              ['all','Todos'],['alerts','Só com alerta'],['noresponse','Sem responder'],['highrpe','RPE alto'],['requests','Solicitações'],['pending','Pendências']
+            ].map(([id,label])=>`<button class="pcx-filter ${state.filter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}
+          </div>
+          <div>
+            ${filtered.length ? filtered.map(r=>`
+              <button class="pcx-row" data-player="${esc(r.id)}" style="width:100%;background:transparent;border-left:0;border-right:0;border-top:0;text-align:left;color:inherit;cursor:pointer">
+                <div class="pcx-avatar">${r.p.image ? `<img src="${esc(r.p.image)}" style="width:100%;height:100%;object-fit:cover">` : esc((r.p.name||'A').slice(0,2).toUpperCase())}</div>
+                <div class="pcx-grow"><div class="pcx-name">${esc(r.p.name||'Atleta')}</div><div class="pcx-meta">Prontidão ${r.readiness===null?'—':r.readiness+'%'} • RPE ${r.rpe||'—'} • ${r.pendingCount} pendência(s)</div></div>
+                ${statusPill(r)}
+              </button>
+            `).join('') : `<div class="pcx-empty">Nenhuma atleta corresponde a este filtro.</div>`}
+          </div>
+        </div>
+
+        ${renderPlayerDetail(selected)}
+      </div>
+    `;
+
+    body.querySelectorAll('[data-filter]').forEach(btn => btn.onclick = () => {
+      state.filter = btn.dataset.filter;
+      render();
+    });
+    const search = body.querySelector('.pcx-search');
+    if (search) search.oninput = e => {
+      state.search = e.target.value;
+      const pos = e.target.selectionStart;
+      render();
+      const next = body.querySelector('.pcx-search');
+      if (next) { next.focus(); try { next.setSelectionRange(pos,pos); } catch(_){} }
+    };
+    body.querySelectorAll('[data-player]').forEach(btn => btn.onclick = () => {
+      state.selectedPlayer = btn.dataset.player;
+      render();
+    });
+  };
+
+  const connect = () => {
+    try {
+      if (!window.firebase?.auth || !window.firebase?.firestore) return;
+      window.firebase.auth().onAuthStateChanged(user => {
+        if (state.unsub) { try { state.unsub(); } catch(_){} state.unsub = null; }
+        if (!user) {
+          state.data = null;
+          state.docId = null;
+          render();
+          return;
+        }
+        const docId = getWorkspaceDocId();
+        if (!docId) return;
+        state.docId = docId;
+        state.unsub = window.firebase.firestore().collection('coachData').doc(docId).onSnapshot(
+          { includeMetadataChanges: true },
+          snap => {
+            if (!snap.exists) {
+              state.data = null;
+              body.innerHTML = `<div class="pcx-empty">Workspace não encontrado para a Central Técnica.</div>`;
+              return;
+            }
+            state.data = { ...snap.data(), id: snap.id };
+            render();
+          },
+          err => {
+            console.warn('ProCoach Central Técnica:', err);
+            body.innerHTML = `<div class="pcx-empty">Não foi possível atualizar a Central Técnica agora. O painel principal continua funcionando normalmente.</div>`;
+          }
+        );
+      });
+    } catch (err) {
+      console.warn('ProCoach Central Técnica indisponível:', err);
+    }
+  };
+
+  fab.onclick = () => {
+    state.open = true;
+    backdrop.classList.add('show');
+    backdrop.setAttribute('aria-hidden','false');
+    render();
+  };
+  const close = () => {
+    state.open = false;
+    backdrop.classList.remove('show');
+    backdrop.setAttribute('aria-hidden','true');
+  };
+  closeBtn.onclick = close;
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.open) close(); });
+
+  // Aguarda Firebase / app principal serem inicializados.
+  let attempts = 0;
+  const timer = setInterval(() => {
+    attempts++;
+    if (window.firebase?.apps?.length) {
+      clearInterval(timer);
+      connect();
+    } else if (attempts > 60) {
+      clearInterval(timer);
+    }
+  }, 500);
+})();
+
+    </script>
+
 </body>
 </html>
