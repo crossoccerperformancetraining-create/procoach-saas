@@ -85,7 +85,7 @@
         .athlete-safe-bottom { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
         .athlete-card { background: rgba(15,23,42,.72); border: 1px solid #1e293b; border-radius: 24px; }
 
-        /* ProCoach 2.0.4 — estabilidade de acesso e reconexão */
+        /* ProCoach 2.0.4 — estabilidade de acesso, reconexão e Central da Atleta (Hoje/Agenda/Evolução/Pendências) */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; }
         button, [role="button"], input, select, textarea { font: inherit; }
@@ -458,7 +458,7 @@
             const [data, setData] = useState({ dataSchemaVersion:7, players:[], log:{}, ex:[], exHistory:{}, act:[], dm:[], ass:{}, matchM:{}, postGame:{}, externalMetrics:{}, postW:'IA', nextG:{opponent:'',date:''}, coachMsg:'', color:'#1e3a8a', id:null, videoUrl:'', logo:null, teamName:'PROCOACH', days: [], lastAlertSent: 0, trainingStatus: 'pre', notifications:[], documents:[], requests:[], notificationReads:{}, appointments:[], commitments:[], commitmentResponses:{}, consentTemplates:[], consentRecords:{}, privateHealth:{}, guardianProfile:{}, videoAssignments:[] });
             const [idx, setIdx] = useState(null); const [isPriv, setIsPriv] = useState(false); 
             const [selectedDate, setSelectedDate] = useState(getTodayStr());
-            const [tab, setTab] = useState('workout'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
+            const [tab, setTab] = useState('today'); const [step, setStep] = useState(1); const [loading, setLoading] = useState(true);
             const [scores, setScores] = useState({sleep:1, stress:1, fatigue:1, soreness:1, mood:1}); const [pain, setPain] = useState([]);
             const [tp, setTp] = useState(''); const [ts, setTs] = useState(''); const [submitting, setSubmitting] = useState(false);
             const [water, setWater] = useState(0); const [agendaAck, setAgendaAck] = useState(false);
@@ -1159,6 +1159,33 @@
             const wStats = safeObj(logToday?.wellness);
             const isSOS = (Number(wStats.soreness) >= 6 || Number(wStats.fatigue) >= 6 || (Number(wStats.soreness) >= 5 && Number(wStats.fatigue) >= 5 && Number(wStats.sleep) >= 5));
 
+            // Central diária da atleta: resumo, pendências, evolução e histórico pessoal.
+            const todayStr = getTodayStr();
+            const todayRecord = getPlayerDayRecord(data.log, todayStr, data.players, idx);
+            const todayWellness = safeObj(todayRecord?.wellness);
+            const todayReadiness = calcBat(todayWellness).p;
+            const todayRpeDone = Boolean(todayRecord?.rpeSubmitted || todayRecord?.rpe_am_submitted || todayRecord?.rpe_pm_submitted);
+            const unreadNotifications = safeArray(data.notifications).filter(n => !data.notificationReads?.[n.id]);
+            const athleteId = getPlayerStableId(data.players, idx);
+            const upcomingCommitments = safeArray(data.commitments)
+                .filter(c => !c.target || c.target === 'all' || String(c.target) === String(athleteId))
+                .filter(c => !c.date || c.date >= todayStr)
+                .sort((a,b) => `${a.date||''} ${a.time||''}`.localeCompare(`${b.date||''} ${b.time||''}`));
+            const pendingCommitments = upcomingCommitments.filter(c => c.requiresAck && !safeObj(data.commitmentResponses?.[c.id])?.[athleteId]?.response);
+            const todayHistory = getHistory();
+            const readinessSamples = todayHistory.filter(x => x.hasW && Number.isFinite(Number(x.bat)));
+            const avgReadiness7d = readinessSamples.length ? Math.round(readinessSamples.reduce((sum,x)=>sum+Number(x.bat||0),0)/readinessSamples.length) : 0;
+            const rpeSamples = todayHistory.filter(x => x.rpeSub && Number(x.rpe) > 0);
+            const avgRpe7d = rpeSamples.length ? (rpeSamples.reduce((sum,x)=>sum+Number(x.rpe||0),0)/rpeSamples.length).toFixed(1) : '-';
+            const trainingDays7d = todayHistory.filter(x => x.rpeSub || safeArray(x.exs).length > 0).length;
+            const pendingItems = [
+                !todayWellness.sleep ? {id:'wellness',label:'Prontidão de hoje',desc:'Responder wellness antes do treino',tab:'workout'} : null,
+                !todayRpeDone ? {id:'rpe',label:'RPE / treino do dia',desc:'Registrar esforço quando finalizar a sessão',tab:'workout'} : null,
+                ...pendingCommitments.slice(0,3).map(c => ({id:`commit_${c.id}`,label:c.title||'Compromisso',desc:`Confirmar presença${c.date?` • ${formatDateBR(c.date)}`:''}`,tab:'agenda'})),
+                ...unreadNotifications.slice(0,2).map(n => ({id:`notice_${n.id}`,label:n.title||'Novo comunicado',desc:'Confirmar leitura na área Saúde',tab:'health'})),
+                offlineCount > 0 ? {id:'offline',label:`${offlineCount} envio(s) aguardando`,desc:'Serão sincronizados automaticamente quando a conexão voltar',tab:'health'} : null
+            ].filter(Boolean);
+
             return (
                 <React.Fragment>
                     {['offline-cached','syncing-cached','sync-warning'].includes(portalStatus) && <div className={`fixed top-3 left-1/2 -translate-x-1/2 z-[9998] max-w-[calc(100%-24px)] px-4 py-2 rounded-full border shadow-2xl backdrop-blur-md text-[9px] font-black uppercase tracking-wide flex items-center gap-2 ${portalStatus==='offline-cached'?'bg-slate-900/95 border-blue-500/40 text-blue-300':portalStatus==='sync-warning'?'bg-slate-900/95 border-orange-500/40 text-orange-300':'bg-slate-900/95 border-emerald-500/40 text-emerald-300'}`}><Icon name={portalStatus==='syncing-cached'?'refresh':'alert'} size={12}/><span className="truncate">{syncMessage}</span>{portalStatus!=='syncing-cached'&&<button onClick={retryPortal} className="ml-1 underline text-white">Atualizar</button>}</div>}
@@ -1229,6 +1256,110 @@
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll pb-40">
+                            {/* CENTRAL HOJE — resumo e ações prioritárias */}
+                            {tab === 'today' && (
+                                <div className="p-4 md:p-6 space-y-4 athlete-safe-bottom animate-fade-in">
+                                    <div className="athlete-card p-5 bg-gradient-to-br from-blue-950/70 to-slate-900 border-blue-500/20">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <div className="text-[9px] font-black uppercase tracking-[.2em] text-blue-400">Minha central</div>
+                                                <h2 className="text-xl font-black uppercase mt-1">Hoje</h2>
+                                                <p className="text-[10px] text-slate-400 mt-1">{getDayOfWeek()} • {new Date().toLocaleDateString('pt-BR')}</p>
+                                            </div>
+                                            <div className={`px-3 py-2 rounded-xl border text-[9px] font-black uppercase ${isOnline?'bg-emerald-950/40 border-emerald-500/30 text-emerald-400':'bg-blue-950/50 border-blue-500/40 text-blue-300'}`}>
+                                                {isOnline ? '● Online' : '● Offline'}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2 mt-5">
+                                            <button onClick={()=>setTab('workout')} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 text-center">
+                                                <div className={`text-2xl font-black ${todayReadiness>=75?'text-emerald-400':todayReadiness>=40?'text-yellow-400':'text-red-400'}`}>{todayWellness.sleep ? `${todayReadiness}%` : '--'}</div>
+                                                <div className="text-[7px] uppercase text-slate-500 mt-1">Prontidão</div>
+                                            </button>
+                                            <button onClick={()=>setTab('workout')} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 text-center">
+                                                <div className={`text-2xl font-black ${todayRpeDone?'text-emerald-400':'text-orange-400'}`}>{todayRpeDone?'✓':'!'}</div>
+                                                <div className="text-[7px] uppercase text-slate-500 mt-1">RPE</div>
+                                            </button>
+                                            <button onClick={()=>setTab('health')} className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 text-center">
+                                                <div className={`text-2xl font-black ${offlineCount>0?'text-orange-400':'text-blue-400'}`}>{offlineCount}</div>
+                                                <div className="text-[7px] uppercase text-slate-500 mt-1">Aguardando sync</div>
+                                            </button>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                            <div>
+                                                <div className="text-[8px] font-black uppercase text-slate-500">Sincronização</div>
+                                                <div className={`text-[10px] font-bold mt-1 ${isOnline?'text-emerald-400':'text-blue-300'}`}>
+                                                    {isOnline ? (offlineCount>0 ? 'Conectado • enviando pendências' : 'Dados sincronizados') : 'Sem internet • dados locais preservados'}
+                                                </div>
+                                            </div>
+                                            <button onClick={retryPortal} className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-[8px] font-black uppercase">Atualizar</button>
+                                        </div>
+                                    </div>
+
+                                    {/* Pendências */}
+                                    <div className="athlete-card p-5">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-orange-400">Central de pendências</div>
+                                                <h3 className="font-black uppercase text-sm mt-1">O que precisa de atenção</h3>
+                                            </div>
+                                            <span className={`min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-black ${pendingItems.length?'bg-orange-500/20 text-orange-400':'bg-emerald-500/20 text-emerald-400'}`}>{pendingItems.length}</span>
+                                        </div>
+                                        {pendingItems.length===0 ? (
+                                            <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-center">
+                                                <div className="text-2xl">✅</div>
+                                                <div className="text-xs font-black text-emerald-400 mt-2">Tudo em dia</div>
+                                                <div className="text-[9px] text-slate-500 mt-1">Nenhuma pendência identificada agora.</div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {pendingItems.map(item=>(
+                                                    <button key={item.id} onClick={()=>setTab(item.tab)} className="w-full text-left p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-orange-500/40 flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center"><Icon name="alert" size={16}/></div>
+                                                        <div className="flex-1 min-w-0"><div className="font-black text-xs truncate">{item.label}</div><div className="text-[9px] text-slate-500 mt-1">{item.desc}</div></div>
+                                                        <span className="text-slate-600">›</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Agenda pessoal */}
+                                    <div className="athlete-card p-5">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div><div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Minha agenda</div><h3 className="font-black uppercase text-sm mt-1">Próximos compromissos</h3></div>
+                                            <button onClick={()=>setTab('agenda')} className="text-[9px] font-black uppercase text-blue-400">Abrir calendário</button>
+                                        </div>
+                                        {upcomingCommitments.length===0 ? <p className="text-xs text-slate-500">Nenhum compromisso futuro publicado.</p> :
+                                            <div className="space-y-2">{upcomingCommitments.slice(0,3).map(c=><div key={c.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800"><div className="flex justify-between gap-2"><div className="font-black text-xs">{c.title||'Compromisso'}</div><span className="text-[8px] font-black text-violet-400">{c.date?formatDateBR(c.date):''} {c.time||''}</span></div><div className="text-[9px] text-slate-500 mt-1">{c.location||c.type||'Equipe'}</div></div>)}</div>
+                                        }
+                                    </div>
+
+                                    {/* Evolução resumida */}
+                                    <button onClick={()=>setTab('evolution')} className="w-full athlete-card p-5 text-left">
+                                        <div className="flex items-center justify-between">
+                                            <div><div className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Minha evolução</div><h3 className="font-black uppercase text-sm mt-1">Últimos 7 dias</h3></div>
+                                            <Icon name="activity" className="text-emerald-400"/>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 mt-4">
+                                            <div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-xl font-black text-emerald-400">{avgReadiness7d||'-'}{avgReadiness7d?'%':''}</div><div className="text-[7px] uppercase text-slate-600">Prontidão média</div></div>
+                                            <div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-xl font-black text-orange-400">{avgRpe7d}</div><div className="text-[7px] uppercase text-slate-600">RPE médio</div></div>
+                                            <div className="bg-slate-950 rounded-xl p-3 text-center"><div className="text-xl font-black text-blue-400">{trainingDays7d}</div><div className="text-[7px] uppercase text-slate-600">Dias registrados</div></div>
+                                        </div>
+                                    </button>
+
+                                    {/* Falar com a comissão */}
+                                    <div className="athlete-card p-5 bg-gradient-to-br from-red-950/30 to-slate-900">
+                                        <div className="flex items-center gap-3 mb-4"><div className="w-11 h-11 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center"><Icon name="medkit" size={20}/></div><div><div className="text-[9px] font-black uppercase text-red-400">Canal rápido</div><h3 className="font-black text-sm uppercase">Preciso falar com a comissão</h3></div></div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={()=>{setRequestForm({...requestForm,type:'Dor / desconforto'});setTab('health')}} className="p-3 rounded-xl bg-red-600 text-white text-[9px] font-black uppercase">Dor / desconforto</button>
+                                            <button onClick={()=>{setRequestForm({...requestForm,type:'Outro'});setTab('health')}} className="p-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-[9px] font-black uppercase">Falar com equipe</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {tab === 'workout' && (
                                 <div className="space-y-4 animate-fade-in">
                                     
@@ -1709,6 +1840,51 @@
                                 </div>
                             )}
 
+                            {/* EVOLUÇÃO E HISTÓRICO PESSOAL */}
+                            {tab === 'evolution' && (
+                                <div className="p-4 md:p-6 space-y-5 athlete-safe-bottom animate-fade-in">
+                                    <div className="athlete-card p-5 bg-gradient-to-br from-emerald-950/40 to-slate-900">
+                                        <div className="flex items-center justify-between"><div><div className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Minha evolução</div><h2 className="font-black uppercase text-xl mt-1">Últimos 7 dias</h2></div><Icon name="activity" size={28} className="text-emerald-400"/></div>
+                                        <div className="grid grid-cols-3 gap-2 mt-5">
+                                            <div className="bg-slate-950 p-3 rounded-xl text-center"><div className="text-2xl font-black text-emerald-400">{avgReadiness7d||'-'}{avgReadiness7d?'%':''}</div><div className="text-[7px] uppercase text-slate-600">Prontidão</div></div>
+                                            <div className="bg-slate-950 p-3 rounded-xl text-center"><div className="text-2xl font-black text-orange-400">{avgRpe7d}</div><div className="text-[7px] uppercase text-slate-600">RPE médio</div></div>
+                                            <div className="bg-slate-950 p-3 rounded-xl text-center"><div className="text-2xl font-black text-blue-400">{trainingDays7d}</div><div className="text-[7px] uppercase text-slate-600">Registros</div></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="athlete-card p-5">
+                                        <div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-blue-400">Tendência</div><h3 className="font-black uppercase text-sm mt-1">Prontidão diária</h3></div><span className="text-[8px] text-slate-500">7 dias</span></div>
+                                        <div className="flex items-end gap-2 h-32">
+                                            {[...todayHistory].reverse().map(item=>{
+                                                const height=item.hasW?Math.max(10,Math.min(100,Number(item.bat)||0)):5;
+                                                return <div key={item.date} className="flex-1 h-full flex flex-col justify-end items-center gap-1"><div className="text-[7px] text-slate-500">{item.hasW?`${item.bat}%`:'-'}</div><div className={`w-full rounded-t-lg ${item.bat>=75?'bg-emerald-500':item.bat>=40?'bg-yellow-500':'bg-red-500'}`} style={{height:`${height}%`,opacity:item.hasW?1:.18}}></div><div className="text-[7px] text-slate-600">{formatDateBR(item.date)}</div></div>
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="athlete-card p-5">
+                                        <div className="flex items-center justify-between mb-4"><div><div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Meu histórico</div><h3 className="font-black uppercase text-sm mt-1">Registros enviados</h3></div><button onClick={()=>setShowStats(true)} className="text-[8px] font-black uppercase text-blue-400">Detalhes</button></div>
+                                        <div className="space-y-2">
+                                            {todayHistory.map(item=>(
+                                                <div key={item.date} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-3">
+                                                    <div className="w-11 text-center"><div className="text-[9px] font-black text-white">{formatDateBR(item.date)}</div><div className="text-[7px] text-slate-600">DATA</div></div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            <span className={`px-2 py-1 rounded-md text-[7px] font-black uppercase ${item.hasW?'bg-emerald-500/15 text-emerald-400':'bg-slate-800 text-slate-600'}`}>Wellness {item.hasW?'✓':'—'}</span>
+                                                            <span className={`px-2 py-1 rounded-md text-[7px] font-black uppercase ${item.rpeSub?'bg-orange-500/15 text-orange-400':'bg-slate-800 text-slate-600'}`}>RPE {item.rpeSub?item.rpe:'—'}</span>
+                                                            {safeArray(item.exs).length>0&&<span className="px-2 py-1 rounded-md text-[7px] font-black uppercase bg-blue-500/15 text-blue-400">{item.exs.length} exercícios</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className={`w-2.5 h-2.5 rounded-full ${item.hasW||item.rpeSub?'bg-emerald-500':'bg-slate-700'}`}></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button onClick={()=>setTab('ranking')} className="w-full p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-black uppercase text-[10px] flex items-center justify-center gap-2"><Icon name="trophy" size={16}/> Ver ranking da equipe</button>
+                                </div>
+                            )}
+
                             {tab === 'ranking' && (
                                 <div className="space-y-6 animate-fade-in pb-20">
                                     
@@ -1793,11 +1969,11 @@
 
                         {/* MENU INFERIOR LIBERADO PARA TODOS */}
                         <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800 p-2 flex justify-around items-center z-50 shadow-[0_-10px_20px_rgba(0,0,0,0.5)] pointer-events-auto">
+                            <button onClick={()=>setTab('today')} className={`flex flex-col items-center p-2 transition-colors relative ${tab==='today'?'text-blue-400':'text-slate-500'}`}><Icon name="user" size={22}/>{pendingItems.length>0&&<span className="absolute top-0 right-0 min-w-4 h-4 px-1 bg-orange-500 text-white rounded-full text-[7px] font-black flex items-center justify-center">{Math.min(9,pendingItems.length)}</span>}<span className="text-[8px] font-black uppercase mt-1">Hoje</span></button>
                             <button onClick={()=>setTab('workout')} className={`flex flex-col items-center p-2 transition-colors ${tab==='workout'?'text-blue-500':'text-slate-500'}`}><Icon name="play" size={22}/><span className="text-[8px] font-black uppercase mt-1">Treino</span></button>
-                            <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-blue-500':'text-slate-500'}`}><Icon name="calendar" size={22}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
-                            <button onClick={()=>setTab('health')} className={`flex flex-col items-center p-2 transition-colors relative ${tab==='health'?'text-red-400':'text-slate-500'}`}><Icon name="medkit" size={22}/>{safeArray(data.notifications).some(n=>!data.notificationReads?.[n.id])&&<span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}<span className="text-[8px] font-black uppercase mt-1">Saúde</span></button>
-                            <button onClick={()=>setShowStats(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="activity" size={22}/><span className="text-[8px] font-black uppercase mt-1">Histórico</span></button>
-                            <button onClick={()=>setShowProfile(true)} className="flex flex-col items-center p-2 text-slate-500 hover:text-blue-400"><Icon name="target" size={22}/><span className="text-[8px] font-black uppercase mt-1">Perfil</span></button>
+                            <button onClick={()=>setTab('agenda')} className={`flex flex-col items-center p-2 transition-colors ${tab==='agenda'?'text-violet-400':'text-slate-500'}`}><Icon name="calendar" size={22}/><span className="text-[8px] font-black uppercase mt-1">Agenda</span></button>
+                            <button onClick={()=>setTab('evolution')} className={`flex flex-col items-center p-2 transition-colors ${tab==='evolution'?'text-emerald-400':'text-slate-500'}`}><Icon name="activity" size={22}/><span className="text-[8px] font-black uppercase mt-1">Evolução</span></button>
+                            <button onClick={()=>setTab('health')} className={`flex flex-col items-center p-2 transition-colors relative ${tab==='health'?'text-red-400':'text-slate-500'}`}><Icon name="medkit" size={22}/>{unreadNotifications.length>0&&<span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}<span className="text-[8px] font-black uppercase mt-1">Saúde</span></button>
                         </div>
                     </div>
                     
