@@ -98,6 +98,13 @@
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
         @media (max-width: 380px) { body { font-size: 14px; } .athlete-card { border-radius: 18px; } }
     </style>
+
+<style id="pca-tutorial-style">
+#pca-guide-open{position:fixed;right:12px;bottom:92px;z-index:9990;border:0;border-radius:999px;background:#0f172a;color:#fff;padding:11px 14px;font:900 10px/1 system-ui;box-shadow:0 12px 28px rgba(15,23,42,.3);cursor:pointer}
+#pca-guide-bg{display:none;position:fixed;inset:0;z-index:10020;background:rgba(2,6,23,.76);backdrop-filter:blur(7px);padding:16px}#pca-guide-bg.on{display:flex;align-items:center;justify-content:center}
+#pca-guide-panel{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#f8fafc;border-radius:22px;font-family:system-ui;color:#0f172a}.pca-guide-head{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:17px 18px}.pca-guide-head h2{font-size:16px;margin:0}.pca-guide-head small{display:block;color:#94a3b8;margin-top:3px}.pca-guide-x{margin-left:auto;width:40px;height:40px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#fff;font-size:20px}.pca-guide-body{padding:14px}.pca-step{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin:8px 0}.pca-step strong{display:block;font-size:12px;margin-bottom:4px}.pca-step span{font-size:10px;color:#64748b;line-height:1.5}.pca-tip{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:12px;padding:11px;font-size:10px;margin-top:12px}
+@media(max-width:600px){#pca-guide-bg{padding:0}#pca-guide-panel{width:100vw;height:100vh;max-height:100vh;border-radius:0}.pca-guide-head{padding-top:calc(14px + env(safe-area-inset-top))}}
+</style>
 </head>
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
     
@@ -2338,6 +2345,84 @@ function bind(){document.querySelectorAll('[data-att]').forEach(b=>b.onclick=()=
 function connect(){if(!window.firebase?.firestore||!docId)return;unsub=firebase.firestore().collection('coachData').doc(docId).onSnapshot(s=>{if(!s.exists)return;data=s.data();const ps=A(data.players);idx=uid?ps.findIndex(x=>String(x.id)===String(uid)||A(x.legacyIds).map(String).includes(String(uid))):0;if(idx<0&&ps.length===1)idx=0;render()})}
 $('pc30a-open').onclick=()=>{$('pc30a-bg').classList.add('on');render()};$('pc30a-close').onclick=()=>$('pc30a-bg').classList.remove('on');$('pc30a-bg').onclick=e=>{if(e.target===$('pc30a-bg'))$('pc30a-bg').classList.remove('on')};
 let n=0,t=setInterval(()=>{if(window.firebase?.apps?.length){clearInterval(t);connect()}else if(++n>80)clearInterval(t)},300)
+})();
+</script>
+
+
+<div id="pca-tutorial"><button id="pca-guide-open" type="button">❓ TUTORIAL</button><div id="pca-guide-bg" aria-hidden="true"><section id="pca-guide-panel" role="dialog" aria-modal="true">
+<header class="pca-guide-head"><div><h2>Como usar o ProCoach Athlete</h2><small>Guia rápido para a atleta</small></div><button id="pca-guide-close" class="pca-guide-x">×</button></header>
+<div class="pca-guide-body">
+<div class="pca-step"><strong>1. Meu Dia</strong><span>É sua tela principal. Veja o que precisa responder ou fazer hoje: wellness, treino, compromisso, presença, mensagens e registros pendentes.</span></div>
+<div class="pca-step"><strong>2. Meu Treino</strong><span>Consulte a sessão enviada pela comissão, objetivos, orientações e materiais disponíveis.</span></div>
+<div class="pca-step"><strong>3. Presença e compromissos</strong><span>Confirme quando solicitado. Se houver alteração, responda pelo próprio app para a comissão receber o status.</span></div>
+<div class="pca-step"><strong>4. Wellness / Como estou</strong><span>Responda os campos solicitados com atenção. Essas informações ajudam a comissão a acompanhar sua rotina.</span></div>
+<div class="pca-step"><strong>5. RPE pós-treino</strong><span>Após a sessão, informe a percepção de esforço quando o app solicitar. Faça o registro referente ao treino correto.</span></div>
+<div class="pca-step"><strong>6. Dor ou desconforto</strong><span>Use quando precisar informar um desconforto. O registro não substitui avaliação médica ou fisioterapêutica.</span></div>
+<div class="pca-step"><strong>7. Minha Semana e Metas</strong><span>Veja agenda, treinos, jogos, compromissos e objetivos definidos para o período.</span></div>
+<div class="pca-step"><strong>8. Plano Individual / RTP</strong><span>Quando liberado para seu perfil, acompanhe orientações individuais e etapas de retorno definidas pela equipe responsável.</span></div>
+<div class="pca-step"><strong>9. Mensagens e Comissão</strong><span>Leia comunicados e use o contato rápido quando precisar falar com a equipe.</span></div>
+<div class="pca-step"><strong>10. Documentos e histórico</strong><span>Consulte conteúdos disponibilizados e a área “O que enviei” para revisar seus próprios registros.</span></div>
+<div class="pca-step"><strong>11. Offline / Sincronização</strong><span>Sem internet, o app pode manter dados salvos e colocar alguns envios em fila. Confira o indicador até aparecer como sincronizado.</span></div>
+<div class="pca-tip"><b>Dica:</b> comece sempre por <b>Meu Dia</b>. Ele mostra as ações mais importantes e evita procurar função por função.</div>
+</div></section></div></div>
+<script id="pca-tutorial-script">(function(){if(window.__PCA_TUTORIAL__)return;window.__PCA_TUTORIAL__=true;var bg=document.getElementById('pca-guide-bg');document.getElementById('pca-guide-open').onclick=function(){bg.classList.add('on');bg.setAttribute('aria-hidden','false')};document.getElementById('pca-guide-close').onclick=function(){bg.classList.remove('on');bg.setAttribute('aria-hidden','true')};bg.onclick=function(e){if(e.target===bg){bg.classList.remove('on');bg.setAttribute('aria-hidden','true')}}})();</script>
+
+<style id="pca-interactive-tour-style">
+#pca-tour-start{border:0;border-radius:10px;background:#16a34a;color:white;padding:10px 13px;font:900 11px system-ui;cursor:pointer;margin:8px 0 2px}
+#pca-tour-layer{display:none;position:fixed;inset:0;z-index:2147483000;pointer-events:none}
+#pca-tour-layer.on{display:block}
+#pca-tour-ring{position:fixed;border:3px solid #22d3ee;border-radius:16px;box-shadow:0 0 0 9999px rgba(2,6,23,.78),0 0 0 6px rgba(34,211,238,.2);transition:.2s;z-index:2}
+#pca-tour-box{position:fixed;z-index:3;width:min(370px,calc(100vw - 24px));background:white;color:#0f172a;border-radius:18px;padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.42);pointer-events:auto;font-family:system-ui}
+#pca-tour-box b{display:block;font-size:15px;margin-bottom:6px} #pca-tour-box p{font-size:12px;line-height:1.48;color:#475569;margin:0 0 11px}
+#pca-tour-count{font:900 10px system-ui;color:#64748b} #pca-tour-actions{display:flex;gap:7px;justify-content:flex-end}
+#pca-tour-actions button{border:0;border-radius:9px;padding:9px 11px;font:900 10px system-ui;cursor:pointer}
+#pca-tour-prev{background:#e2e8f0}#pca-tour-next{background:#0f172a;color:white}#pca-tour-exit{background:#fee2e2;color:#991b1b}
+</style>
+<script id="pca-interactive-tour-script">
+(function(){
+ if(window.__PCA_INTERACTIVE_TOUR__)return;window.__PCA_INTERACTIVE_TOUR__=true;
+ const $=s=>document.querySelector(s);
+ function byText(words){
+   const ws=words.map(x=>x.toLowerCase());
+   const els=[...document.querySelectorAll('button,a,[role="button"],nav *,h1,h2,h3,strong')];
+   return els.find(e=>ws.some(w=>(e.textContent||'').trim().toLowerCase().includes(w)))||null;
+ }
+ const steps=[
+  {t:'1. Meu Dia',d:'Esta é a referência principal. Veja o que precisa responder ou fazer hoje.',g:()=>byText(['meu dia','hoje'])||$('#pc21-ath-btn')},
+  {t:'2. Meu Treino',d:'Consulte treino, orientações e informações que a comissão disponibilizou para você.',g:()=>byText(['meu treino','treino'])},
+  {t:'3. Wellness e RPE',d:'Preencha os questionários solicitados. Depois do treino, registre a percepção de esforço quando aparecer como pendência.',g:()=>byText(['wellness','rpe','prancheta'])},
+  {t:'4. Presença e compromissos',d:'Confirme presença ou responda aos compromissos enviados pela comissão.',g:()=>byText(['presença','agenda','compromisso'])},
+  {t:'5. Minha Semana e Metas',d:'Acompanhe sua programação, metas e evolução pessoal sem precisar procurar em várias telas.',g:()=>byText(['semana','metas','evolução'])},
+  {t:'6. Dor / desconforto e RTP',d:'Quando disponível, registre desconfortos e acompanhe orientações de retorno conforme o fluxo definido pela comissão.',g:()=>byText(['dor','desconforto','rtp'])},
+  {t:'7. Mensagens e documentos',d:'Use estas áreas para consultar comunicações e materiais compartilhados com você.',g:()=>byText(['mensagens','documentos'])},
+  {t:'8. Offline e sincronização',d:'Sem internet, o app mantém o que for possível. Registros pendentes são enviados quando a conexão volta.',g:()=>byText(['offline','sincronização','sincronizado'])},
+  {t:'9. Ajuda / Tutorial',d:'Você pode abrir este tutorial novamente quando quiser. Ele não altera seus dados.',g:()=>$('#pca-guide-open')||byText(['ajuda','tutorial'])}
+ ];
+ let i=0,layer,ring,box;
+ function ensure(){
+  if(layer)return;layer=document.createElement('div');layer.id='pca-tour-layer';
+  layer.innerHTML='<div id="pca-tour-ring"></div><div id="pca-tour-box"><span id="pca-tour-count"></span><b id="pca-tour-title"></b><p id="pca-tour-text"></p><div id="pca-tour-actions"><button id="pca-tour-exit">SAIR</button><button id="pca-tour-prev">VOLTAR</button><button id="pca-tour-next">PRÓXIMO</button></div></div>';
+  document.body.appendChild(layer);ring=$('#pca-tour-ring');box=$('#pca-tour-box');
+  $('#pca-tour-exit').onclick=end;$('#pca-tour-prev').onclick=()=>{if(i){i--;show()}};$('#pca-tour-next').onclick=()=>{if(i<steps.length-1){i++;show()}else end()};
+  addEventListener('resize',()=>layer.classList.contains('on')&&show(false));
+ }
+ function pos(el){
+  let r=el?.getBoundingClientRect();if(!r||r.width<2||r.height<2)r={left:18,top:85,width:innerWidth-36,height:84};
+  const p=7,l=Math.max(6,r.left-p),t=Math.max(6,r.top-p),w=Math.min(innerWidth-l-6,r.width+p*2),h=Math.min(innerHeight-t-6,r.height+p*2);
+  Object.assign(ring.style,{left:l+'px',top:t+'px',width:w+'px',height:h+'px'});
+  const bw=Math.min(370,innerWidth-24);let bt=t+h+14;if(bt+205>innerHeight)bt=Math.max(12,t-215);let bl=Math.min(Math.max(12,l),innerWidth-bw-12);
+  Object.assign(box.style,{left:bl+'px',top:bt+'px'});
+ }
+ function show(){ensure();let s=steps[i],el=s.g();if(el)el.scrollIntoView({block:'center',behavior:'smooth'});
+  $('#pca-tour-count').textContent='PASSO '+(i+1)+' DE '+steps.length;$('#pca-tour-title').textContent=s.t;$('#pca-tour-text').textContent=s.d;
+  $('#pca-tour-prev').style.visibility=i?'visible':'hidden';$('#pca-tour-next').textContent=i===steps.length-1?'CONCLUIR':'PRÓXIMO';layer.classList.add('on');setTimeout(()=>pos(el),160)}
+ function start(){i=0;show()} function end(){layer?.classList.remove('on');try{localStorage.setItem('procoach_athlete_tour_seen_v1','1')}catch(e){}}
+ window.ProCoachAthleteStartTour=start;
+ function wire(){
+  const body=$('.pca-guide-body');
+  if(body&&!$('#pca-tour-start')){const b=document.createElement('button');b.id='pca-tour-start';b.type='button';b.textContent='▶ GUIA PASSO A PASSO';b.onclick=start;body.prepend(b)}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
 })();
 </script>
 
