@@ -1,0 +1,1 @@
+module.exports=async(req,res)=>res.status(200).json({ok:true,service:'procoach-api',version:'209',time:new Date().toISOString()});

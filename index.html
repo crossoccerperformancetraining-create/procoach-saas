@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • FINAL 207</title>
+    <title>ProCoach • FINAL 209 Secure Sync</title>
     
-    <link rel="manifest" href="manifest.json?v=207">
-    <link rel="apple-touch-icon" href="logo.png?v=207">
-    <link rel="icon" type="image/png" href="logo.png?v=207">
+    <link rel="manifest" href="manifest.json?v=209">
+    <link rel="apple-touch-icon" href="logo.png?v=209">
+    <link rel="icon" type="image/png" href="logo.png?v=209">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -5987,12 +5987,26 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             return 'Outros';
         };
 
+        const normalizeVideoCategory = value => {
+            const t=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            if(t.includes('advers')) return 'Adversário';
+            if(t.includes('bola')||t.includes('parada')||t.includes('set piece')) return 'Bola parada';
+            if(t.includes('individual')||t.includes('tecnico')||t.includes('correc')) return 'Individual';
+            return 'Coletivo';
+        };
+
         const VideoCenterView = ({ players, athleteGroups, setAthleteGroups, videoAssignments, setVideoAssignments, athleteNotificationReads, themeColor }) => {
-            const ps=safeArray(players); const allVideoItems=[...safeArray(videoAssignments)]; const assignments=allVideoItems.filter(item=>!item.isPlaylistTemplate).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))); const playlists=allVideoItems.filter(item=>item.isPlaylistTemplate).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))); const groups=[...safeArray(athleteGroups)];
+            const ps=safeArray(players); const allVideoItems=[...safeArray(videoAssignments)]; const playlists=allVideoItems.filter(item=>item.isPlaylistTemplate).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))); const groups=[...safeArray(athleteGroups)];
             const positions=[...new Set(ps.map(p=>p.position||p.pos).filter(Boolean))].sort();
             const [form,setForm]=useState({title:'',urls:'',description:'',category:'Análise individual',dueDate:'',targetMode:'manual',targetValue:'',saveAsPlaylist:false,playlistName:''});
             const [manualIds,setManualIds]=useState([]); const [showForm,setShowForm]=useState(true);
             const [groupName,setGroupName]=useState(''); const [groupPlayerIds,setGroupPlayerIds]=useState([]); const [showGroupEditor,setShowGroupEditor]=useState(false);
+            const [videoFilter,setVideoFilter]=useState('Todos'); const [showArchivedVideos,setShowArchivedVideos]=useState(false);
+            const assignments=allVideoItems
+                .filter(item=>!item.isPlaylistTemplate)
+                .filter(item=>showArchivedVideos ? !!item.archivedAt : !item.archivedAt)
+                .filter(item=>videoFilter==='Todos'||normalizeVideoCategory(item.category)===videoFilter)
+                .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
             const toggle=id=>setManualIds(cur=>cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]);
             const resolveRecipients=()=>{
                 if(form.targetMode==='all') return ps.map(p=>p.id);
@@ -6017,16 +6031,25 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             const removePlaylist=id=>{if(confirm('Excluir esta playlist salva?'))setVideoAssignments(allVideoItems.filter(item=>item.id!==id));};
             const readCount=item=>safeArray(item.recipientIds).filter(pid=>safeObj(athleteNotificationReads?.[pid])[`video_${item.id}`]).length;
             const recipientNames=item=>safeArray(item.recipientIds).map(id=>ps.find(p=>p.id===id)?.name).filter(Boolean);
-            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="flex flex-col md:flex-row justify-between gap-3 mb-6"><div><div className="text-[9px] font-black uppercase tracking-[.25em] text-red-500">Vídeo e aprendizagem</div><h2 className="text-2xl font-black uppercase dark:text-white">Central de Vídeos</h2><p className="text-xs text-slate-500">Envie vários vídeos e salve playlists para reutilizar no futuro.</p></div><div className="flex gap-2"><button onClick={()=>setShowGroupEditor(!showGroupEditor)} className="px-4 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Grupos</button><button onClick={()=>setShowForm(!showForm)} className="px-4 py-3 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase">{showForm?'Fechar publicação':'Nova publicação'}</button></div></div>
+            const archiveVideo=id=>setVideoAssignments(allVideoItems.map(item=>item.id===id?{...item,archivedAt:new Date().toISOString()}:item));
+            const restoreVideo=id=>setVideoAssignments(allVideoItems.map(item=>item.id===id?{...item,archivedAt:null}:item));
+            const visibleBase=allVideoItems.filter(item=>!item.isPlaylistTemplate&&!item.archivedAt);
+            const totalConfirmed=visibleBase.reduce((sum,item)=>sum+readCount(item),0);
+            const totalRecipients=visibleBase.reduce((sum,item)=>sum+safeArray(item.recipientIds).length,0);
+            return <div className="h-full overflow-y-auto p-4 md:p-6 bg-slate-50 dark:bg-slate-900 custom-scroll pb-32"><div className="max-w-7xl mx-auto"><div className="flex flex-col md:flex-row justify-between gap-3 mb-4"><div><div className="text-[9px] font-black uppercase tracking-[.25em] text-red-500">Vídeo e aprendizagem</div><h2 className="text-2xl font-black uppercase dark:text-white">Central de Vídeos</h2><p className="text-xs text-slate-500">Uma única central para adversário, bola parada, individual e coletivo.</p></div><div className="flex gap-2 flex-wrap"><div className="px-4 py-2.5 rounded-xl bg-emerald-950/20 border border-emerald-700/40"><div className="text-[8px] font-black uppercase text-emerald-500">Confirmações</div><div className="text-lg font-black text-emerald-500">{totalConfirmed}/{totalRecipients||0}</div></div><button onClick={()=>setShowGroupEditor(!showGroupEditor)} className="px-4 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Grupos</button><button onClick={()=>setShowForm(!showForm)} className="px-4 py-3 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase">{showForm?'Fechar publicação':'Nova publicação'}</button></div></div>
+            <div className="flex gap-2 flex-wrap mb-5">
+                {['Todos','Adversário','Bola parada','Individual','Coletivo'].map(cat=><button key={cat} onClick={()=>setVideoFilter(cat)} className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase border ${videoFilter===cat?'bg-blue-600 text-white border-blue-600':'bg-white dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>{cat}</button>)}
+                <button onClick={()=>setShowArchivedVideos(!showArchivedVideos)} className={`ml-auto px-3 py-2 rounded-xl text-[9px] font-black uppercase border ${showArchivedVideos?'bg-amber-600 text-white border-amber-600':'bg-white dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>{showArchivedVideos?'Arquivados':'Ver arquivados'}</button>
+            </div>
             {showGroupEditor&&<div className={`${phase3Card} p-5 mb-6`}><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-black uppercase text-sm dark:text-white">Grupos permanentes</h3><p className="text-[9px] text-slate-500">Exemplos: titulares, bola parada defensiva ou retorno de lesão.</p></div><span className="text-[9px] font-black text-indigo-500">{groups.length} grupos</span></div><input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Nome do grupo" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs mb-3"/><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 max-h-52 overflow-y-auto custom-scroll">{ps.map(p=><button key={p.id} onClick={()=>setGroupPlayerIds(current=>current.includes(p.id)?current.filter(id=>id!==p.id):[...current,p.id])} className={`p-2 rounded-xl border text-left text-[10px] font-black ${groupPlayerIds.includes(p.id)?'bg-indigo-600 text-white border-indigo-600':'bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700'}`}>{p.name}</button>)}</div><button onClick={saveGroup} className="w-full mt-3 py-3 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase">Salvar grupo</button>{groups.length>0&&<div className="flex flex-wrap gap-2 mt-4">{groups.map(group=><div key={group.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border dark:border-slate-700"><span className="text-[9px] font-black dark:text-white">{group.name} ({safeArray(group.playerIds).length})</span><button onClick={()=>removeGroup(group.id)} className="text-red-500 text-xs">×</button></div>)}</div>}</div>}
             {playlists.length>0&&<div className={`${phase3Card} p-5 mb-6`}><div className="flex items-center justify-between mb-3"><div><h3 className="font-black uppercase text-sm dark:text-white">Playlists salvas</h3><p className="text-[9px] text-slate-500">Reutilize uma sequência de vídeos sem colar os links novamente.</p></div><span className="text-[9px] font-black text-red-500">{playlists.length}</span></div><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{playlists.map(item=><div key={item.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border dark:border-slate-700"><div className="text-[8px] font-black uppercase text-red-500">{safeArray(item.urls).length} vídeo(s)</div><div className="font-black dark:text-white mt-1">{item.title}</div><div className="flex gap-2 mt-3"><button onClick={()=>loadPlaylist(item)} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-[9px] font-black uppercase">Usar playlist</button><button onClick={()=>removePlaylist(item.id)} className="px-3 rounded-lg border border-red-300 text-red-500"><Icon name="trash" size={14}/></button></div></div>)}</div></div>}
-            {showForm&&<div className={`${phase3Card} p-5 mb-6`}><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label className="text-[9px] font-black uppercase text-slate-400">Título</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Correções defensivas — Débora" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Categoria</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option>Análise individual</option><option>Análise por setor</option><option>Adversário</option><option>Técnico</option><option>Tático</option><option>Motivacional</option><option>Recuperação</option></select></div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Links — um por linha</label><textarea value={form.urls} onChange={e=>setForm({...form,urls:e.target.value})} placeholder={'https://youtube.com/...\nhttps://drive.google.com/...'} className="w-full h-24 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div className="md:col-span-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900"><label className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600"><input type="checkbox" checked={!!form.saveAsPlaylist} onChange={e=>setForm({...form,saveAsPlaylist:e.target.checked})}/> Salvar estes vídeos como playlist</label>{form.saveAsPlaylist&&<input value={form.playlistName} onChange={e=>setForm({...form,playlistName:e.target.value})} placeholder="Nome da playlist para usar novamente" className="w-full mt-2 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/>}</div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Orientação técnica</label><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="O que a atleta deve observar?" className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Prazo para assistir</label><input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Destinatários</label><select value={form.targetMode} onChange={e=>setForm({...form,targetMode:e.target.value,targetValue:''})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option value="manual">Selecionar atletas</option><option value="position">Por posição</option><option value="sector">Por setor</option><option value="group">Grupo permanente</option><option value="all">Elenco inteiro</option></select></div></div>
+            {showForm&&<div className={`${phase3Card} p-5 mb-6`}><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label className="text-[9px] font-black uppercase text-slate-400">Título</label><input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Ex: Correções defensivas — Débora" className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Categoria</label><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option>Análise individual</option><option>Individual</option><option>Coletivo</option><option>Adversário</option><option>Bola parada</option><option>Análise por setor</option><option>Técnico</option><option>Tático</option><option>Motivacional</option><option>Recuperação</option></select></div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Links — um por linha</label><textarea value={form.urls} onChange={e=>setForm({...form,urls:e.target.value})} placeholder={'https://youtube.com/...\nhttps://drive.google.com/...'} className="w-full h-24 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div className="md:col-span-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900"><label className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600"><input type="checkbox" checked={!!form.saveAsPlaylist} onChange={e=>setForm({...form,saveAsPlaylist:e.target.checked})}/> Salvar estes vídeos como playlist</label>{form.saveAsPlaylist&&<input value={form.playlistName} onChange={e=>setForm({...form,playlistName:e.target.value})} placeholder="Nome da playlist para usar novamente" className="w-full mt-2 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/>}</div><div className="md:col-span-2"><label className="text-[9px] font-black uppercase text-slate-400">Orientação técnica</label><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="O que a atleta deve observar?" className="w-full h-20 p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Prazo para assistir</label><input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"/></div><div><label className="text-[9px] font-black uppercase text-slate-400">Destinatários</label><select value={form.targetMode} onChange={e=>setForm({...form,targetMode:e.target.value,targetValue:''})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs font-bold"><option value="manual">Selecionar atletas</option><option value="position">Por posição</option><option value="sector">Por setor</option><option value="group">Grupo permanente</option><option value="all">Elenco inteiro</option></select></div></div>
             {form.targetMode==='position'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha a posição</option>{positions.map(x=><option key={x}>{x}</option>)}</select></div>}
             {form.targetMode==='sector'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha o setor</option>{['Defesa','Meio-campo','Ataque','Outros'].map(x=><option key={x}>{x}</option>)}</select></div>}
             {form.targetMode==='group'&&<div className="mt-3"><select value={form.targetValue} onChange={e=>setForm({...form,targetValue:e.target.value})} className="w-full p-3 rounded-xl border dark:border-slate-600 dark:bg-slate-700 dark:text-white text-xs"><option value="">Escolha o grupo permanente</option>{groups.map(group=><option key={group.id} value={group.id}>{group.name} ({safeArray(group.playerIds).length})</option>)}</select>{!groups.length&&<div className="text-[9px] text-amber-500 mt-2">Crie um grupo no botão “Grupos”.</div>}</div>}
             {form.targetMode==='manual'&&<div className="mt-4"><div className="flex justify-between mb-2"><span className="text-[9px] uppercase font-black text-slate-400">Seleção manual ({manualIds.length})</span><button onClick={()=>setManualIds(manualIds.length===ps.length?[]:ps.map(p=>p.id))} className="text-[9px] font-black uppercase text-blue-500">{manualIds.length===ps.length?'Limpar':'Todas'}</button></div><div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 max-h-56 overflow-y-auto custom-scroll">{ps.map(p=><button key={p.id} onClick={()=>toggle(p.id)} className={`p-2 rounded-xl border text-left flex items-center gap-2 ${manualIds.includes(p.id)?'bg-blue-600 text-white border-blue-600':'bg-slate-50 dark:bg-slate-900 dark:text-white dark:border-slate-700'}`}><span className="w-7 h-7 rounded-full bg-slate-300 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover"/>:<Icon name="user" size={14} className="m-1.5"/>}</span><span className="text-[10px] font-black truncate">{p.name}</span></button>)}</div></div>}
             <button onClick={save} className="w-full mt-4 py-4 bg-red-600 text-white rounded-xl font-black uppercase text-xs">Publicar no aplicativo das atletas</button></div>}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">{assignments.length?assignments.map(item=>{const names=recipientNames(item);const read=readCount(item);return <div key={item.id} className={`${phase3Card} p-5`}><div className="flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-red-500">{item.category||'Vídeo'}</div><h3 className="font-black dark:text-white">{item.title}</h3><div className="text-[9px] text-slate-500 mt-1">{new Date(item.createdAt).toLocaleString('pt-BR')} {item.dueDate?`• prazo ${formatDateBR(item.dueDate)}`:''}</div></div><button onClick={()=>remove(item.id)} className="text-red-500"><Icon name="trash"/></button></div>{item.description&&<p className="text-xs text-slate-600 dark:text-slate-300 mt-3 whitespace-pre-wrap">{item.description}</p>}<div className="flex flex-wrap gap-2 mt-3">{safeArray(item.urls).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase">Abrir vídeo {i+1}</a>)}</div><div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900"><div className="flex justify-between text-[10px] font-black"><span className="dark:text-white">Visualizações confirmadas</span><span className="text-emerald-500">{read}/{safeArray(item.recipientIds).length}</span></div><div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full mt-2 overflow-hidden"><div className="h-full bg-emerald-500" style={{width:`${safeArray(item.recipientIds).length?read/safeArray(item.recipientIds).length*100:0}%`}}></div></div><div className="text-[9px] text-slate-500 mt-2 line-clamp-2">{names.join(', ')||'Destinatários removidos do elenco'}</div></div></div>}):<div className="col-span-full p-12 text-center text-slate-400 border-2 border-dashed rounded-2xl">Nenhuma publicação de vídeo ainda.</div>}</div></div></div>;
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">{assignments.length?assignments.map(item=>{const names=recipientNames(item);const read=readCount(item);return <div key={item.id} className={`${phase3Card} p-5`}><div className="flex justify-between gap-3"><div><div className="text-[9px] font-black uppercase text-red-500">{item.category||'Vídeo'}</div><h3 className="font-black dark:text-white">{item.title}</h3><div className="text-[9px] text-slate-500 mt-1">{new Date(item.createdAt).toLocaleString('pt-BR')} {item.dueDate?`• prazo ${formatDateBR(item.dueDate)}`:''}</div></div><div className="flex gap-1">{item.archivedAt?<><button onClick={()=>restoreVideo(item.id)} className="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[8px] font-black uppercase">Restaurar</button><button onClick={()=>remove(item.id)} className="text-red-500"><Icon name="trash"/></button></>:<button onClick={()=>archiveVideo(item.id)} className="px-2 py-1 rounded-lg bg-slate-800 text-white text-[8px] font-black uppercase">Arquivar</button>}</div></div>{item.description&&<p className="text-xs text-slate-600 dark:text-slate-300 mt-3 whitespace-pre-wrap">{item.description}</p>}<div className="flex flex-wrap gap-2 mt-3">{safeArray(item.urls).map((url,i)=><a key={i} href={url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-slate-900 text-white text-[9px] font-black uppercase">Abrir vídeo {i+1}</a>)}</div><div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-900"><div className="flex justify-between text-[10px] font-black"><span className="dark:text-white">Visualizações confirmadas</span><span className="text-emerald-500">{read}/{safeArray(item.recipientIds).length}</span></div><div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full mt-2 overflow-hidden"><div className="h-full bg-emerald-500" style={{width:`${safeArray(item.recipientIds).length?read/safeArray(item.recipientIds).length*100:0}%`}}></div></div><div className="text-[9px] text-slate-500 mt-2 line-clamp-2">{names.join(', ')||'Destinatários removidos do elenco'}</div></div></div>}):<div className="col-span-full p-12 text-center text-slate-400 border-2 border-dashed rounded-2xl">Nenhuma publicação de vídeo ainda.</div>}</div></div></div>;
         };
 
         const CompetitionsView = ({ competitions, setCompetitions, themeColor }) => {
@@ -7586,7 +7609,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 (function(){
  if(window.__PCR__)return;window.__PCR__=true;
  const RK='procoach_routines_v1',AK='procoach_routine_assignments_v1',WK='procoach_week_templates_v1';
- const $=id=>document.getElementById(id), read=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}, write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+ const $=id=>document.getElementById(id), read=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}, write=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));window.dispatchEvent(new CustomEvent('pc-routine-local-change',{detail:{key:k,value:v}}));};
  let current={id:'',name:'',category:'Mini Band',duration:12,objective:'',exercises:[]};
  const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
  function formToCurrent(){current.name=$('pcr-name').value.trim();current.category=$('pcr-cat').value;current.duration=Number($('pcr-duration').value)||0;current.objective=$('pcr-objective').value.trim()}
@@ -7608,7 +7631,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
  function renderWeek(){
   const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'],rs=read(RK);$('pcr-week-grid').innerHTML=days.map((d,i)=>`<div class="pcr-day"><b>${d}</b><select class="pcr-field" data-weekday="${i}" style="margin-top:7px"><option value="">— livre —</option>${rs.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div>`).join('')
  }
- function renderAssignments(){const a=read(AK);$('pcr-assignments').innerHTML=a.length?a.slice(0,8).map(x=>`<div class="pcr-card" style="margin-top:7px;padding:8px"><b>${esc(x.routineName)}</b><div class="pcr-muted">${esc(x.date)} • ${esc(x.target||x.targetType)}</div></div>`).join(''):'<span class="pcr-muted">Nenhum envio.</span>'}
+ function renderAssignments(){const a=read(AK),prog=(()=>{try{return JSON.parse(localStorage.getItem('procoach_routine_progress_cloud_v1')||'{}')}catch(e){return{}}})();$('pcr-assignments').innerHTML=a.length?a.slice(0,8).map(x=>{const ids=Array.isArray(x.recipientIds)?x.recipientIds:[];const rows=Object.entries(prog).filter(([pid])=>!ids.length||ids.map(String).includes(String(pid))).map(([,m])=>m?.[x.id]).filter(Boolean);const done=rows.filter(s=>s.finishedAt||s.completedAll).length;return `<div class="pcr-card" style="margin-top:7px;padding:8px"><b>${esc(x.routineName)}</b><div class="pcr-muted">${esc(x.date)} • ${esc(x.target||x.targetType)}${ids.length?` • ✅ ${done}/${ids.length}`:''}</div></div>`}).join(''):'<span class="pcr-muted">Nenhum envio.</span>'}
  $('pcr-open').onclick=()=>{$('pcr-bg').classList.add('on');refresh()};$('pcr-close').onclick=()=>$('pcr-bg').classList.remove('on');$('pcr-bg').onclick=e=>{if(e.target===$('pcr-bg'))$('pcr-bg').classList.remove('on')};
  document.querySelectorAll('.pcr-tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pcr-tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('#pcr-panel [data-view]').forEach(v=>v.hidden=v.dataset.view!==b.dataset.tab);refresh()});
  $('pcr-ex-add').onclick=()=>{const name=$('pcr-ex-name').value.trim();if(!name)return;current.exercises.push({id:'e_'+Date.now(),name,sets:$('pcr-ex-sets').value.trim(),reps:$('pcr-ex-reps').value.trim(),media:$('pcr-ex-media').value.trim(),tip:$('pcr-ex-tip').value.trim()});['pcr-ex-name','pcr-ex-reps','pcr-ex-media','pcr-ex-tip'].forEach(id=>$(id).value='');renderCurrent()};
@@ -7617,7 +7640,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
  $('pcr-week-save').onclick=()=>{const mapping={};document.querySelectorAll('[data-weekday]').forEach(s=>mapping[s.dataset.weekday]=s.value);const a=read(WK);a.unshift({id:'w_'+Date.now(),name:$('pcr-week-name').value.trim()||'Semana padrão',mapping,createdAt:new Date().toISOString()});write(WK,a);alert('Semana padrão salva.')};
  $('pcr-as-date').value=new Date().toISOString().slice(0,10);
  $('pcr-as-send').onclick=()=>{const rs=read(RK),r=rs.find(x=>x.id===$('pcr-as-routine').value);if(!r)return;const a=read(AK);a.unshift({id:'a_'+Date.now(),routineId:r.id,routineName:r.name,date:$('pcr-as-date').value,targetType:$('pcr-as-type').value,target:$('pcr-as-target').value.trim(),routine:JSON.parse(JSON.stringify(r)),createdAt:new Date().toISOString(),status:'sent'});write(AK,a);$('pcr-as-msg').textContent='✓ Rotina enviada para o dia selecionado.';renderAssignments()};
- loadForm();refresh();
+ loadForm();refresh();window.addEventListener('pc-routine-cloud-sync',()=>refresh());
 })();
 </script>
 
@@ -7680,8 +7703,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-207';
- document.documentElement.dataset.procoachBuild='207';
+ window.PROCOACH_BUILD='2026.09-final-209';
+ document.documentElement.dataset.procoachBuild='209';
 })();
 </script>
 
@@ -7689,16 +7712,85 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 if('serviceWorker' in navigator){
  window.addEventListener('load',async()=>{
   try{
-   const r=await navigator.serviceWorker.register('./sw.js?v=207',{updateViaCache:'none'});
+   const r=await navigator.serviceWorker.register('./sw.js?v=209',{updateViaCache:'none'});
    await r.update().catch(()=>{});
    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(sessionStorage.getItem('pc_sw_207_reloaded')) return;
-    sessionStorage.setItem('pc_sw_207_reloaded','1');
+    if(sessionStorage.getItem('pc_sw_209_reloaded')) return;
+    sessionStorage.setItem('pc_sw_209_reloaded','1');
     location.reload();
    });
   }catch(_){}
  });
 }
+</script>
+
+<script id="pc-routine-firestore-bridge">
+(function(){
+ if(window.__PC_ROUTINE_FIRESTORE_BRIDGE__)return;window.__PC_ROUTINE_FIRESTORE_BRIDGE__=true;
+ const RK='procoach_routines_v1',AK='procoach_routine_assignments_v1',WK='procoach_week_templates_v1',PK='procoach_routine_progress_cloud_v1';
+ const safeParse=(raw,fallback)=>{try{return JSON.parse(raw||'')??fallback}catch(_){return fallback}};
+ const nativeSet=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+ const getWorkspace=()=>{
+   const q=new URLSearchParams(location.search);
+   return q.get('workspace')||localStorage.getItem('procoach_active_workspace')||firebase.auth()?.currentUser?.uid||'';
+ };
+ let unsub=null,pushTimer=null,applyingCloud=false;
+ function resolveAssignments(assignments,data){
+   const players=Array.isArray(data.players)?data.players:[],groups=Array.isArray(data.athleteGroups)?data.athleteGroups:[];
+   return (Array.isArray(assignments)?assignments:[]).map(item=>{
+      if(Array.isArray(item.recipientIds)&&item.recipientIds.length)return item;
+      let ids=[];
+      const target=String(item.target||'').trim().toLowerCase();
+      if(item.targetType==='team') ids=players.map(p=>String(p.id)).filter(Boolean);
+      else if(item.targetType==='athlete'){
+        const p=players.find(p=>String(p.id)===String(item.target)||String(p.name||'').trim().toLowerCase()===target);
+        if(p?.id)ids=[String(p.id)];
+      } else if(item.targetType==='group'){
+        const g=groups.find(g=>String(g.id)===String(item.target)||String(g.name||'').trim().toLowerCase()===target);
+        if(g)ids=(g.playerIds||g.recipientIds||[]).map(String);
+      }
+      return {...item,recipientIds:ids};
+   });
+ }
+ async function push(){
+   if(applyingCloud)return;
+   const user=firebase.auth()?.currentUser,workspaceId=getWorkspace();
+   if(!user||!workspaceId||!navigator.onLine)return;
+   try{
+     const ref=firebase.firestore().collection('coachData').doc(workspaceId);
+     const snap=await ref.get({source:'server'}).catch(()=>ref.get());
+     const data=snap.exists?snap.data():{};
+     const library=safeParse(localStorage.getItem(RK),[]);
+     const assignments=resolveAssignments(safeParse(localStorage.getItem(AK),[]),data);
+     const weeks=safeParse(localStorage.getItem(WK),[]);
+     await ref.set({
+       routineLibrary:library,
+       routineAssignments:assignments,
+       routineWeekTemplates:weeks,
+       routineSyncUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()
+     },{merge:true});
+   }catch(e){console.warn('Rotinas Firestore:',e)}
+ }
+ function queuePush(){clearTimeout(pushTimer);pushTimer=setTimeout(push,350)}
+ window.addEventListener('pc-routine-local-change',queuePush);
+ window.addEventListener('online',queuePush);
+ async function connect(){
+   if(unsub)return;
+   const workspaceId=getWorkspace();if(!workspaceId||!firebase.firestore)return;
+   const ref=firebase.firestore().collection('coachData').doc(workspaceId);
+   unsub=ref.onSnapshot({includeMetadataChanges:true},snap=>{
+     if(!snap.exists)return;const d=snap.data();
+     applyingCloud=true;
+     if(Array.isArray(d.routineLibrary))nativeSet(RK,d.routineLibrary);
+     if(Array.isArray(d.routineAssignments))nativeSet(AK,d.routineAssignments);
+     if(Array.isArray(d.routineWeekTemplates))nativeSet(WK,d.routineWeekTemplates);
+     nativeSet(PK,d.athleteRoutineProgress||{});
+     applyingCloud=false;
+     window.dispatchEvent(new Event('pc-routine-cloud-sync'));
+   },e=>console.warn('Rotinas snapshot:',e));
+ }
+ firebase.auth().onAuthStateChanged(user=>{if(user){connect();setTimeout(push,500)}});
+})();
 </script>
 </body>
 </html>

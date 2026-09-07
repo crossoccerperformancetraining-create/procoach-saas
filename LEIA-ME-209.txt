@@ -1,0 +1,42 @@
+PROCOACH FINAL 209 — SECURE SYNC + OFFLINE
+
+O QUE FOI FEITO
+1. Firestore real para Rotinas/Sequências:
+   - biblioteca, envios e semanas padrão ficam no documento da equipe;
+   - progresso da atleta volta para o Firestore;
+   - o treinador passa a receber o progresso da rotina.
+
+2. Backend seguro no Vercel:
+   - /api/manage-athlete-access
+   - /api/athlete-claim
+   - /api/athlete-data
+   - /api/athlete-submit
+   - endpoints equivalentes para responsável
+   - /api/private-health
+   - /api/health
+
+3. Permissões:
+   - convites individuais geram token único;
+   - o primeiro acesso vincula a conta Firebase à atleta;
+   - os próximos acessos exigem a mesma conta;
+   - Saúde Privada só é lida/escrita pelo backend;
+   - firestore.rules aplica acesso da comissão por ownerUid/memberRoles.
+
+4. Offline:
+   - shell index/atleta/athlete-start em cache 209;
+   - correção do fallback offline de /atleta.html;
+   - último payload seguro da atleta é guardado em IndexedDB;
+   - fila offline continua para wellness/RPE/água/presenças;
+   - progresso de rotinas sincroniza quando a internet volta.
+
+PASSOS PARA PUBLICAR
+A) Envie TODO este pacote para a raiz do GitHub.
+B) No Vercel, adicione FIREBASE_SERVICE_ACCOUNT_JSON usando .env.example como referência.
+C) Faça redeploy e teste https://SEU-DOMINIO/api/health — deve responder ok:true.
+D) No Firebase Authentication, mantenha Email/Password habilitado.
+E) Migre as atletas para convites seguros em Acessos e Permissões.
+F) Enquanto ainda houver links antigos, use firestore-legacy-transition.rules.
+G) Quando todos estiverem usando convite seguro, publique firestore.rules.
+
+IMPORTANTE
+Não coloque a conta de serviço dentro do GitHub. O arquivo .env.example não contém segredo real.

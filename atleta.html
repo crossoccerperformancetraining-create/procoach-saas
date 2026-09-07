@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Athlete • FINAL 207</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=207">
+    <title>ProCoach Athlete • FINAL 209 Offline</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=209">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=207',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=209',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -236,6 +236,22 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const response=await fetch(path,options); const result=await response.json().catch(()=>({}));
             if(!response.ok){const error=new Error(result.error||`Erro ${response.status}`);error.status=response.status;throw error;} return result;
         };
+        
+        const SECURE_CACHE_DB='procoach-athlete-secure-cache-v1';
+        const openSecureCacheDb=()=>new Promise((resolve,reject)=>{
+            if(!window.indexedDB)return reject(new Error('IndexedDB indisponível'));
+            const req=indexedDB.open(SECURE_CACHE_DB,1);
+            req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('portal'))req.result.createObjectStore('portal',{keyPath:'key'})};
+            req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+        });
+        const securePortalCacheKey=(workspaceId,playerId)=>`${workspaceId}::${playerId}`;
+        const securePortalCachePut=async(workspaceId,playerId,payload)=>{
+            try{const dbi=await openSecureCacheDb();return await new Promise((resolve,reject)=>{const tx=dbi.transaction('portal','readwrite');tx.objectStore('portal').put({key:securePortalCacheKey(workspaceId,playerId),payload,savedAt:new Date().toISOString()});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}catch(_){}
+        };
+        const securePortalCacheGet=async(workspaceId,playerId)=>{
+            try{const dbi=await openSecureCacheDb();return await new Promise((resolve,reject)=>{const req=dbi.transaction('portal').objectStore('portal').get(securePortalCacheKey(workspaceId,playerId));req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)})}catch(_){return null}
+        };
+
         const OFFLINE_DB_NAME='procoach-athlete-offline-v1';
         const openOfflineDb=()=>new Promise((resolve,reject)=>{if(!window.indexedDB)return reject(new Error('IndexedDB indisponível'));const req=indexedDB.open(OFFLINE_DB_NAME,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('queue'))req.result.createObjectStore('queue',{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
         const offlineQueueAdd=async item=>{const dbi=await openOfflineDb();return new Promise((resolve,reject)=>{const tx=dbi.transaction('queue','readwrite');tx.objectStore('queue').put(item);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})};
@@ -372,6 +388,13 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const getVideoThumb = (url='') => {
             const id = getYouTubeId(url);
             return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+        };
+        const normalizeAthleteVideoCategory = value => {
+            const t=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            if(t.includes('advers')) return 'Adversário';
+            if(t.includes('bola')||t.includes('parada')) return 'Bola parada';
+            if(t.includes('individual')||t.includes('tecnico')||t.includes('correc')) return 'Individual';
+            return 'Coletivo';
         };
         const CompactAnalysisVideoCard = ({url,title,category='Vídeo',description='',status='',onOpen}) => {
             const thumb = getVideoThumb(url);
@@ -513,6 +536,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const [expandedDay, setExpandedDay] = useState(null); const [viewMode, setViewMode] = useState('finished');
             const [showProfile, setShowProfile] = useState(false);
             const [restTimer, setRestTimer] = useState(null); const [focusMode, setFocusMode] = useState('exercise');
+            const [sessionSeconds,setSessionSeconds]=useState(0); const [sessionTimerRunning,setSessionTimerRunning]=useState(false);
             
             const [showAlertPopup, setShowAlertPopup] = useState(false);
             const [requestForm, setRequestForm] = useState({type:'Dor / desconforto',severity:'Moderada',location:'',message:''});
@@ -528,6 +552,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const [authUser, setAuthUser] = useState(null); const [authLoading, setAuthLoading] = useState(secureMode);
             const [loginMode, setLoginMode] = useState('login'); const [loginEmail, setLoginEmail] = useState(''); const [loginPassword, setLoginPassword] = useState(''); const [loginError, setLoginError] = useState('');
             const [analysisVideoModal, setAnalysisVideoModal] = useState(null);
+            const [athleteVideoFilter,setAthleteVideoFilter]=useState('Todos');
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null); const selectedPlayerUidRef = useRef(playerUid || null);
             const hasPortalDataRef = useRef(false);
@@ -553,6 +578,19 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             }, []);
             useEffect(()=>{if(!secureMode||!authUser||!activeCoachDocId||!playerUid)return;window.OneSignalDeferred=window.OneSignalDeferred||[];window.OneSignalDeferred.push(async OneSignal=>{try{await OneSignal.login(`${guardianMode?'guardian':'athlete'}:${activeCoachDocId}:${playerUid}`)}catch(e){console.warn('OneSignal login',e)}})},[authUser,activeCoachDocId,playerUid,guardianMode]);
 
+            useEffect(()=>{
+                if(!sessionTimerRunning)return;
+                const id=setInterval(()=>setSessionSeconds(value=>value+1),1000);
+                return ()=>clearInterval(id);
+            },[sessionTimerRunning]);
+            useEffect(()=>{
+                if(gif && gif.type!=='campo') setSessionTimerRunning(true);
+            },[gif?.id]);
+            const formatSessionTimer = value => {
+                const total=Math.max(0,Number(value)||0), h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+                return h>0 ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            };
+
             const retryPortal = () => {
                 setLoginError('');
                 setSyncMessage('');
@@ -573,7 +611,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             };
 
             const applyPortalPayload = (payload) => {
-                const d=payload||{}; const normalizedPlayers=normalizePortalPlayers(d.players || (d.player ? [d.player] : []));
+                const d=payload||{}; const normalizedPlayers=normalizePortalPlayers(d.players || (d.player ? [d.player] : [])); try{if(Array.isArray(d.routineAssignments))localStorage.setItem('procoach_routine_assignments_v1',JSON.stringify(d.routineAssignments));if(d.athleteRoutineProgress)localStorage.setItem('procoach_routine_player_state_v1',JSON.stringify(Object.values(d.athleteRoutineProgress||{})));}catch(_){}
                 const requestedUid=selectedPlayerUidRef.current||playerUid;
                 const nextData={ dataSchemaVersion:Number(d.dataSchemaVersion)||6, players:normalizedPlayers, log:d.trainingLog||d.log||{}, ex:d.exercises||d.ex||[], exHistory:d.exerciseHistory||d.exHistory||{}, act:d.activationExercises||d.act||[], dm:d.dmRecords||d.dm||[], ass:d.assessments||d.ass||{}, matchM:d.matchMinutes||d.matchM||{}, postGame:d.postGameResponses||{}, externalMetrics:d.externalMetrics||{}, postW:d.postWorkout||d.postW||'IA', nextG:d.nextGame||d.nextG||{}, coachMsg:d.coachMsg||'', color:d.themeColor||d.color||'#1e3a8a', id:d.workspaceId||d.id||activeCoachDocId, videoUrl:d.videoUrl||'', logo:d.logo||null, teamName:d.teamName||(d.header&&d.header.teamName)||'PROCOACH', days:d.days||[], lastAlertSent:d.lastAlertSent||0, trainingStatus:d.trainingStatus||'pre', notifications:d.notificationCenter||d.notifications||[], documents:d.athleteDocuments||d.documents||[], requests:d.athleteRequests||d.requests||[], notificationReads:d.athleteNotificationReads||d.notificationReads||{}, appointments:d.careAppointments||d.appointments||[], commitments:d.teamCommitments||d.commitments||[], commitmentResponses:d.commitmentResponses||{}, consentTemplates:d.consentTemplates||[], consentRecords:d.consentRecords||{}, privateHealth:d.privateHealth||{}, guardianProfile:d.guardianProfile||{}, videoAssignments:safeArray(d.videoAssignments).filter(item=>!requestedUid||safeArray(item.recipientIds).map(String).includes(String(requestedUid))) };
                 let foundIndex=requestedUid?normalizedPlayers.findIndex(p=>portalPlayerMatchesId(p, requestedUid)):0;
@@ -632,11 +670,23 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                 if (secureMode) {
                     if (authLoading || !authUser) { stopWaiting(); setLoading(false); return () => { cancelled=true; }; }
                     const loadSecure=async()=>{
+                        const endpoint=guardianMode?'/api/guardian-data':'/api/athlete-data';
                         try {
-                            const endpoint=guardianMode?'/api/guardian-data':'/api/athlete-data';
+                            if(!navigator.onLine) throw Object.assign(new Error('offline'),{status:0});
                             const result=await apiRequest(`${endpoint}?workspaceId=${encodeURIComponent(activeCoachDocId)}&playerId=${encodeURIComponent(playerUid||'')}`);
-                            if(!cancelled){ stopWaiting(); applyPortalPayload(result); }
-                        } catch(err) { if(!cancelled) handleReadError(err); }
+                            if(!cancelled){
+                                await securePortalCachePut(activeCoachDocId,playerUid||'',result);
+                                stopWaiting(); applyPortalPayload(result);
+                            }
+                        } catch(err) {
+                            const cached=await securePortalCacheGet(activeCoachDocId,playerUid||'');
+                            if(!cancelled&&cached?.payload){
+                                stopWaiting();applyPortalPayload(cached.payload);
+                                hasPortalDataRef.current=true;setPortalStatus('offline-cached');setIsOnline(false);
+                                setSyncMessage('Sem internet. Abrindo a última versão segura salva neste aparelho.');
+                                setLoading(false);
+                            } else if(!cancelled) handleReadError(err);
+                        }
                     };
                     loadSecure();
                     const timer=setInterval(loadSecure,30000);
@@ -662,6 +712,16 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                     }
 
                     const d = doc.data();
+                    try{
+                        const requestedPid=selectedPlayerUidRef.current||playerUid;
+                        const assignments=safeArray(d.routineAssignments).filter(item=>{
+                            const ids=safeArray(item.recipientIds).map(String);
+                            return !ids.length||ids.includes(String(requestedPid||''));
+                        });
+                        localStorage.setItem('procoach_routine_assignments_v1',JSON.stringify(assignments));
+                        const own=safeObj(safeObj(d.athleteRoutineProgress)[requestedPid||'']);
+                        localStorage.setItem('procoach_routine_player_state_v1',JSON.stringify(Object.values(own)));
+                    }catch(_){}
                     const normalizedPlayers = normalizePortalPlayers(d.players);
                     const requestedUid = selectedPlayerUidRef.current || playerUid;
                     const nextData={
@@ -791,7 +851,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
             
             const refreshOfflineCount=async()=>{try{const items=await offlineQueueList();setOfflineCount(items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx)).length)}catch(e){setOfflineCount(0)}};
-            const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe','postGame','appointmentResponse','commitmentResponse','notificationAck','medicationAck']);
+            const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe','postGame','appointmentResponse','commitmentResponse','consentAck','notificationAck','medicationAck','routineProgress']);
             const submitSecureAction = async (action, payload) => {
                 const mutationId=`offline_${Date.now()}_${Math.random().toString(36).slice(2)}`;
                 const item={id:mutationId,workspaceId:activeCoachDocId,playerId:getPlayerStableId(data.players,idx),action,payload:{...payload,clientMutationId:mutationId},date:selectedDate,createdAt:new Date().toISOString()};
@@ -1143,7 +1203,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         }
 
             const p = data.players[idx]; 
-            const athleteVideoAssignments=safeArray(data.videoAssignments).filter(item=>safeArray(item.recipientIds).map(String).includes(String(p.id))).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+            const athleteVideoAssignments=safeArray(data.videoAssignments).filter(item=>!item.archivedAt&&safeArray(item.recipientIds).map(String).includes(String(p.id))).sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
             const isSuspended = p.suspended === true; const isHighlight = p.highlight === true || p.convocado === true;
             const stats = getPlayerStats(); const ranking = getRankingData(); const exData = getOrderedExs();
             const streakTitle = getStreakTitle(stats.streak);
@@ -1469,7 +1529,13 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
 
                                     {athleteVideoAssignments.length>0 && viewMode !== 'review' && (
                                         <div className="space-y-3">
-                                            {athleteVideoAssignments.map(item=>{
+                                            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-blue-400">Central de Vídeos</div>
+                                                <div className="flex gap-1.5 flex-wrap mt-2">
+                                                    {['Todos','Adversário','Bola parada','Individual','Coletivo'].map(cat=><button key={cat} type="button" onClick={()=>setAthleteVideoFilter(cat)} className={`px-2.5 py-2 rounded-lg text-[8px] font-black uppercase border ${athleteVideoFilter===cat?'bg-blue-600 border-blue-600 text-white':'bg-slate-950 border-slate-700 text-slate-400'}`}>{cat}</button>)}
+                                                </div>
+                                            </div>
+                                            {athleteVideoAssignments.filter(item=>athleteVideoFilter==='Todos'||normalizeAthleteVideoCategory(item.category)===athleteVideoFilter).map(item=>{
                                                 const readKey=`video_${item.id}`;
                                                 const watched=!!safeObj(data.notificationReads)[readKey]||!!localStorage.getItem(`procoach_${readKey}`);
                                                 return (
@@ -2148,8 +2214,13 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
 
                     {gif && (
                         <div className="fixed inset-0 bg-slate-950 z-[99999] flex flex-col animate-fade-in pointer-events-auto">
-                            <div className="p-4 flex justify-end bg-transparent absolute top-0 w-full z-10">
-                                <button onClick={()=>{setGif(null); setRestTimer(null);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button>
+                            <div className="p-3 flex justify-between items-center bg-transparent absolute top-0 w-full z-10 gap-2">
+                                {gif.type!=='campo' ? <div className="flex items-center gap-1.5 bg-black/65 backdrop-blur-md border border-slate-700 rounded-xl p-1.5 shadow-xl">
+                                    <span className="px-2 text-[10px] font-black tabular-nums text-white">{formatSessionTimer(sessionSeconds)}</span>
+                                    <button type="button" onClick={()=>setSessionTimerRunning(!sessionTimerRunning)} className={`w-9 h-9 rounded-lg grid place-items-center ${sessionTimerRunning?'bg-blue-600':'bg-slate-800'} text-white`} title={sessionTimerRunning?'Pausar cronômetro':'Iniciar cronômetro'}>{sessionTimerRunning?'Ⅱ':'▶'}</button>
+                                    <button type="button" onClick={()=>{setSessionTimerRunning(false);setSessionSeconds(0)}} className="w-9 h-9 rounded-lg grid place-items-center bg-slate-800 text-white" title="Zerar cronômetro">↺</button>
+                                </div> : <span></span>}
+                                <button onClick={()=>{setGif(null); setRestTimer(null); setSessionTimerRunning(false);}} className="text-white bg-black/50 p-2 rounded-full backdrop-blur-sm"><Icon name="x"/></button>
                             </div>
                             {focusMode === 'exercise' ? (
                                 <div className="flex-1 flex flex-col bg-slate-950 relative pt-12 pb-6 px-4 overflow-y-auto custom-scroll">
@@ -2363,7 +2434,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=207',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=209',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">
@@ -2659,7 +2730,7 @@ let n=0,t=setInterval(()=>{if(window.firebase?.apps?.length){clearInterval(t);co
 (function(){
  if(window.__PCA4__)return;window.__PCA4__=true;
  const AK='procoach_routine_assignments_v1',SK='procoach_routine_player_state_v1';
- const $=id=>document.getElementById(id), read=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}, write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+ const $=id=>document.getElementById(id), read=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}, write=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k===SK)window.dispatchEvent(new CustomEvent('pc-athlete-routine-progress',{detail:v}));};
  let activeAssignment=null,activeIndex=0;
  const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
  function yt(url){const m=String(url||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^?&/]+)/);return m?m[1]:''}
@@ -2681,7 +2752,7 @@ let n=0,t=setInterval(()=>{if(window.firebase?.apps?.length){clearInterval(t);co
   $('pca4-step').textContent=`EXERCÍCIO ${activeIndex+1} DE ${exs.length}`;$('pca4-save').textContent=saved?'★':'☆';
   $('pca4-player-content').innerHTML=`<h2 style="font-size:24px;margin:4px 0 12px">${esc(ex.name)}</h2><div class="pca4-media">${media(ex)}</div><div class="pca4-info"><div style="display:flex;gap:7px;flex-wrap:wrap"><span class="pca4-pill">${esc(r.category||'Treino')}</span><span class="pca4-pill">${esc(ex.sets||'-')} séries</span><span class="pca4-pill">${esc(ex.reps||'-')}</span></div><h3 style="font-size:13px;margin:13px 0 4px">Objetivo</h3><p style="font-size:11px;color:#cbd5e1">${esc(r.objective||'Executar conforme orientação da comissão.')}</p><h3 style="font-size:13px;margin:13px 0 4px">Ponto de atenção</h3><p style="font-size:11px;color:#cbd5e1">✅ ${esc(ex.tip||'Controle do movimento e qualidade de execução.')}</p></div><div class="pca4-actions"><button id="pca4-repeat" class="pca4-btn pca4-ghost" type="button">↻ ASSISTIR NOVAMENTE</button><button id="pca4-done" class="pca4-btn pca4-primary" type="button">${done?'✅ CONCLUÍDO':'✓ ENTENDI E VOU EXECUTAR'}</button></div>`;
   $('pca4-repeat').onclick=()=>renderPlayer();
-  $('pca4-done').onclick=()=>{let st=stateFor(activeAssignment.id);if(!st.completed.includes(ex.id))st.completed.push(ex.id);saveState(st);if(activeIndex<exs.length-1){activeIndex++;renderPlayer()}else{alert('✅ Rotina concluída!');$('pca4-modal').classList.remove('on');renderHome()}};
+  $('pca4-done').onclick=()=>{let st=stateFor(activeAssignment.id);if(!st.completed.includes(ex.id))st.completed.push(ex.id);saveState(st);if(activeIndex<exs.length-1){activeIndex++;renderPlayer()}else{st.finishedAt=new Date().toISOString();st.completedAll=true;saveState(st);alert('✅ Rotina concluída!');$('pca4-modal').classList.remove('on');renderHome()}};
   $('pca4-save').onclick=()=>{let st=stateFor(activeAssignment.id),ix=st.saved.indexOf(ex.id);if(ix>=0)st.saved.splice(ix,1);else st.saved.push(ex.id);saveState(st);renderPlayer()}
  }
  $('pca4-open').onclick=()=>{$('pca4-bg').classList.add('on');renderHome()};$('pca4-close').onclick=()=>$('pca4-bg').classList.remove('on');$('pca4-back').onclick=()=>{$('pca4-modal').classList.remove('on');renderHome()};
@@ -2750,65 +2821,10 @@ body.pc-exercise-player-open #pca4-open {
   display:none !important;
 }
 
-#pc-session-timer {
-  display:none;
-  position:fixed;
-  top:max(12px, env(safe-area-inset-top));
-  left:12px;
-  z-index:100120;
-  background:rgba(2,6,23,.88);
-  color:#fff;
-  border:1px solid rgba(148,163,184,.35);
-  border-radius:14px;
-  padding:8px 10px;
-  backdrop-filter:blur(8px);
-  box-shadow:0 10px 28px rgba(0,0,0,.28);
-  font-family:system-ui,-apple-system,sans-serif;
-}
-body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;gap:8px}
-#pc-session-timer .pct-time{font-weight:950;font-size:15px;min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
-#pc-session-timer button{border:0;border-radius:9px;background:#1e293b;color:#fff;min-width:36px;height:36px;font-weight:900}
-#pc-session-timer button.pct-active{background:#2563eb}
-@media(max-width:480px){
-  #pc-session-timer{top:max(8px,env(safe-area-inset-top));left:8px;padding:6px 7px;gap:5px}
-  #pc-session-timer .pct-time{font-size:13px;min-width:55px}
-  #pc-session-timer button{width:32px;min-width:32px;height:32px}
-}
+
 </style>
 
-<div id="pc-session-timer" aria-label="Cronômetro da sessão">
-  <span class="pct-time" id="pct-display">00:00</span>
-  <button id="pct-toggle" type="button" title="Iniciar ou pausar">▶</button>
-  <button id="pct-reset" type="button" title="Zerar cronômetro">↺</button>
-</div>
 
-<script id="pc-final-athlete-player-tools">
-(function(){
- if(window.__PC_FINAL_ATHLETE_PLAYER__)return;window.__PC_FINAL_ATHLETE_PLAYER__=true;
- var elapsed=0,running=false,startedAt=0,timer=null;
- var display=document.getElementById('pct-display'),toggle=document.getElementById('pct-toggle'),reset=document.getElementById('pct-reset');
- function format(sec){sec=Math.max(0,Math.floor(sec||0));var m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
- function current(){return running?elapsed+Math.floor((Date.now()-startedAt)/1000):elapsed}
- function paint(){if(display)display.textContent=format(current());if(toggle){toggle.textContent=running?'Ⅱ':'▶';toggle.classList.toggle('pct-active',running)}}
- function start(){if(running)return;startedAt=Date.now();running=true;timer=setInterval(paint,1000);document.body.classList.add('pc-exercise-player-open');paint()}
- function pause(){if(!running)return;elapsed=current();running=false;clearInterval(timer);timer=null;paint()}
- function zero(){running=false;clearInterval(timer);timer=null;elapsed=0;startedAt=0;paint()}
- if(toggle)toggle.addEventListener('click',function(){running?pause():start()});
- if(reset)reset.addEventListener('click',zero);
- document.addEventListener('click',function(e){
-   var b=e.target.closest&&e.target.closest('button');
-   if(!b)return;
-   var t=(b.textContent||'').trim().toUpperCase();
-   if(t.includes('INICIAR TREINO')||t.includes('VER COMO FAZER')||t.includes('CONCLUIR SÉRIE')||t.includes('CONCLUIR BLOCO TÁTICO')||t.includes('ENTENDI E VOU EXECUTAR')){
-     if(!running&&elapsed===0)start(); else document.body.classList.add('pc-exercise-player-open');
-   }
-   if(t==='×'||t.includes('VOLTAR')||t.includes('FINALIZAR')||t.includes('ENCERRAR SESSÃO')){
-     pause();document.body.classList.remove('pc-exercise-player-open');
-   }
- },{passive:true});
- paint();
-})();
-</script>
 
 
 
@@ -2817,8 +2833,49 @@ body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;g
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-207';
- document.documentElement.dataset.procoachBuild='207';
+ window.PROCOACH_BUILD='2026.09-final-209';
+ document.documentElement.dataset.procoachBuild='209';
+})();
+</script>
+
+<script id="pc-athlete-routine-sync-bridge">
+(function(){
+ if(window.__PC_ATHLETE_ROUTINE_SYNC__)return;window.__PC_ATHLETE_ROUTINE_SYNC__=true;
+ const SK='procoach_routine_player_state_v1';
+ let timer=null;
+ const identity=()=>{
+   const q=new URLSearchParams(location.search);
+   let id=q.get('id')||'',pid=q.get('uid')||'';
+   if(!id||!pid){try{const x=JSON.parse(localStorage.getItem('procoach_athlete_last_access_v2')||'null');id=id||x?.id||'';pid=pid||x?.uid||''}catch(_){}}
+   return {workspaceId:id,playerId:pid,secure:q.get('secure')==='1'};
+ };
+ async function sendAll(){
+   if(!navigator.onLine)return;
+   const {workspaceId,playerId,secure}=identity();if(!workspaceId||!playerId)return;
+   let states=[];try{states=JSON.parse(localStorage.getItem(SK)||'[]')}catch(_){}
+   if(!Array.isArray(states)||!states.length)return;
+   try{
+     if(secure){
+       const user=firebase.auth()?.currentUser;if(!user)return;
+       const token=await user.getIdToken();
+       for(const state of states){
+         const r=await fetch('/api/athlete-submit',{method:'POST',headers:{'content-type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({workspaceId,playerId,action:'routineProgress',payload:{state},date:new Date().toISOString().slice(0,10),clientMutationId:`routine_${state.assignmentId}_${state.finishedAt||state.updatedAt||Date.now()}`})});
+         if(!r.ok)throw new Error('Falha ao sincronizar rotina');
+       }
+     }else{
+       const db=firebase.firestore();
+       const updates={};
+       states.forEach(state=>{if(state?.assignmentId)updates[`athleteRoutineProgress.${playerId}.${state.assignmentId}`]={...state,updatedAt:new Date().toISOString()}});
+       if(Object.keys(updates).length)await db.collection('coachData').doc(workspaceId).update(updates);
+     }
+     window.dispatchEvent(new Event('pc-athlete-routine-synced'));
+   }catch(e){console.warn('Progresso da rotina:',e)}
+ }
+ function queue(){clearTimeout(timer);timer=setTimeout(sendAll,500)}
+ window.addEventListener('pc-athlete-routine-progress',queue);
+ window.addEventListener('online',()=>setTimeout(sendAll,700));
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sendAll()});
+ setTimeout(sendAll,1600);
 })();
 </script>
 </body>

@@ -1,18 +1,16 @@
-PROCOACH FINAL 207
+PROCOACH FINAL 208
 
-Envie TODOS estes arquivos para a raiz do GitHub e substitua os antigos:
-- index.html
-- atleta.html
-- athlete-start.html
-- manifest.json
-- athlete-manifest.json
-- sw.js
+Envie TODOS os arquivos desta pasta para a raiz do GitHub, substituindo os antigos.
 
-O pacote 207 força atualização do PWA instalado no iPhone/iPad/Android.
-Os vídeos de análise/tática/YouTube agora ficam em cards compactos; o iframe só é criado ao tocar.
-O player grande de exercícios de academia/campo foi preservado.
+FINALIZAÇÃO 208:
+- cronômetro nativo dentro da sessão de academia (inicia ao abrir exercício, pausa e zera);
+- descanso entre séries preservado;
+- Central de Vídeos com filtros: Todos, Adversário, Bola parada, Individual, Coletivo;
+- indicador de confirmações no treinador (ex.: 8/11);
+- botão Arquivar análise, com área para restaurar/excluir arquivados;
+- vídeos arquivados deixam de aparecer para a atleta;
+- miniaturas YouTube preservadas; player grande só abre ao tocar;
+- player grande de exercícios de academia/campo continua separado;
+- PWA/cache atualizado para versão 208.
 
-Depois do deploy:
-1) feche o app/PWA completamente;
-2) abra novamente;
-3) se o ícone instalado insistir em versão antiga, remova o ícone/app e instale novamente uma única vez.
+Depois do deploy, feche completamente o app instalado e abra novamente.

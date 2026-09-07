@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn(){ return request.auth != null; }
+    function workspaceDoc(workspaceId){ return get(/databases/$(database)/documents/coachData/$(workspaceId)).data; }
+    function memberRole(data){
+      return !signedIn() ? 'viewer' :
+        (data.ownerUid == request.auth.uid ? 'owner' :
+          (request.auth.token.email != null && data.memberRoles[request.auth.token.email.lower()] != null
+            ? data.memberRoles[request.auth.token.email.lower()].role : 'viewer'));
+    }
+    function staff(data){
+      return signedIn() && (
+        data.ownerUid == request.auth.uid ||
+        (request.auth.token.email != null && data.memberRoles[request.auth.token.email.lower()] != null)
+      );
+    }
+    match /procoachProfiles/{uid} {
+      allow read, create, update, delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /coachData/{workspaceId} {
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read, update, delete: if staff(resource.data);
+
+      match /staffMessages/{messageId} {
+        allow read, create, update: if staff(workspaceDoc(workspaceId));
+        match /{sub=**} { allow read, write: if staff(workspaceDoc(workspaceId)); }
+      }
+      match /staffTasks/{taskId} {
+        allow read, create, update: if staff(workspaceDoc(workspaceId));
+      }
+      // Saúde privada só pelo backend Admin (/api/private-health).
+      match /privateHealth/{playerId} { allow read, write: if false; }
+      // Fila idempotente do backend.
+      match /athleteMutations/{mutationId} { allow read, write: if false; }
+      match /{other=**} {
+        allow read, write: if staff(workspaceDoc(workspaceId));
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
