@@ -1,0 +1,20 @@
+{
+  "name": "ProCoach V6.5 - Rotinas & Player",
+  "short_name": "ProCoach V6.5",
+  "description": "Gestão multi-equipe com rotinas, sequências reutilizáveis, Player de treino no Athlete e inteligência de performance.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "./procoach-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
