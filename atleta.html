@@ -2603,5 +2603,192 @@ let n=0,t=setInterval(()=>{if(window.firebase?.apps?.length){clearInterval(t);co
 })();
 </script>
 
+
+
+<style id="pc-final-athlete-clean-ui">
+/* Interface final: mantém as funções, mas remove os botões flutuantes que cobriam o treino. */
+#pc21-ath-btn,
+#pc30a-open,
+#pca-guide-open,
+#pcva-ath-open,
+#pca4-open {
+  display:none !important;
+}
+
+/* Durante vídeo/exercício, nenhum legado deve aparecer sobre o player. */
+body.pc-exercise-player-open #pc21-ath-btn,
+body.pc-exercise-player-open #pc30a-open,
+body.pc-exercise-player-open #pca-guide-open,
+body.pc-exercise-player-open #pcva-ath-open,
+body.pc-exercise-player-open #pca4-open {
+  display:none !important;
+}
+
+#pc-session-timer {
+  display:none;
+  position:fixed;
+  top:max(12px, env(safe-area-inset-top));
+  left:12px;
+  z-index:100120;
+  background:rgba(2,6,23,.88);
+  color:#fff;
+  border:1px solid rgba(148,163,184,.35);
+  border-radius:14px;
+  padding:8px 10px;
+  backdrop-filter:blur(8px);
+  box-shadow:0 10px 28px rgba(0,0,0,.28);
+  font-family:system-ui,-apple-system,sans-serif;
+}
+body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;gap:8px}
+#pc-session-timer .pct-time{font-weight:950;font-size:15px;min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+#pc-session-timer button{border:0;border-radius:9px;background:#1e293b;color:#fff;min-width:36px;height:36px;font-weight:900}
+#pc-session-timer button.pct-active{background:#2563eb}
+@media(max-width:480px){
+  #pc-session-timer{top:max(8px,env(safe-area-inset-top));left:8px;padding:6px 7px;gap:5px}
+  #pc-session-timer .pct-time{font-size:13px;min-width:55px}
+  #pc-session-timer button{width:32px;min-width:32px;height:32px}
+}
+</style>
+
+<div id="pc-session-timer" aria-label="Cronômetro da sessão">
+  <span class="pct-time" id="pct-display">00:00</span>
+  <button id="pct-toggle" type="button" title="Iniciar ou pausar">▶</button>
+  <button id="pct-reset" type="button" title="Zerar cronômetro">↺</button>
+</div>
+
+<script id="pc-final-athlete-player-tools">
+(function(){
+  if(window.__PC_FINAL_ATHLETE_PLAYER__) return;
+  window.__PC_FINAL_ATHLETE_PLAYER__=true;
+
+  var elapsed=0, running=false, startedAt=0, timer=null;
+  var display=document.getElementById('pct-display');
+  var toggle=document.getElementById('pct-toggle');
+  var reset=document.getElementById('pct-reset');
+
+  function format(sec){
+    sec=Math.max(0,Math.floor(sec||0));
+    var m=Math.floor(sec/60), s=sec%60;
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+  function currentSeconds(){
+    if(!running) return elapsed;
+    return elapsed + Math.floor((Date.now()-startedAt)/1000);
+  }
+  function paint(){
+    if(display) display.textContent=format(currentSeconds());
+    if(toggle){
+      toggle.textContent=running?'Ⅱ':'▶';
+      toggle.classList.toggle('pct-active',running);
+    }
+  }
+  function start(){
+    if(running) return;
+    startedAt=Date.now();
+    running=true;
+    timer=setInterval(paint,500);
+    paint();
+  }
+  function pause(){
+    if(!running) return;
+    elapsed=currentSeconds();
+    running=false;
+    clearInterval(timer); timer=null;
+    paint();
+  }
+  function zero(){
+    running=false; clearInterval(timer); timer=null;
+    elapsed=0; startedAt=0; paint();
+  }
+  toggle && toggle.addEventListener('click',function(){ running?pause():start(); });
+  reset && reset.addEventListener('click',zero);
+
+  function isExercisePlayerOpen(){
+    var nodes=document.querySelectorAll('button');
+    for(var i=0;i<nodes.length;i++){
+      var t=(nodes[i].textContent||'').toUpperCase();
+      if(t.includes('CONCLUIR SÉRIE') || t.includes('CONCLUIR BLOCO TÁTICO') || t.includes('PULAR DESCANSO')) return true;
+    }
+    return false;
+  }
+  function syncPlayerState(){
+    var open=isExercisePlayerOpen();
+    document.body.classList.toggle('pc-exercise-player-open',open);
+    if(open && !running && elapsed===0) start();
+    if(!open && running) pause();
+  }
+
+  var observer=new MutationObserver(syncPlayerState);
+  observer.observe(document.body,{childList:true,subtree:true,characterData:true});
+  setInterval(syncPlayerState,1200);
+  syncPlayerState();
+  paint();
+})();
+</script>
+
+
+
+<style id="pc-video-library-compact-style">
+.pcvl-wrap{font-family:system-ui,-apple-system,sans-serif}
+.pcvl-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.pcvl-search{flex:1;min-width:180px;background:#0f172a;color:#fff;border:1px solid #334155;border-radius:10px;padding:10px}
+.pcvl-filter{background:#172033;color:#fff;border:1px solid #334155;border-radius:10px;padding:9px}
+.pcvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.pcvl-card{background:#0b1220;border:1px solid #334155;border-radius:15px;overflow:hidden;color:#fff;cursor:pointer;transition:.15s}
+.pcvl-card:hover{transform:translateY(-1px);border-color:#3b82f6}
+.pcvl-thumb{aspect-ratio:16/9;background:#020617;position:relative;overflow:hidden}
+.pcvl-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pcvl-thumb-empty{width:100%;height:100%;display:grid;place-items:center;font-size:38px;color:#64748b}
+.pcvl-play{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(transparent,#02061755)}
+.pcvl-play i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#2563eb;color:#fff;font-style:normal;font-size:18px;box-shadow:0 8px 24px #0008}
+.pcvl-status{position:absolute;left:7px;top:7px;background:#020617d9;border:1px solid #475569;border-radius:999px;padding:4px 7px;font:900 8px system-ui}
+.pcvl-body{padding:10px}.pcvl-title{font:900 13px/1.25 system-ui;margin:0 0 5px}.pcvl-meta{font:800 9px system-ui;color:#60a5fa;text-transform:uppercase}.pcvl-desc{font:10px/1.4 system-ui;color:#94a3b8;margin-top:6px;min-height:28px}
+.pcvl-overlay{display:none;position:fixed;inset:0;z-index:18000;background:#020617f3;padding:12px;overflow:auto;color:#fff;font-family:system-ui}.pcvl-overlay.on{display:block}
+.pcvl-modal{max-width:900px;margin:auto}.pcvl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.pcvl-close{border:0;background:#172033;color:#fff;width:42px;height:42px;border-radius:11px;font-size:22px}
+.pcvl-player{aspect-ratio:16/9;background:#000;border:1px solid #334155;border-radius:16px;overflow:hidden}.pcvl-player iframe,.pcvl-player video{width:100%;height:100%;border:0}
+.pcvl-info{background:#0b1220;border:1px solid #334155;border-radius:15px;padding:13px;margin-top:10px}.pcvl-info h3{font-size:13px;margin:12px 0 5px}.pcvl-info p{font-size:11px;line-height:1.5;color:#cbd5e1;margin:0}
+.pcvl-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pcvl-btn{border:0;border-radius:10px;padding:10px 12px;font:900 10px system-ui;background:#1e293b;color:#fff}.pcvl-btn.primary{background:#2563eb}.pcvl-btn.good{background:#15803d}.pcvl-btn.warn{background:#7c3aed}
+@media(max-width:520px){.pcvl-grid{grid-template-columns:1fr 1fr;gap:7px}.pcvl-body{padding:8px}.pcvl-title{font-size:11px}.pcvl-desc{display:none}.pcvl-play i{width:36px;height:36px}.pcvl-actions .pcvl-btn{flex:1}}
+</style>
+
+<script id="pc-video-library-compact-athlete">
+(function(){
+ if(window.__PCVL_ATH__)return;window.__PCVL_ATH__=true;
+ const KEY='procoach_video_ai_v1';
+ const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}};
+ const write=a=>{try{localStorage.setItem(KEY,JSON.stringify(a))}catch(e){}};
+ const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+ const yt=u=>{let m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^?&/]+)/);return m?m[1]:''};
+ const thumb=x=>{let id=yt(x.url||x.videoUrl||x.link||'');return id?'https://img.youtube.com/vi/'+id+'/hqdefault.jpg':(x.thumbnail||x.image||'')};
+ const category=x=>x.category||x.type||'Individual';
+ const status=x=>x.understanding==='understood'?'✅ Entendido':x.completedAt?'✅ Assistido':x.openedAt?'👁 Visualizado':'🔵 Novo';
+ function patch(id,d){let a=read(),i=a.findIndex(x=>x.id===id);if(i<0)return;a[i]=Object.assign({},a[i],d,{updatedAt:new Date().toISOString()});write(a);render()}
+ function ensure(){
+   let panel=document.querySelector('#pcva-ath-panel .pcva-ath-body'); if(!panel||document.getElementById('pcvl-ath'))return;
+   let box=document.createElement('section');box.id='pcvl-ath';box.className='pcvl-wrap';
+   box.innerHTML=`<div class="pcvl-toolbar"><input id="pcvl-ath-q" class="pcvl-search" placeholder="Procurar vídeo, jogo ou tema..."><select id="pcvl-ath-cat" class="pcvl-filter"><option value="">Todos</option><option>Correções</option><option>Adversário</option><option>Individual</option><option>Coletivo</option><option>Bola parada</option><option>Referências</option></select></div><div id="pcvl-ath-grid" class="pcvl-grid"></div>`;
+   panel.prepend(box);
+   document.getElementById('pcvl-ath-q').oninput=render;document.getElementById('pcvl-ath-cat').onchange=render;
+   let ov=document.createElement('div');ov.id='pcvl-ath-overlay';ov.className='pcvl-overlay';ov.innerHTML='<div class="pcvl-modal"><div class="pcvl-head"><div><div id="pcvl-ath-meta" class="pcvl-meta"></div><h2 id="pcvl-ath-title" style="margin:3px 0;font-size:20px"></h2></div><button id="pcvl-ath-close" class="pcvl-close">×</button></div><div id="pcvl-ath-player" class="pcvl-player"></div><div id="pcvl-ath-info" class="pcvl-info"></div></div>';document.body.appendChild(ov);document.getElementById('pcvl-ath-close').onclick=()=>ov.classList.remove('on');
+ }
+ function openVideo(x){
+   patch(x.id,{openedAt:x.openedAt||new Date().toISOString()});
+   let ov=document.getElementById('pcvl-ath-overlay'),id=yt(x.url||x.videoUrl||x.link||''),u=x.url||x.videoUrl||x.link||'';
+   document.getElementById('pcvl-ath-meta').textContent=category(x)+' • '+status(x);document.getElementById('pcvl-ath-title').textContent=x.title||'Vídeo';
+   document.getElementById('pcvl-ath-player').innerHTML=id?`<iframe src="https://www.youtube.com/embed/${esc(id)}?rel=0" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`:(u?`<video src="${esc(u)}" controls playsinline></video>`:'<div style="height:100%;display:grid;place-items:center;color:#64748b">Vídeo indisponível</div>');
+   let notes=x.feedback||x.notes||x.objective||'Observe os pontos indicados pela comissão.';
+   document.getElementById('pcvl-ath-info').innerHTML=`<h3>🎯 Objetivo</h3><p>${esc(x.objective||'Análise orientada pela comissão.')}</p><h3>📝 Orientação</h3><p>${esc(notes).replace(/\n/g,'<br>')}</p><div class="pcvl-actions"><button id="pcvl-save" class="pcvl-btn warn">${x.saved?'★ Salvo':'☆ Salvar'}</button><button id="pcvl-done" class="pcvl-btn good">✅ Entendi</button><button id="pcvl-doubt" class="pcvl-btn primary">❓ Tenho dúvida</button></div>`;
+   document.getElementById('pcvl-save').onclick=()=>{patch(x.id,{saved:!x.saved});ov.classList.remove('on')};document.getElementById('pcvl-done').onclick=()=>{patch(x.id,{completedAt:new Date().toISOString(),understanding:'understood'});ov.classList.remove('on')};document.getElementById('pcvl-doubt').onclick=()=>{patch(x.id,{understanding:'doubt',response:'Quero rever este vídeo com a comissão.'});ov.classList.remove('on')};ov.classList.add('on');
+ }
+ function render(){
+   ensure();let grid=document.getElementById('pcvl-ath-grid');if(!grid)return;let q=(document.getElementById('pcvl-ath-q')?.value||'').toLowerCase(),c=document.getElementById('pcvl-ath-cat')?.value||'';
+   let a=read().filter(x=>x.status==='sent'||x.sentAt||x.athlete||x.title).filter(x=>(!c||category(x)===c)&&(!q||[x.title,category(x),x.objective,x.notes].join(' ').toLowerCase().includes(q)));
+   grid.innerHTML=a.length?a.map(x=>`<article class="pcvl-card" data-id="${esc(x.id)}"><div class="pcvl-thumb">${thumb(x)?`<img src="${esc(thumb(x))}" alt="">`:'<div class="pcvl-thumb-empty">🎥</div>'}<span class="pcvl-status">${status(x)}</span><span class="pcvl-play"><i>▶</i></span></div><div class="pcvl-body"><div class="pcvl-meta">${esc(category(x))}</div><h3 class="pcvl-title">${esc(x.title||'Análise')}</h3><div class="pcvl-desc">${esc(x.objective||x.notes||'Toque para abrir a análise.')}</div></div></article>`).join(''):'<div style="color:#94a3b8;font-size:11px">Nenhum vídeo encontrado.</div>';
+   grid.querySelectorAll('[data-id]').forEach(n=>n.onclick=()=>{let x=read().find(v=>v.id===n.dataset.id);if(x)openVideo(x)});
+ }
+ const mo=new MutationObserver(()=>{if(document.querySelector('#pcva-ath-panel .pcva-ath-body')){ensure();render()}});mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{ensure();render()},500);
+})();
+</script>
+
 </body>
 </html>
