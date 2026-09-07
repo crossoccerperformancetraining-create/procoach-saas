@@ -1,12 +1,18 @@
-PROCOACH STABLE 205 — PACOTE PARA GITHUB
+PROCOACH FINAL 207
 
-Envie estes 3 arquivos para a raiz do repositório:
+Envie TODOS estes arquivos para a raiz do GitHub e substitua os antigos:
+- index.html
+- atleta.html
+- athlete-start.html
+- manifest.json
+- athlete-manifest.json
+- sw.js
 
-1. index.html
-2. atleta.html
-3. sw.js
+O pacote 207 força atualização do PWA instalado no iPhone/iPad/Android.
+Os vídeos de análise/tática/YouTube agora ficam em cards compactos; o iframe só é criado ao tocar.
+O player grande de exercícios de academia/campo foi preservado.
 
-IMPORTANTE:
-- Substitua os arquivos antigos de mesmo nome.
-- Depois do deploy no Vercel, feche completamente o app/PWA e abra novamente.
-- Se ainda aparecer versão antiga, limpe os dados/cache do site e reabra.
+Depois do deploy:
+1) feche o app/PWA completamente;
+2) abra novamente;
+3) se o ícone instalado insistir em versão antiga, remova o ícone/app e instale novamente uma única vez.

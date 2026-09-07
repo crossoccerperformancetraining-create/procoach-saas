@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Athlete • STABLE 2026.09</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=205">
+    <title>ProCoach Athlete • FINAL 207</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=207">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=205',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=207',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -215,7 +215,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                     urlParams = new URLSearchParams(originalUrlParams);
                     ['id','uid','p','mode','secure','invite','guardianInvite'].forEach(k => { if (saved[k] !== undefined && saved[k] !== '') urlParams.set(k, saved[k]); });
                     if (saved.uid) urlParams.delete('p');
-                    urlParams.set('v', '204');
+                    urlParams.set('v', '207');
                     window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}${window.location.hash || ''}`);
                 }
             } catch (_) {}
@@ -364,6 +364,34 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             );
         };
 
+
+        const getYouTubeId = (url='') => {
+            const match = String(url).match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})/i);
+            return match?.[1] || '';
+        };
+        const getVideoThumb = (url='') => {
+            const id = getYouTubeId(url);
+            return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+        };
+        const CompactAnalysisVideoCard = ({url,title,category='Vídeo',description='',status='',onOpen}) => {
+            const thumb = getVideoThumb(url);
+            return (
+                <button type="button" onClick={onOpen} className="w-full text-left bg-slate-900/80 border border-slate-700 rounded-2xl p-2.5 flex items-center gap-3 active:scale-[0.99] transition-transform shadow-sm">
+                    <div className="w-[108px] h-[62px] shrink-0 rounded-xl overflow-hidden bg-black border border-slate-700 relative">
+                        {thumb ? <img src={thumb} className="w-full h-full object-cover" loading="lazy" alt="Miniatura do vídeo"/> : <div className="w-full h-full grid place-items-center text-2xl text-slate-500">🎥</div>}
+                        <div className="absolute inset-0 grid place-items-center bg-black/20"><div className="w-9 h-9 rounded-full bg-blue-600/95 grid place-items-center text-white shadow-lg"><Icon name="play" size={15}/></div></div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="text-[8px] font-black uppercase tracking-widest text-blue-400 truncate">{category}</div>
+                        <div className="text-[11px] font-black text-white leading-tight mt-1 line-clamp-2">{title || 'Vídeo da comissão'}</div>
+                        {description && <div className="text-[9px] text-slate-400 mt-1 line-clamp-2">{description}</div>}
+                        {status && <div className="text-[8px] font-black uppercase mt-1.5 text-emerald-400">{status}</div>}
+                    </div>
+                    <Icon name="chevron" size={16} className="text-slate-500 shrink-0"/>
+                </button>
+            );
+        };
+
         const Icon = ({ name, size=24, className="", onClick }) => {
             const p = { 
                 user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', 
@@ -499,6 +527,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const [isOnline,setIsOnline]=useState(typeof navigator === 'undefined' ? true : navigator.onLine);
             const [authUser, setAuthUser] = useState(null); const [authLoading, setAuthLoading] = useState(secureMode);
             const [loginMode, setLoginMode] = useState('login'); const [loginEmail, setLoginEmail] = useState(''); const [loginPassword, setLoginPassword] = useState(''); const [loginError, setLoginError] = useState('');
+            const [analysisVideoModal, setAnalysisVideoModal] = useState(null);
 
             const activeExRef = useRef(null); const audioCtxRef = useRef(null); const selectedPlayerUidRef = useRef(playerUid || null);
             const hasPortalDataRef = useRef(false);
@@ -1199,6 +1228,35 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
 
             return (
                 <React.Fragment>
+                    {analysisVideoModal && (
+                        <div className="fixed inset-0 z-[12000] bg-slate-950/95 backdrop-blur-md overflow-y-auto p-3">
+                            <div className="max-w-4xl mx-auto min-h-full flex flex-col justify-center py-4">
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] font-black uppercase tracking-widest text-blue-400">{analysisVideoModal.category||'Vídeo'}</div>
+                                        <h2 className="text-xl font-black text-white mt-1">{analysisVideoModal.title||'Análise'}</h2>
+                                        {analysisVideoModal.dueDate&&<div className="text-[9px] text-slate-500 mt-1">Prazo: {formatDateBR(analysisVideoModal.dueDate)}</div>}
+                                    </div>
+                                    <button type="button" onClick={()=>setAnalysisVideoModal(null)} className="w-11 h-11 shrink-0 rounded-xl bg-slate-800 border border-slate-700 text-white grid place-items-center"><Icon name="x" size={20}/></button>
+                                </div>
+                                <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                                    {renderVideoElement(analysisVideoModal.url)}
+                                </div>
+                                <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mt-3">
+                                    <h3 className="text-[10px] font-black uppercase text-slate-400">Orientação da comissão</h3>
+                                    <p className="text-sm text-white mt-2 whitespace-pre-wrap">{analysisVideoModal.description||'Observe o vídeo conforme a orientação da comissão técnica.'}</p>
+                                    <div className="flex gap-2 flex-wrap mt-4">
+                                        {analysisVideoModal.assignmentId && (
+                                            <button type="button" onClick={async()=>{await markVideoViewed(analysisVideoModal.assignmentId);setAnalysisVideoModal({...analysisVideoModal,watched:true});}} className={`flex-1 min-w-[150px] py-3 rounded-xl font-black uppercase text-[10px] ${analysisVideoModal.watched?'bg-emerald-900/50 border border-emerald-700 text-emerald-300':'bg-emerald-600 text-white'}`}>
+                                                {analysisVideoModal.watched?'✅ Visualização confirmada':'✅ Confirmar que assisti'}
+                                            </button>
+                                        )}
+                                        <button type="button" onClick={()=>setAnalysisVideoModal(null)} className="flex-1 min-w-[120px] py-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-black uppercase text-[10px]">Fechar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {['offline-cached','syncing-cached','sync-warning'].includes(portalStatus) && <div className={`fixed top-3 left-1/2 -translate-x-1/2 z-[9998] max-w-[calc(100%-24px)] px-4 py-2 rounded-full border shadow-2xl backdrop-blur-md text-[9px] font-black uppercase tracking-wide flex items-center gap-2 ${portalStatus==='offline-cached'?'bg-slate-900/95 border-blue-500/40 text-blue-300':portalStatus==='sync-warning'?'bg-slate-900/95 border-orange-500/40 text-orange-300':'bg-slate-900/95 border-emerald-500/40 text-emerald-300'}`}><Icon name={portalStatus==='syncing-cached'?'refresh':'alert'} size={12}/><span className="truncate">{syncMessage}</span>{portalStatus!=='syncing-cached'&&<button onClick={retryPortal} className="ml-1 underline text-white">Atualizar</button>}</div>}
                     <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-slate-950">
                         {DateSelectorUI}
@@ -1409,28 +1467,72 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                                         </div>
                                     )}
 
-                                    {athleteVideoAssignments.length>0 && viewMode !== 'review' && <div className="space-y-4">{athleteVideoAssignments.map(item=>{const readKey=`video_${item.id}`;const watched=!!safeObj(data.notificationReads)[readKey]||!!localStorage.getItem(`procoach_${readKey}`);return <div key={item.id} className="bg-red-950/30 border border-red-800/60 p-4 rounded-3xl shadow-lg relative overflow-hidden"><div className="absolute top-0 left-0 w-2 h-full bg-red-500"></div><div className="flex items-start justify-between gap-3"><div><div className="text-[9px] font-black uppercase tracking-widest text-red-400">{item.category||'Vídeo da equipe técnica'}</div><h3 className="text-sm font-black text-white mt-1">{item.title}</h3><div className="text-[8px] text-slate-500 mt-1">{item.dueDate?`Assistir até ${formatDateBR(item.dueDate)}`:'Sem prazo definido'}</div></div>{watched&&<span className="px-2 py-1 rounded-full bg-emerald-900/50 border border-emerald-700 text-emerald-400 text-[8px] font-black uppercase">Assistido</span>}</div>{item.description&&<p className="text-[10px] text-slate-300 mt-3 whitespace-pre-wrap">{item.description}</p>}<div className="space-y-3 mt-3">{safeArray(item.urls).map((url,i)=><div key={i}><div className="text-[8px] font-black uppercase text-slate-500 mb-1">Vídeo {i+1}</div><div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-red-900">{renderVideoElement(url)}</div></div>)}</div><button onClick={()=>markVideoViewed(item.id)} className={`w-full mt-4 py-3 rounded-xl font-black uppercase text-[10px] ${watched?'bg-emerald-900/40 text-emerald-400 border border-emerald-800':'bg-red-600 text-white'}`}>{watched?'Visualização confirmada':'Confirmar que assisti'}</button></div>})}</div>}
+                                    {athleteVideoAssignments.length>0 && viewMode !== 'review' && (
+                                        <div className="space-y-3">
+                                            {athleteVideoAssignments.map(item=>{
+                                                const readKey=`video_${item.id}`;
+                                                const watched=!!safeObj(data.notificationReads)[readKey]||!!localStorage.getItem(`procoach_${readKey}`);
+                                                return (
+                                                    <div key={item.id} className="bg-red-950/20 border border-red-900/50 p-3 rounded-3xl shadow-lg relative overflow-hidden">
+                                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+                                                        <div className="pl-1 flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <div className="text-[9px] font-black uppercase tracking-widest text-red-400">{item.category||'Vídeo da equipe técnica'}</div>
+                                                                <h3 className="text-sm font-black text-white mt-1">{item.title}</h3>
+                                                                <div className="text-[8px] text-slate-500 mt-1">{item.dueDate?`Assistir até ${formatDateBR(item.dueDate)}`:'Sem prazo definido'}</div>
+                                                            </div>
+                                                            {watched&&<span className="shrink-0 px-2 py-1 rounded-full bg-emerald-900/50 border border-emerald-700 text-emerald-400 text-[8px] font-black uppercase">✅ Assistido</span>}
+                                                        </div>
+                                                        {item.description&&<p className="pl-1 text-[10px] text-slate-300 mt-2 whitespace-pre-wrap line-clamp-3">{item.description}</p>}
+                                                        <div className="pl-1 space-y-2 mt-3">
+                                                            {safeArray(item.urls).map((url,i)=>(
+                                                                <CompactAnalysisVideoCard
+                                                                    key={`${item.id}-${i}`}
+                                                                    url={url}
+                                                                    title={safeArray(item.urls).length>1 ? `${item.title} • Vídeo ${i+1}` : item.title}
+                                                                    category={item.category||'Análise'}
+                                                                    description={item.description||'Toque para abrir o vídeo e ver as orientações.'}
+                                                                    status={watched?'Assistido':'Toque para assistir'}
+                                                                    onOpen={()=>setAnalysisVideoModal({
+                                                                        url,
+                                                                        title:safeArray(item.urls).length>1 ? `${item.title} • Vídeo ${i+1}` : item.title,
+                                                                        category:item.category||'Vídeo da equipe técnica',
+                                                                        description:item.description||'',
+                                                                        dueDate:item.dueDate||'',
+                                                                        assignmentId:item.id,
+                                                                        watched
+                                                                    })}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
 
                                     {data.videoUrl && viewMode !== 'review' && (
-                                        <div className="bg-indigo-900/30 border border-indigo-800/50 p-4 rounded-3xl flex flex-col gap-3 shadow-lg relative overflow-hidden">
-                                            <div className="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
-                                            <div className="flex items-center gap-2 mb-1"><Icon name="play" size={18} className="text-indigo-400"/><h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Vídeo Análise Tática</h3></div>
-                                            <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-indigo-500/30 relative z-50">
-                                                {renderVideoElement(data.videoUrl)}
-                                            </div>
+                                        <div className="bg-indigo-950/20 border border-indigo-800/40 p-3 rounded-3xl">
+                                            <CompactAnalysisVideoCard
+                                                url={data.videoUrl}
+                                                title="Análise tática da equipe"
+                                                category="Tática / Coletivo"
+                                                description="Toque para abrir o vídeo e as orientações."
+                                                status="Vídeo da comissão"
+                                                onOpen={()=>setAnalysisVideoModal({url:data.videoUrl,title:'Análise tática da equipe',category:'Tática / Coletivo',description:'Material enviado pela comissão técnica.'})}
+                                            />
                                         </div>
                                     )}
                                     {p.videoUrl && viewMode !== 'review' && (
-                                        <div className="bg-red-900/20 border border-red-800/50 p-4 rounded-3xl flex flex-col gap-3 shadow-lg relative overflow-hidden mt-4">
-                                            <div className="absolute top-0 left-0 w-2 h-full bg-red-600"></div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Icon name="play" size={18} className="text-red-500"/>
-                                                <h3 className="text-[10px] font-black text-red-500 uppercase tracking-wider">Análise Individual (Seu Feedback)</h3>
-                                            </div>
-                                            <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-red-500/30 relative z-50 shadow-inner">
-                                                {renderVideoElement(p.videoUrl)}
-                                            </div>
-                                            <p className="text-[9px] text-red-400/80 font-bold uppercase italic tracking-widest text-center mt-1">Exclusivo: Enviado pelo professor</p>
+                                        <div className="bg-red-950/20 border border-red-800/40 p-3 rounded-3xl mt-3">
+                                            <CompactAnalysisVideoCard
+                                                url={p.videoUrl}
+                                                title="Análise individual"
+                                                category="Correção individual"
+                                                description="Feedback exclusivo enviado pela comissão."
+                                                status="Exclusivo"
+                                                onOpen={()=>setAnalysisVideoModal({url:p.videoUrl,title:'Análise individual',category:'Correção individual',description:'Feedback exclusivo enviado pela comissão técnica.'})}
+                                            />
                                         </div>
                                     )}
 
@@ -2261,7 +2363,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=205',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=207',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">
@@ -2710,76 +2812,13 @@ body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;g
 
 
 
-<style id="pc-video-library-compact-style">
-.pcvl-wrap{font-family:system-ui,-apple-system,sans-serif}
-.pcvl-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.pcvl-search{flex:1;min-width:180px;background:#0f172a;color:#fff;border:1px solid #334155;border-radius:10px;padding:10px}
-.pcvl-filter{background:#172033;color:#fff;border:1px solid #334155;border-radius:10px;padding:9px}
-.pcvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
-.pcvl-card{background:#0b1220;border:1px solid #334155;border-radius:15px;overflow:hidden;color:#fff;cursor:pointer;transition:.15s}
-.pcvl-card:hover{transform:translateY(-1px);border-color:#3b82f6}
-.pcvl-thumb{aspect-ratio:16/9;background:#020617;position:relative;overflow:hidden}
-.pcvl-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.pcvl-thumb-empty{width:100%;height:100%;display:grid;place-items:center;font-size:38px;color:#64748b}
-.pcvl-play{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(transparent,#02061755)}
-.pcvl-play i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#2563eb;color:#fff;font-style:normal;font-size:18px;box-shadow:0 8px 24px #0008}
-.pcvl-status{position:absolute;left:7px;top:7px;background:#020617d9;border:1px solid #475569;border-radius:999px;padding:4px 7px;font:900 8px system-ui}
-.pcvl-body{padding:10px}.pcvl-title{font:900 13px/1.25 system-ui;margin:0 0 5px}.pcvl-meta{font:800 9px system-ui;color:#60a5fa;text-transform:uppercase}.pcvl-desc{font:10px/1.4 system-ui;color:#94a3b8;margin-top:6px;min-height:28px}
-.pcvl-overlay{display:none;position:fixed;inset:0;z-index:18000;background:#020617f3;padding:12px;overflow:auto;color:#fff;font-family:system-ui}.pcvl-overlay.on{display:block}
-.pcvl-modal{max-width:900px;margin:auto}.pcvl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.pcvl-close{border:0;background:#172033;color:#fff;width:42px;height:42px;border-radius:11px;font-size:22px}
-.pcvl-player{aspect-ratio:16/9;background:#000;border:1px solid #334155;border-radius:16px;overflow:hidden}.pcvl-player iframe,.pcvl-player video{width:100%;height:100%;border:0}
-.pcvl-info{background:#0b1220;border:1px solid #334155;border-radius:15px;padding:13px;margin-top:10px}.pcvl-info h3{font-size:13px;margin:12px 0 5px}.pcvl-info p{font-size:11px;line-height:1.5;color:#cbd5e1;margin:0}
-.pcvl-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pcvl-btn{border:0;border-radius:10px;padding:10px 12px;font:900 10px system-ui;background:#1e293b;color:#fff}.pcvl-btn.primary{background:#2563eb}.pcvl-btn.good{background:#15803d}.pcvl-btn.warn{background:#7c3aed}
-@media(max-width:520px){.pcvl-grid{grid-template-columns:1fr 1fr;gap:7px}.pcvl-body{padding:8px}.pcvl-title{font-size:11px}.pcvl-desc{display:none}.pcvl-play i{width:36px;height:36px}.pcvl-actions .pcvl-btn{flex:1}}
-</style>
 
-<script id="pc-video-library-compact-athlete">
-(function(){
- if(window.__PCVL_ATH__)return;window.__PCVL_ATH__=true;
- const KEY='procoach_video_ai_v1';
- const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}};
- const write=a=>{try{localStorage.setItem(KEY,JSON.stringify(a))}catch(e){}};
- const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
- const yt=u=>{let m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^?&/]+)/);return m?m[1]:''};
- const thumb=x=>{let id=yt(x.url||x.videoUrl||x.link||'');return id?'https://img.youtube.com/vi/'+id+'/hqdefault.jpg':(x.thumbnail||x.image||'')};
- const category=x=>x.category||x.type||'Individual';
- const status=x=>x.understanding==='understood'?'✅ Entendido':x.completedAt?'✅ Assistido':x.openedAt?'👁 Visualizado':'🔵 Novo';
- function patch(id,d){let a=read(),i=a.findIndex(x=>x.id===id);if(i<0)return;a[i]=Object.assign({},a[i],d,{updatedAt:new Date().toISOString()});write(a);render()}
- function ensure(){
-   let panel=document.querySelector('#pcva-ath-panel .pcva-ath-body'); if(!panel||document.getElementById('pcvl-ath'))return;
-   let box=document.createElement('section');box.id='pcvl-ath';box.className='pcvl-wrap';
-   box.innerHTML=`<div class="pcvl-toolbar"><input id="pcvl-ath-q" class="pcvl-search" placeholder="Procurar vídeo, jogo ou tema..."><select id="pcvl-ath-cat" class="pcvl-filter"><option value="">Todos</option><option>Correções</option><option>Adversário</option><option>Individual</option><option>Coletivo</option><option>Bola parada</option><option>Referências</option></select></div><div id="pcvl-ath-grid" class="pcvl-grid"></div>`;
-   panel.prepend(box);
-   document.getElementById('pcvl-ath-q').oninput=render;document.getElementById('pcvl-ath-cat').onchange=render;
-   let ov=document.createElement('div');ov.id='pcvl-ath-overlay';ov.className='pcvl-overlay';ov.innerHTML='<div class="pcvl-modal"><div class="pcvl-head"><div><div id="pcvl-ath-meta" class="pcvl-meta"></div><h2 id="pcvl-ath-title" style="margin:3px 0;font-size:20px"></h2></div><button id="pcvl-ath-close" class="pcvl-close">×</button></div><div id="pcvl-ath-player" class="pcvl-player"></div><div id="pcvl-ath-info" class="pcvl-info"></div></div>';document.body.appendChild(ov);document.getElementById('pcvl-ath-close').onclick=()=>ov.classList.remove('on');
- }
- function openVideo(x){
-   patch(x.id,{openedAt:x.openedAt||new Date().toISOString()});
-   let ov=document.getElementById('pcvl-ath-overlay'),id=yt(x.url||x.videoUrl||x.link||''),u=x.url||x.videoUrl||x.link||'';
-   document.getElementById('pcvl-ath-meta').textContent=category(x)+' • '+status(x);document.getElementById('pcvl-ath-title').textContent=x.title||'Vídeo';
-   document.getElementById('pcvl-ath-player').innerHTML=id?`<iframe src="https://www.youtube.com/embed/${esc(id)}?rel=0" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`:(u?`<video src="${esc(u)}" controls playsinline></video>`:'<div style="height:100%;display:grid;place-items:center;color:#64748b">Vídeo indisponível</div>');
-   let notes=x.feedback||x.notes||x.objective||'Observe os pontos indicados pela comissão.';
-   document.getElementById('pcvl-ath-info').innerHTML=`<h3>🎯 Objetivo</h3><p>${esc(x.objective||'Análise orientada pela comissão.')}</p><h3>📝 Orientação</h3><p>${esc(notes).replace(/\n/g,'<br>')}</p><div class="pcvl-actions"><button id="pcvl-save" class="pcvl-btn warn">${x.saved?'★ Salvo':'☆ Salvar'}</button><button id="pcvl-done" class="pcvl-btn good">✅ Entendi</button><button id="pcvl-doubt" class="pcvl-btn primary">❓ Tenho dúvida</button></div>`;
-   document.getElementById('pcvl-save').onclick=()=>{patch(x.id,{saved:!x.saved});ov.classList.remove('on')};document.getElementById('pcvl-done').onclick=()=>{patch(x.id,{completedAt:new Date().toISOString(),understanding:'understood'});ov.classList.remove('on')};document.getElementById('pcvl-doubt').onclick=()=>{patch(x.id,{understanding:'doubt',response:'Quero rever este vídeo com a comissão.'});ov.classList.remove('on')};ov.classList.add('on');
- }
- function render(){
-   ensure();let grid=document.getElementById('pcvl-ath-grid');if(!grid)return;let q=(document.getElementById('pcvl-ath-q')?.value||'').toLowerCase(),c=document.getElementById('pcvl-ath-cat')?.value||'';
-   let a=read().filter(x=>x.status==='sent'||x.sentAt||x.athlete||x.title).filter(x=>(!c||category(x)===c)&&(!q||[x.title,category(x),x.objective,x.notes].join(' ').toLowerCase().includes(q)));
-   grid.innerHTML=a.length?a.map(x=>`<article class="pcvl-card" data-id="${esc(x.id)}"><div class="pcvl-thumb">${thumb(x)?`<img src="${esc(thumb(x))}" alt="">`:'<div class="pcvl-thumb-empty">🎥</div>'}<span class="pcvl-status">${status(x)}</span><span class="pcvl-play"><i>▶</i></span></div><div class="pcvl-body"><div class="pcvl-meta">${esc(category(x))}</div><h3 class="pcvl-title">${esc(x.title||'Análise')}</h3><div class="pcvl-desc">${esc(x.objective||x.notes||'Toque para abrir a análise.')}</div></div></article>`).join(''):'<div style="color:#94a3b8;font-size:11px">Nenhum vídeo encontrado.</div>';
-   grid.querySelectorAll('[data-id]').forEach(n=>n.onclick=()=>{let x=read().find(v=>v.id===n.dataset.id);if(x)openVideo(x)});
- }
- setTimeout(function(){ensure();render()},900);
- var openBtn=document.getElementById('pcva-ath-open');
- if(openBtn)openBtn.addEventListener('click',function(){setTimeout(function(){ensure();render()},80)});
- document.addEventListener('pc-video-library-refresh',function(){ensure();render()});
-})();
-</script>
 
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-stable-205';
- document.documentElement.dataset.procoachBuild='205';
+ window.PROCOACH_BUILD='2026.09-final-207';
+ document.documentElement.dataset.procoachBuild='207';
 })();
 </script>
 </body>

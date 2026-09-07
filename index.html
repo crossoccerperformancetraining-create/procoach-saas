@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • Performance Suite STABLE 2026.09</title>
+    <title>ProCoach • FINAL 207</title>
     
-    <link rel="manifest" href="manifest.json?v=205">
-    <link rel="apple-touch-icon" href="logo.png?v=205">
-    <link rel="icon" type="image/png" href="logo.png?v=205">
+    <link rel="manifest" href="manifest.json?v=207">
+    <link rel="apple-touch-icon" href="logo.png?v=207">
+    <link rel="icon" type="image/png" href="logo.png?v=207">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -6550,7 +6550,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V2.0.4 ACESSO ESTÁVEL</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V207 FINAL</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
@@ -7680,9 +7680,25 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-stable-205';
- document.documentElement.dataset.procoachBuild='205';
+ window.PROCOACH_BUILD='2026.09-final-207';
+ document.documentElement.dataset.procoachBuild='207';
 })();
+</script>
+
+<script id="pc-sw-207-register">
+if('serviceWorker' in navigator){
+ window.addEventListener('load',async()=>{
+  try{
+   const r=await navigator.serviceWorker.register('./sw.js?v=207',{updateViaCache:'none'});
+   await r.update().catch(()=>{});
+   navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(sessionStorage.getItem('pc_sw_207_reloaded')) return;
+    sessionStorage.setItem('pc_sw_207_reloaded','1');
+    location.reload();
+   });
+  }catch(_){}
+ });
+}
 </script>
 </body>
 </html>
