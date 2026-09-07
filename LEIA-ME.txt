@@ -1,0 +1,12 @@
+PROCOACH STABLE 205 — PACOTE PARA GITHUB
+
+Envie estes 3 arquivos para a raiz do repositório:
+
+1. index.html
+2. atleta.html
+3. sw.js
+
+IMPORTANTE:
+- Substitua os arquivos antigos de mesmo nome.
+- Depois do deploy no Vercel, feche completamente o app/PWA e abra novamente.
+- Se ainda aparecer versão antiga, limpe os dados/cache do site e reabra.

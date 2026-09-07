@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal do Atleta | ProCoach 2.0.4</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=204">
+    <title>ProCoach Athlete • STABLE 2026.09</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=205">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=204',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=205',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -2261,7 +2261,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=204',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=205',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">
@@ -2589,17 +2589,41 @@ let n=0,t=setInterval(()=>{if(window.firebase?.apps?.length){clearInterval(t);co
 <script id="pca4-collapse-old-video-script">
 (function(){
  if(window.__PCA4_COLLAPSE__)return;window.__PCA4_COLLAPSE__=true;
- const process=()=>{
-  document.querySelectorAll('div').forEach(label=>{
+ function process(root){
+  root=root||document;
+  root.querySelectorAll('div').forEach(function(label){
    if(!/^VÍDEO\s+\d+$/i.test((label.textContent||'').trim()))return;
-   const wrap=label.nextElementSibling;if(!wrap||wrap.dataset.pca4done)return;
-   if(!wrap.querySelector('iframe,video'))return;wrap.dataset.pca4done='1';
-   const btn=document.createElement('button');btn.type='button';btn.textContent='▶ ABRIR VÍDEO';btn.style.cssText='width:100%;padding:12px;border:1px solid #334155;border-radius:12px;background:#172033;color:white;font:900 10px system-ui;margin-top:6px';
-   const mediaNode=wrap.querySelector('iframe,video');wrap.style.display='none';wrap.parentNode.insertBefore(btn,wrap.nextSibling);
-   btn.onclick=()=>{const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:16000;background:#020617f2;padding:12px;overflow:auto';const box=document.createElement('div');box.style.cssText='max-width:900px;margin:auto';const close=document.createElement('button');close.textContent='×';close.style.cssText='float:right;width:42px;height:42px;border:0;border-radius:10px;background:#172033;color:white;font-size:24px;margin-bottom:10px';const shell=document.createElement('div');shell.style.cssText='clear:both;aspect-ratio:16/9;background:black;border-radius:16px;overflow:hidden;border:1px solid #334155';const clone=mediaNode.cloneNode(true);clone.style.cssText='width:100%;height:100%';shell.appendChild(clone);box.append(close,shell);overlay.appendChild(box);document.body.appendChild(overlay);close.onclick=()=>overlay.remove();};
+   var wrap=label.nextElementSibling;
+   if(!wrap||wrap.dataset.pca4done)return;
+   var mediaNode=wrap.querySelector('iframe,video');
+   if(!mediaNode)return;
+   wrap.dataset.pca4done='1';
+   wrap.style.display='none';
+   var btn=document.createElement('button');
+   btn.type='button';btn.textContent='▶ ABRIR VÍDEO';
+   btn.style.cssText='width:100%;padding:12px;border:1px solid #334155;border-radius:12px;background:#172033;color:white;font:900 10px system-ui;margin-top:6px';
+   wrap.parentNode.insertBefore(btn,wrap.nextSibling);
+   btn.addEventListener('click',function(){
+    var overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;z-index:16000;background:#020617f2;padding:12px;overflow:auto';
+    var box=document.createElement('div');box.style.cssText='max-width:900px;margin:auto';
+    var close=document.createElement('button');close.type='button';close.textContent='×';
+    close.style.cssText='float:right;width:42px;height:42px;border:0;border-radius:10px;background:#172033;color:white;font-size:24px;margin-bottom:10px';
+    var shell=document.createElement('div');shell.style.cssText='clear:both;aspect-ratio:16/9;background:black;border-radius:16px;overflow:hidden;border:1px solid #334155';
+    var clone=mediaNode.cloneNode(true);clone.style.cssText='width:100%;height:100%';shell.appendChild(clone);box.append(close,shell);overlay.appendChild(box);document.body.appendChild(overlay);
+    close.onclick=function(){overlay.remove()};
+   });
   });
- };
- new MutationObserver(process).observe(document.body,{childList:true,subtree:true});setTimeout(process,500);
+ }
+ function schedule(){setTimeout(function(){process(document)},180)}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){process(document)},700)},{once:true});
+ else setTimeout(function(){process(document)},700);
+ document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('button');
+  if(!b)return;
+  var t=(b.textContent||'').toUpperCase();
+  if(t.includes('TREINO')||t.includes('VÍDEO')||t.includes('ANÁLISE'))schedule();
+ },{passive:true});
 })();
 </script>
 
@@ -2658,71 +2682,29 @@ body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;g
 
 <script id="pc-final-athlete-player-tools">
 (function(){
-  if(window.__PC_FINAL_ATHLETE_PLAYER__) return;
-  window.__PC_FINAL_ATHLETE_PLAYER__=true;
-
-  var elapsed=0, running=false, startedAt=0, timer=null;
-  var display=document.getElementById('pct-display');
-  var toggle=document.getElementById('pct-toggle');
-  var reset=document.getElementById('pct-reset');
-
-  function format(sec){
-    sec=Math.max(0,Math.floor(sec||0));
-    var m=Math.floor(sec/60), s=sec%60;
-    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-  }
-  function currentSeconds(){
-    if(!running) return elapsed;
-    return elapsed + Math.floor((Date.now()-startedAt)/1000);
-  }
-  function paint(){
-    if(display) display.textContent=format(currentSeconds());
-    if(toggle){
-      toggle.textContent=running?'Ⅱ':'▶';
-      toggle.classList.toggle('pct-active',running);
-    }
-  }
-  function start(){
-    if(running) return;
-    startedAt=Date.now();
-    running=true;
-    timer=setInterval(paint,500);
-    paint();
-  }
-  function pause(){
-    if(!running) return;
-    elapsed=currentSeconds();
-    running=false;
-    clearInterval(timer); timer=null;
-    paint();
-  }
-  function zero(){
-    running=false; clearInterval(timer); timer=null;
-    elapsed=0; startedAt=0; paint();
-  }
-  toggle && toggle.addEventListener('click',function(){ running?pause():start(); });
-  reset && reset.addEventListener('click',zero);
-
-  function isExercisePlayerOpen(){
-    var nodes=document.querySelectorAll('button');
-    for(var i=0;i<nodes.length;i++){
-      var t=(nodes[i].textContent||'').toUpperCase();
-      if(t.includes('CONCLUIR SÉRIE') || t.includes('CONCLUIR BLOCO TÁTICO') || t.includes('PULAR DESCANSO')) return true;
-    }
-    return false;
-  }
-  function syncPlayerState(){
-    var open=isExercisePlayerOpen();
-    document.body.classList.toggle('pc-exercise-player-open',open);
-    if(open && !running && elapsed===0) start();
-    if(!open && running) pause();
-  }
-
-  var observer=new MutationObserver(syncPlayerState);
-  observer.observe(document.body,{childList:true,subtree:true,characterData:true});
-  setInterval(syncPlayerState,1200);
-  syncPlayerState();
-  paint();
+ if(window.__PC_FINAL_ATHLETE_PLAYER__)return;window.__PC_FINAL_ATHLETE_PLAYER__=true;
+ var elapsed=0,running=false,startedAt=0,timer=null;
+ var display=document.getElementById('pct-display'),toggle=document.getElementById('pct-toggle'),reset=document.getElementById('pct-reset');
+ function format(sec){sec=Math.max(0,Math.floor(sec||0));var m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+ function current(){return running?elapsed+Math.floor((Date.now()-startedAt)/1000):elapsed}
+ function paint(){if(display)display.textContent=format(current());if(toggle){toggle.textContent=running?'Ⅱ':'▶';toggle.classList.toggle('pct-active',running)}}
+ function start(){if(running)return;startedAt=Date.now();running=true;timer=setInterval(paint,1000);document.body.classList.add('pc-exercise-player-open');paint()}
+ function pause(){if(!running)return;elapsed=current();running=false;clearInterval(timer);timer=null;paint()}
+ function zero(){running=false;clearInterval(timer);timer=null;elapsed=0;startedAt=0;paint()}
+ if(toggle)toggle.addEventListener('click',function(){running?pause():start()});
+ if(reset)reset.addEventListener('click',zero);
+ document.addEventListener('click',function(e){
+   var b=e.target.closest&&e.target.closest('button');
+   if(!b)return;
+   var t=(b.textContent||'').trim().toUpperCase();
+   if(t.includes('INICIAR TREINO')||t.includes('VER COMO FAZER')||t.includes('CONCLUIR SÉRIE')||t.includes('CONCLUIR BLOCO TÁTICO')||t.includes('ENTENDI E VOU EXECUTAR')){
+     if(!running&&elapsed===0)start(); else document.body.classList.add('pc-exercise-player-open');
+   }
+   if(t==='×'||t.includes('VOLTAR')||t.includes('FINALIZAR')||t.includes('ENCERRAR SESSÃO')){
+     pause();document.body.classList.remove('pc-exercise-player-open');
+   }
+ },{passive:true});
+ paint();
 })();
 </script>
 
@@ -2786,9 +2768,19 @@ body.pc-exercise-player-open #pc-session-timer{display:flex;align-items:center;g
    grid.innerHTML=a.length?a.map(x=>`<article class="pcvl-card" data-id="${esc(x.id)}"><div class="pcvl-thumb">${thumb(x)?`<img src="${esc(thumb(x))}" alt="">`:'<div class="pcvl-thumb-empty">🎥</div>'}<span class="pcvl-status">${status(x)}</span><span class="pcvl-play"><i>▶</i></span></div><div class="pcvl-body"><div class="pcvl-meta">${esc(category(x))}</div><h3 class="pcvl-title">${esc(x.title||'Análise')}</h3><div class="pcvl-desc">${esc(x.objective||x.notes||'Toque para abrir a análise.')}</div></div></article>`).join(''):'<div style="color:#94a3b8;font-size:11px">Nenhum vídeo encontrado.</div>';
    grid.querySelectorAll('[data-id]').forEach(n=>n.onclick=()=>{let x=read().find(v=>v.id===n.dataset.id);if(x)openVideo(x)});
  }
- const mo=new MutationObserver(()=>{if(document.querySelector('#pcva-ath-panel .pcva-ath-body')){ensure();render()}});mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{ensure();render()},500);
+ setTimeout(function(){ensure();render()},900);
+ var openBtn=document.getElementById('pcva-ath-open');
+ if(openBtn)openBtn.addEventListener('click',function(){setTimeout(function(){ensure();render()},80)});
+ document.addEventListener('pc-video-library-refresh',function(){ensure();render()});
 })();
 </script>
 
+
+<script id="pc-stable-runtime-marker">
+(function(){
+ window.PROCOACH_BUILD='2026.09-stable-205';
+ document.documentElement.dataset.procoachBuild='205';
+})();
+</script>
 </body>
 </html>

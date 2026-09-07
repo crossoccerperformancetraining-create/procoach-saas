@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • Performance Suite FINAL 2026.09</title>
+    <title>ProCoach • Performance Suite STABLE 2026.09</title>
     
-    <link rel="manifest" href="manifest.json?v=204">
-    <link rel="apple-touch-icon" href="logo.png?v=204">
-    <link rel="icon" type="image/png" href="logo.png?v=204">
+    <link rel="manifest" href="manifest.json?v=205">
+    <link rel="apple-touch-icon" href="logo.png?v=205">
+    <link rel="icon" type="image/png" href="logo.png?v=205">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -7179,21 +7179,15 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
       }
     });
   }
-  function stabilizeHome(){
+  function closeMicro(){
     var micro=document.getElementById('pcsm-bg');
-    if(micro){
-      micro.classList.remove('on');
-      micro.style.display='';
-      micro.setAttribute('aria-hidden','true');
-    }
-    normalizeEscapedTextNodes(document.body);
+    if(micro){micro.classList.remove('on');micro.style.display='';micro.setAttribute('aria-hidden','true');}
   }
+  function stabilizeHome(){closeMicro();normalizeEscapedTextNodes(document.body);}
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',stabilizeHome,{once:true});
-  } else {
-    stabilizeHome();
-  }
-  window.addEventListener('pageshow',stabilizeHome);
+  } else { stabilizeHome(); }
+  window.addEventListener('pageshow',closeMicro);
 })();
 </script>
 
@@ -7676,9 +7670,19 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
  const KEY='procoach_video_ai_v1',read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}},esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),yt=u=>{let m=String(u||'').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^?&/]+)/);return m?m[1]:''};
  function ensure(){let body=document.querySelector('#pcva-coach-panel .pcva-body');if(!body||document.getElementById('pcvl-coach'))return;let s=document.createElement('section');s.id='pcvl-coach';s.className='pcvl-wrap';s.innerHTML='<h3 style="color:white;margin:5px 0">🎞 Biblioteca compacta</h3><p style="color:#94a3b8;font-size:10px">Correções • adversário • individual • coletivo • bola parada</p><div class="pcvl-toolbar"><input id="pcvl-coach-q" class="pcvl-search" placeholder="Procurar vídeo..."></div><div id="pcvl-coach-grid" class="pcvl-grid"></div>';body.appendChild(s);document.getElementById('pcvl-coach-q').oninput=render}
  function render(){ensure();let g=document.getElementById('pcvl-coach-grid');if(!g)return,q=(document.getElementById('pcvl-coach-q')?.value||'').toLowerCase(),a=read().filter(x=>!q||[x.title,x.category,x.objective,x.athlete].join(' ').toLowerCase().includes(q));g.innerHTML=a.map(x=>{let id=yt(x.url||x.videoUrl||x.link||''),th=id?'https://img.youtube.com/vi/'+id+'/hqdefault.jpg':(x.thumbnail||x.image||'');let st=x.completedAt?'✅ Assistido':x.openedAt?'👁 Visualizado':'⏳ Pendente';return `<article class="pcvl-card"><div class="pcvl-thumb">${th?`<img src="${esc(th)}">`:'<div class="pcvl-thumb-empty">🎥</div>'}<span class="pcvl-status">${st}</span><span class="pcvl-play"><i>▶</i></span></div><div class="pcvl-body"><div class="pcvl-meta">${esc(x.category||'Individual')} ${x.athlete?'• '+esc(x.athlete):''}</div><h3 class="pcvl-title">${esc(x.title||'Análise')}</h3><div class="pcvl-desc">${esc(x.objective||'Acompanhamento de vídeo.')}</div></div></article>`}).join('')||'<span style="color:#94a3b8;font-size:11px">Nenhum vídeo cadastrado.</span>'}
- const mo=new MutationObserver(()=>{if(document.querySelector('#pcva-coach-panel .pcva-body')){ensure();render()}});mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{ensure();render()},500);
+ setTimeout(function(){ensure();render()},900);
+ var openBtn=document.getElementById('pcva-coach-open');
+ if(openBtn)openBtn.addEventListener('click',function(){setTimeout(function(){ensure();render()},80)});
+ document.addEventListener('pc-video-library-refresh',function(){ensure();render()});
 })();
 </script>
 
+
+<script id="pc-stable-runtime-marker">
+(function(){
+ window.PROCOACH_BUILD='2026.09-stable-205';
+ document.documentElement.dataset.procoachBuild='205';
+})();
+</script>
 </body>
 </html>
