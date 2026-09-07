@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • Performance Suite 2026.09</title>
+    <title>ProCoach Performance Suite • Versão 2.0.4</title>
     
     <link rel="manifest" href="manifest.json?v=204">
     <link rel="apple-touch-icon" href="logo.png?v=204">
@@ -153,10 +153,6 @@
 @media(max-width:520px){.pc-hub-grid{grid-template-columns:1fr 1fr}.pc-hub-card{padding:11px;min-height:130px}.pc-hub-body{padding:12px}}
 </style>
 </head>
-<!-- ProCoach unified build 2026-09-07:
-Central unificada, tutorial/tour, Vídeo & IA, plano tático,
-rotinas/sequências, semana padrão, player de treino e login diagnóstico. -->
-
 <body class="h-screen w-screen overflow-hidden flex flex-col safe-area-inset">
     <div id="toast"></div>
     <div id="root" class="h-full w-full"><div id="loading-state">A iniciar o ProCoach...</div></div>
@@ -1112,40 +1108,14 @@ const LineChart = ({ data, color, height = 50 }) => {
             const [loading, setLoading] = useState(false);
             const [mode, setMode] = useState('login');
 
-            const getAuthErrorMessage = (err) => {
-                const code = err?.code || '';
-                const messages = {
-                    'auth/invalid-email': 'E-mail inválido. Confira o endereço digitado.',
-                    'auth/user-disabled': 'Este usuário está desativado no Firebase Authentication.',
-                    'auth/user-not-found': 'Usuário não encontrado neste projeto Firebase.',
-                    'auth/wrong-password': 'Senha incorreta.',
-                    'auth/invalid-credential': 'E-mail ou senha não conferem com este projeto Firebase.',
-                    'auth/email-already-in-use': 'Este e-mail já possui uma conta.',
-                    'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
-                    'auth/operation-not-allowed': 'Login por e-mail/senha não está habilitado no Firebase Authentication.',
-                    'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
-                    'auth/network-request-failed': 'Falha de conexão. Verifique a internet e tente novamente.',
-                    'auth/unauthorized-domain': 'Este domínio não está autorizado no Firebase Authentication.'
-                };
-                return messages[code] || `Não foi possível entrar (${code || 'erro desconhecido'}). Verifique Firebase Auth, domínio autorizado e conexão.`;
-            };
-
             const handleLogin = (e) => { 
                 e.preventDefault(); 
                 setError(''); 
                 setLoading(true);
-                const normalizedEmail = String(email || '').trim().toLowerCase();
-                if (!normalizedEmail || !password) {
-                    setError('Informe e-mail e senha.');
-                    setLoading(false);
-                    return;
-                }
-                const action = mode === 'signup'
-                    ? auth.createUserWithEmailAndPassword(normalizedEmail, password)
-                    : auth.signInWithEmailAndPassword(normalizedEmail, password);
+                const action = mode === 'signup' ? auth.createUserWithEmailAndPassword(email, password) : auth.signInWithEmailAndPassword(email, password);
                 action.then(() => onLogin()).catch(err => { 
-                    console.error('ProCoach Auth:', err?.code, err?.message); 
-                    setError(getAuthErrorMessage(err)); 
+                    console.error(err); 
+                    setError(mode === 'signup' ? 'Não foi possível criar a conta. Use uma senha com pelo menos 6 caracteres ou verifique se o e-mail já existe.' : 'Acesso negado. Verifique o e-mail e a senha.'); 
                     setLoading(false);
                 }); 
             };
