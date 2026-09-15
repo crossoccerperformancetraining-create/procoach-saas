@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • FINAL 209 Secure Sync</title>
+    <title>ProCoach • FINAL 210 AI Recovery + DM</title>
     
-    <link rel="manifest" href="manifest.json?v=209">
-    <link rel="apple-touch-icon" href="logo.png?v=209">
-    <link rel="icon" type="image/png" href="logo.png?v=209">
+    <link rel="manifest" href="manifest.json?v=210">
+    <link rel="apple-touch-icon" href="logo.png?v=210">
+    <link rel="icon" type="image/png" href="logo.png?v=210">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -2527,6 +2527,7 @@ const acwrGroups = useMemo(() => {
             const [location, setLocation] = useState('');
             const [dateIn, setDateIn] = useState(getTodayStr());
             const [editingId, setEditingId] = useState(null); 
+            const [dmAiRecordId,setDmAiRecordId]=useState(null); const [dmAiText,setDmAiText]=useState(''); const [dmAiMode,setDmAiMode]=useState('');
             const records = safeArray(dmRecords);
             const activeInjuries = records.filter(r => r && r.status === 'Active');
             const commonDiagnoses = [ "Estiramento Posterior Coxa", "Estiramento Quadríceps", "Estiramento Adutor", "Estiramento Panturrilha", "Entorse Tornozelo", "Entorse Joelho", "Trauma Direto (Pancada)", "Edema Muscular", "Tendinite Patelar", "Tendinite Aquiles", "Pubalgia", "Contratura Muscular", "Fratura", "Luxação Ombro", "Desconforto Muscular", "Gripe / Virose", "Outro" ];
@@ -2557,7 +2558,20 @@ const acwrGroups = useMemo(() => {
 
             const renderDrAI = (phaseId) => { 
                 const phase = RTP_PHASES.find(p => p.id === (parseInt(phaseId) || 1)) || RTP_PHASES[0];
-                return (<div className="mt-2 flex gap-2 items-center bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-[10px] text-blue-800 dark:text-blue-300"><Icon name="brain" size={14}/><span><strong>Dr. Virtual:</strong> {phase.desc}</span></div>); 
+                return (<div className="mt-2 flex gap-2 items-center bg-blue-50 dark:bg-blue-900/30 p-2 rounded text-[10px] text-blue-800 dark:text-blue-300"><Icon name="brain" size={14}/><span><strong>Assistente DM/RTP:</strong> etapa registrada: {phase.label}. {phase.desc} A progressão depende dos critérios definidos e da validação da equipe de saúde.</span></div>); 
+            };
+            const buildDmAiText=(record,mode)=>{
+                const player=players[record.playerId]||{}, phase=RTP_PHASES.find(p=>p.id===(parseInt(record.rtpPhase)||1))||RTP_PHASES[0];
+                const days=Math.max(0,Math.floor((new Date(getTodayStr())-new Date(record.dateIn||getTodayStr()))/86400000));
+                if(mode==='summary') return `Resumo do caso — ${player.name||'Atleta'}\nRegistro: ${record.location||record.type||'Sem diagnóstico detalhado'}\nTempo no DM: ${days} dia(s)\nRTP atual: ${phase.label}\nFoco desta leitura: organizar o histórico, checar evolução documentada e confirmar se os critérios da fase estão registrados.`;
+                if(mode==='criteria') return `Checklist RTP — ${phase.label}\n• Confirmar resposta aos esforços permitidos na fase.\n• Registrar sintomas antes, durante e após a exposição.\n• Comparar medidas objetivas disponíveis (força, amplitude, função, carga) com os critérios definidos pela equipe.\n• Confirmar tolerância à progressão e ausência de piora relevante.\n• A decisão de avançar, manter ou regredir permanece com o profissional responsável.`;
+                if(mode==='missing') return `Pendências para revisar\n• Última evolução clínica e data de reavaliação.\n• Dor/sintomas e impacto funcional atuais.\n• Medidas objetivas disponíveis para esta lesão e fase.\n• Carga tolerada recentemente e resposta nas 24 h seguintes.\n• Critério explícito para a próxima fase.\n• Registrar qualquer sinal de alerta ou piora para avaliação profissional imediata.`;
+                return `Plano de acompanhamento para revisão profissional\n1. Registrar estado atual e objetivo desta fase.\n2. Definir a próxima exposição controlada já prevista no protocolo da equipe.\n3. Registrar resposta durante e após a exposição.\n4. Comparar com critérios objetivos antes de progredir.\n5. Definir data de nova revisão.\n\nEste rascunho organiza o processo; não prescreve tratamento nem autoriza retorno ao esporte.`;
+            };
+            const openDmAi=(record,mode)=>{setDmAiRecordId(record.id);setDmAiMode(mode);setDmAiText(buildDmAiText(record,mode));};
+            const saveDmAiNote=record=>{
+                const updated=records.map(x=>x.id===record.id?{...x,aiAssistantNote:dmAiText,aiAssistantMode:dmAiMode,aiAssistantUpdatedAt:new Date().toISOString()}:x);
+                setDmRecords(updated);showToast('Nota do assistente salva no caso.','#3b82f6');
             };
             
             return (
@@ -2578,7 +2592,7 @@ const acwrGroups = useMemo(() => {
                         </div>
                         <div className="flex-1 space-y-4">
                             <div className="bg-white dark:bg-slate-800 rounded-xl shadow border border-slate-200 dark:border-slate-700 p-4">
-                                <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-2"><Icon name="activity"/> Tratamento (Ativos)</h3></div>
+                                <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase flex items-center gap-2"><Icon name="activity"/> Tratamento (Ativos)</h3></div><div className="mb-4 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-[10px] text-blue-800 dark:text-blue-300"><b>IA DM/RTP:</b> resume o caso, organiza critérios e aponta dados faltantes. Não faz diagnóstico, não prescreve tratamento e não libera atleta automaticamente.</div>
                                 {activeInjuries.length===0?<div className="text-slate-400 text-sm text-center py-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">Nenhum atleta no Departamento Médico. 🙌</div>:<div className="space-y-3">{activeInjuries.map((r,idx)=>{
                                     if(!r) return null;
                                     const progressPct=(((parseInt(r.rtpPhase)||1)/9)*100);
@@ -2600,6 +2614,21 @@ const acwrGroups = useMemo(() => {
                                                 </select>
                                                 <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden mb-2"><div className="h-full bg-blue-500 transition-all duration-500" style={{width:`${progressPct}%`}}></div></div>
                                                 {renderDrAI(r.rtpPhase)}
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mt-2">
+                                                    <button type="button" onClick={()=>openDmAi(r,'summary')} className="py-2 rounded-lg bg-slate-800 text-white text-[8px] font-black uppercase">Resumo</button>
+                                                    <button type="button" onClick={()=>openDmAi(r,'criteria')} className="py-2 rounded-lg bg-blue-600 text-white text-[8px] font-black uppercase">Critérios RTP</button>
+                                                    <button type="button" onClick={()=>openDmAi(r,'missing')} className="py-2 rounded-lg bg-amber-600 text-white text-[8px] font-black uppercase">Pendências</button>
+                                                    <button type="button" onClick={()=>openDmAi(r,'followup')} className="py-2 rounded-lg bg-violet-600 text-white text-[8px] font-black uppercase">Acompanhamento</button>
+                                                </div>
+                                                {dmAiRecordId===r.id&&dmAiText&&<div className="mt-2 p-3 rounded-xl bg-slate-950 text-slate-200 border border-slate-700">
+                                                    <div className="text-[8px] uppercase font-black tracking-widest text-blue-400 mb-2">IA • Apoio à decisão clínica</div>
+                                                    <pre className="whitespace-pre-wrap font-sans text-[10px] leading-relaxed">{dmAiText}</pre>
+                                                    <div className="flex gap-2 mt-3">
+                                                        <button type="button" onClick={()=>saveDmAiNote(r)} className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-[8px] font-black uppercase">Salvar no caso</button>
+                                                        <button type="button" onClick={()=>{setDmAiRecordId(null);setDmAiText('')}} className="px-3 py-2 rounded-lg bg-slate-800 text-white text-[8px] font-black uppercase">Fechar</button>
+                                                    </div>
+                                                </div>}
+                                                {r.aiAssistantNote&&dmAiRecordId!==r.id&&<div className="mt-2 text-[9px] text-slate-500 dark:text-slate-400">Última nota IA salva em {r.aiAssistantUpdatedAt?new Date(r.aiAssistantUpdatedAt).toLocaleString('pt-BR'):''}.</div>}
                                             </div>
                                             <div className="absolute top-2 right-2 flex gap-1"><button onClick={()=>handleEdit(r)} className="text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 p-1 rounded-full"><Icon name="edit" size={14}/></button><button onClick={()=>handleDelete(r.id, r.playerId, r.status)} className="text-slate-400 hover:text-red-500 bg-white dark:bg-slate-800 p-1 rounded-full"><Icon name="trash" size={14}/></button></div>
                                         </div>
@@ -3239,6 +3268,7 @@ const renderVideoElement = (url) => {
     const [previewDate, setPreviewDate] = useState('');
     const [sessionSearch, setSessionSearch] = useState('');
     const [sessionDraft, setSessionDraft] = useState({objective:'',category:'Campo',opponent:'',competition:'',notes:'',favorite:false});
+    const [showRecoveryAI,setShowRecoveryAI]=useState(false);
 
     useEffect(()=>{if(requestedDate)setSessionDate(requestedDate)},[requestedDate]);
     useEffect(()=>{
@@ -3262,19 +3292,47 @@ const renderVideoElement = (url) => {
         }
     }, [targetOptions, user]);
 
-    const getAiSuggestion = () => {
-        const today = getTodayStr(); 
-        let totalFatigue = 0, count = 0;
-        const safePs = Array.isArray(players) ? players : [];
-        safePs.forEach((p, i) => {
-            const logForPlayer = trainingLog?.[today]?.[i];
-            const stats = safeObj(logForPlayer?.wellness);
-            if(stats.sleep) { totalFatigue += (Number(stats.fatigue) || 1) + (Number(stats.soreness) || 1); count++; }
+    const getRecoveryContext = () => {
+        const today=getTodayStr(), logs=safeObj(trainingLog?.[today]);
+        let count=0,fatigue=0,soreness=0,sleep=0,load=0,loadCount=0;
+        safeArray(players).forEach((_,i)=>{
+            const log=safeObj(logs?.[i]),w=safeObj(log.wellness);
+            if(w.sleep!==undefined||w.fatigue!==undefined||w.soreness!==undefined){
+                count++; fatigue+=Number(w.fatigue)||0; soreness+=Number(w.soreness)||0; sleep+=Number(w.sleep)||0;
+            }
+            const daily=typeof calcDailyLoad==='function'?Number(calcDailyLoad(log))||0:0;
+            if(daily>0){load+=daily;loadCount++}
         });
-        const avg = count > 0 ? totalFatigue / count : 0;
-        if (avg >= 10) return "🚨 IA: CRIOTERAPIA OBRIGATÓRIA (FADIGA CRÍTICA)";
-        if (avg >= 7) return "⚠️ IA: BANHEIRA DE GELO (FADIGA ALTA)";
-        return "✅ IA: RECUPERAÇÃO LIVRE (TIME PRONTO)";
+        return {
+            count,
+            avgFatigue:count?fatigue/count:0,
+            avgSoreness:count?soreness/count:0,
+            avgSleep:count?sleep/count:0,
+            avgLoad:loadCount?Math.round(load/loadCount):0
+        };
+    };
+    const buildRecoveryOptions = () => {
+        const c=getRecoveryContext(), strain=c.avgFatigue+c.avgSoreness;
+        const high=strain>=8||c.avgLoad>=600, moderate=strain>=5||c.avgLoad>=350;
+        const options=high ? [
+            {title:'Opção A • Baixo impacto',value:'Mobilidade + Respiração (12-15 min)',detail:'Priorizar mobilidade confortável, respiração/relaxamento e redução de estímulos adicionais.'},
+            {title:'Opção B • Recuperação ativa leve',value:'Recuperação Ativa Leve (12-20 min)',detail:'Bike, caminhada ou soltura em intensidade baixa, somente se a atleta estiver sem sintomas limitantes.'},
+            {title:'Opção C • Recuperação básica',value:'Hidratação + Nutrição + Sono',detail:'Priorizar hidratação, alimentação habitual pós-sessão e rotina de sono; reavaliar wellness no dia seguinte.'}
+        ] : moderate ? [
+            {title:'Opção A • Soltura',value:'Recuperação Ativa Leve (12-20 min)',detail:'Atividade de baixa intensidade para desacelerar após a sessão.'},
+            {title:'Opção B • Mobilidade',value:'Mobilidade / Alongamento',detail:'Mobilidade leve e controlada, sem forçar amplitudes dolorosas.'},
+            {title:'Opção C • Rotina simples',value:'Hidratação + Nutrição + Sono',detail:'Foco em hábitos básicos e novo check-in no próximo período.'}
+        ] : [
+            {title:'Opção A • Livre orientada',value:'Livre',detail:'Recuperação livre com hábitos básicos e monitoramento normal.'},
+            {title:'Opção B • Mobilidade curta',value:'Mobilidade + Respiração (8-12 min)',detail:'Rotina curta para desacelerar e preparar a transição para o restante do dia.'},
+            {title:'Opção C • Ativa opcional',value:'Caminhada / Bike Leve (10-15 min)',detail:'Opcional, em baixa intensidade e sem transformar recuperação em nova carga.'}
+        ];
+        return {context:c,options,level:high?'Atenção':moderate?'Moderada':'Normal'};
+    };
+    const getAiSuggestion = () => {
+        const pack=buildRecoveryOptions(),c=pack.context;
+        if(!c.count&&!c.avgLoad)return '🤖 IA: poucos dados hoje — escolha uma opção e valide com a comissão.';
+        return `🤖 IA: recuperação ${pack.level.toLowerCase()} • wellness ${c.count} atleta(s) • carga média ${c.avgLoad||'—'}.`;
     };
 
     const addTarget = () => {
@@ -3641,19 +3699,46 @@ const renderVideoElement = (url) => {
                     <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border dark:border-slate-700 md:w-80 shadow-inner">
                         <label className="text-[10px] font-black text-slate-500 uppercase mb-1 flex items-center gap-1"><Icon name="activity" size={12}/> Recuperação Pós-Treino:</label>
                         <select className="w-full rounded p-2 text-xs font-bold dark:bg-slate-800 dark:text-white outline-none border dark:border-slate-600 focus:border-blue-500" value={postWorkout} onChange={e=>setPostWorkout(e.target.value)}>
-                            <option value="IA">🤖 IA: Sugestão Automática</option>
-                            <option value="Livre">🧘‍♂️ Livre (Recuperação Passiva)</option>
-                            <option value="Banheira de Gelo (10 min)">🧊 Banheira de Gelo (10 a 15 min)</option>
-                            <option value="Crioterapia Local">❄️ Crioterapia Localizada</option>
-                            <option value="Bota Pneumática (15 min)">🦿 Bota Pneumática (Compressão)</option>
-                            <option value="Piscina / Soltura Aquática">🏊‍♂️ Piscina / Soltura Aquática</option>
-                            <option value="Massagem / Liberação">💆‍♂️ Massagem / Liberação Miofascial</option>
-                            <option value="Ciclismo Leve (15 min)">🚴 Ciclismo Leve (Giro Regenerativo)</option>
-                            <option value="Eletroestimulação">⚡ Eletroestimulação (Compex/TENS)</option>
-                            <option value="Mobilidade / Alongamento">🤸‍♂️ Sessão de Mobilidade e Alongamento</option>
+                            <option value="IA">🤖 IA: Revisar opções</option>
+                            <option value="Livre">🧘 Livre / Autogestão orientada</option>
+                            <option value="Recuperação Ativa Leve (12-20 min)">🚶 Recuperação ativa leve (12-20 min)</option>
+                            <option value="Caminhada / Bike Leve (10-15 min)">🚴 Caminhada / bike leve (10-15 min)</option>
+                            <option value="Mobilidade / Alongamento">🤸 Mobilidade leve</option>
+                            <option value="Mobilidade + Respiração (12-15 min)">🫁 Mobilidade + respiração (12-15 min)</option>
+                            <option value="Mobilidade + Respiração (8-12 min)">🫁 Mobilidade + respiração (8-12 min)</option>
+                            <option value="Hidratação + Nutrição + Sono">💧 Hidratação + nutrição + sono</option>
+                            <option value="Piscina / Soltura Aquática">🏊 Piscina / soltura aquática</option>
+                            <option value="Massagem / Liberação">💆 Massagem / liberação (se indicada pela equipe)</option>
+                            <option value="Bota Pneumática (15 min)">🦿 Compressão pneumática (se protocolada)</option>
+                            <option value="Banheira de Gelo (10 min)">🧊 Imersão fria (se protocolada)</option>
                         </select>
+                        <button type="button" onClick={()=>setShowRecoveryAI(!showRecoveryAI)} className="w-full mt-2 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                            <Icon name="brain" size={13}/> {showRecoveryAI?'Fechar opções IA':'Ver 3 opções IA'}
+                        </button>
                     </div>
                 </div>
+
+                {showRecoveryAI && (()=>{
+                    const pack=buildRecoveryOptions(), c=pack.context;
+                    return <div className="mb-6 p-4 rounded-2xl bg-violet-950/20 border border-violet-500/30">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
+                            <div>
+                                <div className="text-[9px] uppercase tracking-widest font-black text-violet-400">IA • Recuperação Pós-Treino</div>
+                                <h3 className="text-sm font-black dark:text-white">3 caminhos para a comissão revisar</h3>
+                            </div>
+                            <div className="text-[9px] text-slate-400">Wellness: {c.count||0} • Carga média: {c.avgLoad||'—'} • Nível: <b>{pack.level}</b></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {pack.options.map((op,i)=><div key={i} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                <div className="text-[10px] font-black text-violet-500 uppercase">{op.title}</div>
+                                <div className="text-xs font-black dark:text-white mt-1">{op.value}</div>
+                                <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 mt-2">{op.detail}</p>
+                                <button type="button" onClick={()=>{setPostWorkout(op.value);showToast('Opção aplicada à recuperação.','#7c3aed')}} className="w-full mt-3 py-2 rounded-lg bg-violet-600 text-white text-[9px] font-black uppercase">Aplicar</button>
+                            </div>)}
+                        </div>
+                        <div className="text-[9px] text-slate-500 mt-3">A IA organiza opções com base nos registros disponíveis. Modalidades e condutas devem ser validadas pela comissão; sintomas relevantes ou piora exigem avaliação profissional.</div>
+                    </div>
+                })()}
 
                 <div className="flex justify-between items-start mb-6 gap-4 flex-col md:flex-row border-t dark:border-slate-700 pt-6">
                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border dark:border-slate-700 w-full max-w-sm">
@@ -4829,6 +4914,14 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
     else if(md === 'JOGO') aiFocus = "Competição";
     else aiFocus = "Recuperação / Ajuste";
 
+    const aiPriorities = [];
+    if(wellnessPendente>0 && trainingStatus!=='encerrado') aiPriorities.push({level:'Alta',title:`${wellnessPendente} pendência(s) no ${trainingStatus==='pre'?'wellness':'PSE'}`,detail:'A qualidade da decisão depende de completar os registros do dia.',tab:trainingStatus==='pre'?'wellness':'pse',tone:'red'});
+    if(activeDM.length>0) aiPriorities.push({level:'Alta',title:`Revisar ${activeDM.length} atleta(s) no DM/RTP`,detail:'Confirmar evolução, fase atual, critérios e próxima reavaliação.',tab:'dm',tone:'red'});
+    if(riskPlayers.length>0) aiPriorities.push({level:'Moderada',title:`${riskPlayers.length} atleta(s) com carga elevada`,detail:'Revisar carga recente e necessidade de ajuste individual antes da sessão.',tab:'pse',tone:'orange'});
+    if(elencoDisponivel<16) aiPriorities.push({level:'Alta',title:`Disponibilidade reduzida: ${elencoDisponivel}/${elencoTotal.length}`,detail:'Adaptar formato da sessão e revisar indisponibilidades.',tab:'workout',tone:'orange'});
+    if((todayPlan.md||'').includes('MD+1')||(todayPlan.md||'').includes('MD+2')) aiPriorities.push({level:'Rotina',title:'Dia com foco de recuperação',detail:'Revisar a aba de recuperação e individualizar quando necessário.',tab:'workout',tone:'blue'});
+    if(aiPriorities.length===0) aiPriorities.push({level:'OK',title:'Sem prioridade crítica pelos critérios atuais',detail:'Manter coleta de dados, executar o plano e revisar respostas após a sessão.',tab:'workout',tone:'green'});
+
     return (
         <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
             <div className="flex justify-between items-center mb-6 border-b dark:border-slate-700 pb-4">
@@ -4841,6 +4934,21 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             </div>
 
             <ExecutiveDecisionPanel players={players} trainingLog={trainingLog} dmRecords={dmRecords} attendanceLog={attendanceLog} days={days} assessments={assessments} matchMinutes={matchMinutes} onNavigate={onNavigate} />
+
+            <div className="mb-6 bg-slate-950 text-white rounded-2xl border border-blue-500/30 shadow-xl overflow-hidden">
+                <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-3">
+                    <div><div className="text-[9px] font-black uppercase tracking-[.2em] text-blue-400">IA • Prioridades de Hoje</div><div className="text-sm font-black mt-1">O que merece atenção primeiro</div></div>
+                    <span className="text-[9px] text-slate-500">máx. 5 prioridades</span>
+                </div>
+                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2 p-3">
+                    {aiPriorities.slice(0,5).map((item,i)=><button key={i} type="button" onClick={()=>onNavigate(item.tab)} className="text-left p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition-colors">
+                        <div className={`text-[8px] font-black uppercase ${item.tone==='red'?'text-red-400':item.tone==='orange'?'text-orange-400':item.tone==='green'?'text-emerald-400':'text-blue-400'}`}>{i+1}. {item.level}</div>
+                        <div className="text-xs font-black mt-1">{item.title}</div>
+                        <div className="text-[9px] text-slate-400 mt-1 leading-relaxed">{item.detail}</div>
+                    </button>)}
+                </div>
+                <div className="px-4 pb-3 text-[8px] text-slate-500">Prioridades geradas pelos dados registrados. A decisão final continua com a comissão.</div>
+            </div>
 
             <div className="space-y-4 mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -7703,8 +7811,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-209';
- document.documentElement.dataset.procoachBuild='209';
+ window.PROCOACH_BUILD='2026.09-final-210';
+ document.documentElement.dataset.procoachBuild='210';
 })();
 </script>
 
@@ -7712,11 +7820,11 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 if('serviceWorker' in navigator){
  window.addEventListener('load',async()=>{
   try{
-   const r=await navigator.serviceWorker.register('./sw.js?v=209',{updateViaCache:'none'});
+   const r=await navigator.serviceWorker.register('./sw.js?v=210',{updateViaCache:'none'});
    await r.update().catch(()=>{});
    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(sessionStorage.getItem('pc_sw_209_reloaded')) return;
-    sessionStorage.setItem('pc_sw_209_reloaded','1');
+    if(sessionStorage.getItem('pc_sw_210_reloaded')) return;
+    sessionStorage.setItem('pc_sw_210_reloaded','1');
     location.reload();
    });
   }catch(_){}

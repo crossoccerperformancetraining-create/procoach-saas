@@ -1,0 +1,34 @@
+PROCOACH FINAL 210 — IA RECUPERAÇÃO + DM/RTP + PRIORIDADES
+
+Mantém tudo da versão 209 (Firestore, Secure Sync, permissões e offline).
+
+NOVO:
+1. Recuperação Pós-Treino com IA:
+   - 3 opções contextuais para a comissão revisar;
+   - considera wellness/carga disponível;
+   - novas opções: recuperação ativa leve, mobilidade + respiração,
+     hidratação/nutrição/sono, caminhada/bike leve;
+   - remove linguagem automática de modalidade “obrigatória”;
+   - atleta vê claramente a recuperação escolhida pela comissão.
+
+2. DM / RTP com IA:
+   - Resumo do caso;
+   - Checklist de critérios RTP;
+   - Pendências de dados;
+   - Plano de acompanhamento;
+   - nota pode ser salva no registro;
+   - IA não diagnostica, não prescreve e não libera automaticamente.
+
+3. Hoje:
+   - IA • Prioridades de Hoje;
+   - wellness/PSE pendente;
+   - atletas no DM;
+   - risco de carga;
+   - disponibilidade reduzida;
+   - foco de recuperação MD+1/MD+2;
+   - no máximo 5 prioridades com atalho para a aba correta.
+
+PUBLICAÇÃO
+Envie todo o conteúdo deste pacote para a raiz do GitHub e substitua os arquivos antigos.
+Mantenha as Environment Variables da versão 209 no Vercel.
+Após o deploy, feche e reabra o PWA para assumir o cache 210.

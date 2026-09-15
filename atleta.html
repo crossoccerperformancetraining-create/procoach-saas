@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Athlete • FINAL 209 Offline</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=209">
+    <title>ProCoach Athlete • FINAL 210</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=210">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=209',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=210',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -1608,6 +1608,19 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                                         <button onClick={handleAddWater} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg"><Icon name="plus" size={16}/> BEBI 250ML</button>
                                     </div>
 
+                                    {data.postW && data.postW!=='IA' && viewMode !== 'review' && (
+                                        <div className="athlete-card p-5 bg-gradient-to-br from-violet-950/50 to-slate-900 border border-violet-900/50">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-violet-400">Recuperação da comissão</div>
+                                                    <h3 className="text-sm font-black text-white mt-1">{data.postW}</h3>
+                                                </div>
+                                                <div className="text-3xl">🔋</div>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-2">Siga a orientação combinada com a comissão. Se houver dor, piora de sintomas ou desconforto relevante, avise a equipe de saúde.</p>
+                                        </div>
+                                    )}
+
                                     {!hasAM && !hasPM && !isFinished && viewMode !== 'review' && (
                                         <div className="bg-slate-900/80 border border-slate-700 p-8 rounded-[32px] flex flex-col items-center text-center mt-6 shadow-inner">
                                             <div className="text-6xl mb-4 animate-bounce">🔋</div>
@@ -2434,7 +2447,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=209',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=210',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">
@@ -2833,8 +2846,8 @@ body.pc-exercise-player-open #pca4-open {
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-209';
- document.documentElement.dataset.procoachBuild='209';
+ window.PROCOACH_BUILD='2026.09-final-210';
+ document.documentElement.dataset.procoachBuild='210';
 })();
 </script>
 
