@@ -1,0 +1,43 @@
+PROCOACH FINAL 211 — UX & PERFORMANCE FINALIZATION
+
+BASE
+- Mantém Firestore / Secure Sync / permissões / offline da 209.
+- Mantém Recuperação IA + DM/RTP IA + Prioridades da 210.
+
+AJUSTES 211
+1) Interface
+- acabamento visual e foco/acessibilidade;
+- botões flutuantes antigos do treinador ocultos;
+- Rotinas, Vídeo & IA, Central Técnica e Diagnóstico reunidos no botão Ferramentas;
+- versão retirada da barra principal e colocada no Diagnóstico.
+
+2) Mapa Atleta 360º
+- faixa operacional: carga de hoje, DM/RTP, vídeos pendentes, recuperação;
+- busca global abre diretamente a atleta no mapa;
+- IA explicável: O que observou / Por que importa / Ação para revisão;
+- indicador de qualidade dos dados;
+- atalhos para Treino, DM/RTP, Vídeos e Relatórios.
+
+3) IA Hoje
+- Prioridades mostram a fonte do sinal (Wellness, DM/RTP, Carga, Disponibilidade ou Microciclo);
+- ação “Revisar” fica explícita.
+
+4) App da atleta
+- barra de progresso do dia;
+- vídeos pendentes entram na Central de Pendências;
+- linguagem de alerta de wellness ficou menos alarmista e mais acionável;
+- mantém offline e sincronização segura.
+
+5) Performance
+- imagens recorrentes do elenco com lazy loading/decoding async;
+- service worker e manifests em build 211;
+- diagnóstico mostra build, internet, sync, service worker, workspace, equipe e nº de atletas.
+
+PUBLICAÇÃO
+Envie todo o conteúdo do ZIP para a raiz do GitHub, substituindo os arquivos antigos.
+Mantenha as Environment Variables do Vercel usadas na versão 209/210.
+Depois do deploy, feche e abra novamente o PWA para assumir o cache 211.
+
+RECOMENDAÇÃO
+Depois desta versão, congele novas funcionalidades. Trabalhe apenas em bugs, sincronização,
+tempo de carregamento, métricas de uso e manutenção.

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Athlete • FINAL 210</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=210">
+    <title>ProCoach Athlete • FINAL 211</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=211">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=210',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=211',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -104,6 +104,21 @@
 #pca-guide-bg{display:none;position:fixed;inset:0;z-index:10020;background:rgba(2,6,23,.76);backdrop-filter:blur(7px);padding:16px}#pca-guide-bg.on{display:flex;align-items:center;justify-content:center}
 #pca-guide-panel{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#f8fafc;border-radius:22px;font-family:system-ui;color:#0f172a}.pca-guide-head{position:sticky;top:0;display:flex;align-items:center;gap:10px;background:#0f172a;color:#fff;padding:17px 18px}.pca-guide-head h2{font-size:16px;margin:0}.pca-guide-head small{display:block;color:#94a3b8;margin-top:3px}.pca-guide-x{margin-left:auto;width:40px;height:40px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#fff;font-size:20px}.pca-guide-body{padding:14px}.pca-step{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin:8px 0}.pca-step strong{display:block;font-size:12px;margin-bottom:4px}.pca-step span{font-size:10px;color:#64748b;line-height:1.5}.pca-tip{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:12px;padding:11px;font-size:10px;margin-top:12px}
 @media(max-width:600px){#pca-guide-bg{padding:0}#pca-guide-panel{width:100vw;height:100vh;max-height:100vh;border-radius:0}.pca-guide-head{padding-top:calc(14px + env(safe-area-inset-top))}}
+</style>
+
+<style id="pc-athlete-ux-211">
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{transition:transform .16s ease,background-color .16s ease,border-color .16s ease}
+button:active{transform:scale(.985)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  box-shadow:0 0 0 3px rgba(59,130,246,.25)!important
+}
+.athlete-card{box-shadow:0 12px 34px rgba(0,0,0,.10)}
+.pc211-day-progress{height:9px;border-radius:999px;background:#0f172a;overflow:hidden;border:1px solid #1e293b}
+.pc211-day-progress>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#22c55e);transition:width .35s ease}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
 </style>
 </head>
 <!-- ProCoach unified build 2026-09-07:
@@ -1115,7 +1130,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                             return (
                                 <div key={i} onClick={()=>selectP(i)} className="flex flex-col items-center gap-2 cursor-pointer hover:scale-105 transition-transform relative">
                                     <div className={`w-20 h-20 rounded-full border-2 overflow-hidden bg-slate-900 shadow-lg ${p.highlight ? 'border-yellow-400 gold-glow' : 'border-slate-800'}`}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={32} className="m-6 text-slate-700"/>}
+                                        {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" size={32} className="m-6 text-slate-700"/>}
                                     </div>
                                     {isCheck && <div className="absolute top-0 right-2 bg-green-500 text-white rounded-full p-0.5 border-2 border-slate-950 shadow-md"><Icon name="check" size={12}/></div>}
                                     <span className="text-[10px] font-bold uppercase truncate w-full text-center text-slate-300">{(p.name || 'Atleta').split(' ')[0]}</span>
@@ -1278,10 +1293,18 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const rpeSamples = todayHistory.filter(x => x.rpeSub && Number(x.rpe) > 0);
             const avgRpe7d = rpeSamples.length ? (rpeSamples.reduce((sum,x)=>sum+Number(x.rpe||0),0)/rpeSamples.length).toFixed(1) : '-';
             const trainingDays7d = todayHistory.filter(x => x.rpeSub || safeArray(x.exs).length > 0).length;
+            const pendingVideoAssignments = athleteVideoAssignments.filter(item=>{
+                const key=`video_${item.id}`;
+                return !safeObj(data.notificationReads)[key] && !localStorage.getItem(`procoach_${key}`);
+            });
+            const dailyTaskTotal = 2 + (pendingCommitments.length?1:0) + (unreadNotifications.length?1:0) + (pendingVideoAssignments.length?1:0) + (offlineCount>0?1:0);
+            const dailyTaskCompleted = (todayWellness.sleep?1:0) + (todayRpeDone?1:0);
+            const dailyProgress = dailyTaskTotal ? Math.min(100,Math.round(dailyTaskCompleted/dailyTaskTotal*100)) : 100;
             const pendingItems = [
                 !todayWellness.sleep ? {id:'wellness',label:'Prontidão de hoje',desc:'Responder wellness antes do treino',tab:'workout'} : null,
                 !todayRpeDone ? {id:'rpe',label:'RPE / treino do dia',desc:'Registrar esforço quando finalizar a sessão',tab:'workout'} : null,
                 ...pendingCommitments.slice(0,3).map(c => ({id:`commit_${c.id}`,label:c.title||'Compromisso',desc:`Confirmar presença${c.date?` • ${formatDateBR(c.date)}`:''}`,tab:'agenda'})),
+                ...pendingVideoAssignments.slice(0,2).map(v => ({id:`video_${v.id}`,label:v.title||'Vídeo da comissão',desc:'Assistir e confirmar a visualização',tab:'workout'})),
                 ...unreadNotifications.slice(0,2).map(n => ({id:`notice_${n.id}`,label:n.title||'Novo comunicado',desc:'Confirmar leitura na área Saúde',tab:'health'})),
                 offlineCount > 0 ? {id:'offline',label:`${offlineCount} envio(s) aguardando`,desc:'Serão sincronizados automaticamente quando a conexão voltar',tab:'health'} : null
             ].filter(Boolean);
@@ -1325,7 +1348,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                             <div className="flex items-start justify-between gap-4 mt-2 relative z-10">
                                 <div className="flex items-center gap-4 flex-1">
                                     <div onClick={()=>setShowProfile(true)} className={`w-20 h-20 rounded-full border-4 border-white/20 overflow-hidden bg-slate-800 shadow-xl relative cursor-pointer shrink-0 ${isHighlight || isMatchDay ? 'gold-glow' : ''}`}>
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
+                                        {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" size={40} className="m-5 text-white/20"/>}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
@@ -1415,7 +1438,12 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                                             </button>
                                         </div>
 
-                                        <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                        <div className="mt-4 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                                            <div className="flex items-center justify-between gap-3 mb-2"><div><div className="text-[8px] font-black uppercase text-slate-500">Progresso do dia</div><div className="text-[10px] font-bold text-white mt-1">{dailyTaskCompleted} de {dailyTaskTotal} etapa(s) essenciais concluída(s)</div></div><div className="text-sm font-black text-blue-400">{dailyProgress}%</div></div>
+                                            <div className="pc211-day-progress"><i style={{width:`${dailyProgress}%`}}></i></div>
+                                        </div>
+
+                                        <div className="mt-3 flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
                                             <div>
                                                 <div className="text-[8px] font-black uppercase text-slate-500">Sincronização</div>
                                                 <div className={`text-[10px] font-bold mt-1 ${isOnline?'text-emerald-400':'text-blue-300'}`}>
@@ -1496,8 +1524,8 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                                         <div className="bg-red-600 text-white p-4 rounded-3xl flex items-start gap-3 animate-pulse border-2 border-red-400 shadow-[0_0_20px_rgba(220,38,38,0.6)]">
                                             <div className="bg-white/20 p-2 rounded-full shrink-0"><Icon name="alert" size={24}/></div>
                                             <div>
-                                                <div className="text-xs font-black uppercase tracking-widest mb-1">🚨 Nível Crítico Detectado</div>
-                                                <div className="text-[10px] font-bold opacity-90 leading-tight">Os seus índices de fadiga, dor ou sono estão em alerta máximo hoje. <strong>Procure a fisiologia imediatamente ao chegar no clube antes de iniciar qualquer atividade.</strong></div>
+                                                <div className="text-xs font-black uppercase tracking-widest mb-1">⚠️ Sinal de atenção no check-in</div>
+                                                <div className="text-[10px] font-bold opacity-90 leading-tight">Seu check-in mostrou fadiga, dor ou sono em nível que merece revisão. <strong>Avise a comissão antes de iniciar a sessão.</strong> Se houver dor intensa, piora rápida ou outro sintoma importante, procure a equipe de saúde.</div>
                                             </div>
                                         </div>
                                     )}
@@ -2404,7 +2432,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                             </div>
 
                             <div className="w-40 h-40 rounded-full border-4 overflow-hidden bg-slate-800 shadow-2xl mb-4 z-10 relative" style={{borderColor: data.color}}>
-                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={60} className="m-10 text-white/20"/>}
+                                {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" size={60} className="m-10 text-white/20"/>}
                             </div>
                             
                             <h2 className="text-3xl font-black uppercase text-white mb-1 z-10 text-center leading-tight">{p.name}</h2>
@@ -2447,7 +2475,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=210',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=211',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">
@@ -2846,8 +2874,8 @@ body.pc-exercise-player-open #pca4-open {
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-210';
- document.documentElement.dataset.procoachBuild='210';
+ window.PROCOACH_BUILD='2026.09-final-211';
+ document.documentElement.dataset.procoachBuild='211';
 })();
 </script>
 

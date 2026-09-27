@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • FINAL 210 AI Recovery + DM</title>
+    <title>ProCoach • FINAL 211 UX & Performance</title>
     
-    <link rel="manifest" href="manifest.json?v=210">
-    <link rel="apple-touch-icon" href="logo.png?v=210">
-    <link rel="icon" type="image/png" href="logo.png?v=210">
+    <link rel="manifest" href="manifest.json?v=211">
+    <link rel="apple-touch-icon" href="logo.png?v=211">
+    <link rel="icon" type="image/png" href="logo.png?v=211">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -151,6 +151,39 @@
 #pc-tutorial-view{display:none}.pc-tut-row{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:13px;margin:8px 0}.pc-tut-row strong{display:block;font-size:12px;margin-bottom:4px}.pc-tut-row span{font-size:10px;color:#64748b;line-height:1.5}.pc-tut-tip{border-left:4px solid #2563eb;background:#eff6ff;padding:11px 13px;border-radius:10px;margin-top:12px;font-size:10px;color:#1e3a8a}
 @media(max-width:900px){#pc-hub-open{bottom:90px;right:12px}.pc-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#pc-hub-bg{padding:0}#pc-hub-panel{width:100vw;max-height:100vh;height:100vh;border-radius:0}.pc-hub-head{padding-top:calc(14px + env(safe-area-inset-top))}}
 @media(max-width:520px){.pc-hub-grid{grid-template-columns:1fr 1fr}.pc-hub-card{padding:11px;min-height:130px}.pc-hub-body{padding:12px}}
+</style>
+
+<style id="pc-ux-211">
+:root{
+  --pc-radius:18px;
+  --pc-shadow:0 12px 34px rgba(15,23,42,.07);
+  --pc-shadow-dark:0 18px 44px rgba(0,0,0,.22);
+}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-feature-settings:"tnum" 1,"cv02" 1,"cv03" 1,"cv04" 1}
+button,input,select,textarea{outline:none}
+button{transition:transform .16s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease}
+button:active{transform:scale(.985)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  box-shadow:0 0 0 3px rgba(59,130,246,.22)!important;
+  border-color:#3b82f6!important
+}
+.pc211-surface{border-radius:var(--pc-radius);box-shadow:var(--pc-shadow)}
+.dark .pc211-surface{box-shadow:var(--pc-shadow-dark)}
+.pc211-section-title{font-size:12px;font-weight:900;letter-spacing:-.01em}
+.pc211-kicker{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#64748b}
+.pc211-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:850}
+.pc211-tool-card{border:1px solid #e2e8f0;border-radius:16px;padding:14px;background:#fff;text-align:left}
+.dark .pc211-tool-card{background:#0f172a;border-color:#334155}
+.pc211-tool-card:hover{border-color:#60a5fa;transform:translateY(-1px)}
+/* Os módulos antigos continuam funcionais, mas deixam de ocupar a tela com botões flutuantes. */
+#pc-hub-open,#pcva-coach-open,#pcr-open,.pcx-fab{display:none!important}
+@media(max-width:767px){
+  .pc211-mobile-hide{display:none!important}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
 </style>
 </head>
 <!-- ProCoach unified build 2026-09-07:
@@ -1455,7 +1488,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                                         <div key={i} className={`flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-0 items-start lg:items-center p-3 md:p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${!isFilled ? 'opacity-60' : ''}`}>
                                             <div className="col-span-3 flex items-center gap-3 w-full">
                                                 <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
-                                                    {p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={20} className="m-2 text-slate-400"/>}
+                                                    {p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user" size={20} className="m-2 text-slate-400"/>}
                                                 </div>
                                                <div className="flex items-center gap-2">
                                                     <span className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{p.name}</span>
@@ -1509,7 +1542,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                         <button onClick={()=>setMode('dashboard')} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-300"><Icon name="x" size={14}/> VOLTAR AO PAINEL</button>
                     </div>
                     <div className="flex flex-col md:flex-row gap-6 flex-1">
-                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 flex flex-col"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Selecionar Atleta</h3><div className="space-y-2 flex-1 overflow-y-auto pr-2">{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border group transition-colors ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div></div>
+                        <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 flex flex-col"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Selecionar Atleta</h3><div className="space-y-2 flex-1 overflow-y-auto pr-2">{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border group transition-colors ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div></div>
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 flex flex-col gap-4 overflow-y-auto relative">
                             <div className="flex justify-between items-center border-b dark:border-slate-700 pb-4"><div><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{players[selectedPlayer]?.name}</h2></div></div>
                             <div className="space-y-4">{[{id:'sleep',label:'Qualidade do Sono (1=Excelente | 7=Péssimo)'},{id:'stress',label:'Estresse (1=Relaxado | 7=Estressado)'},{id:'fatigue',label:'Fadiga (1=Muita Energia | 7=Exausto)'},{id:'soreness',label:'Dor Muscular (1=Sem Dor | 7=Muita Dor)'}, {id:'mood', label:'Humor (1=Animado | 7=Irritado)'}].map(m=>(<div key={m.id}><div className="flex justify-between text-sm font-bold text-slate-700 dark:text-slate-300 mb-2"><span>{m.label}</span><span className="text-white px-2 rounded font-bold" style={{backgroundColor: themeColor}}>{localScores[m.id]}</span></div><input type="range" min="1" max="7" step="1" value={localScores[m.id]} onChange={(e)=>handleScoreChange(m.id, e.target.value)} className="hooper-slider" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}}/></div>))}</div>
@@ -1834,7 +1867,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                     <h3 className="font-bold dark:text-white text-center text-lg">Editar Atleta</h3>
                     <div className="flex justify-center flex-col items-center gap-2">
                         <div onClick={()=>fileInputRef.current.click()} className="w-24 h-24 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border-2 border-blue-500 cursor-pointer">
-                            {localData.image?<img src={localData.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
+                            {localData.image?<img src={localData.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}
                         </div>
                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleImg}/>
                         <div className="w-full">
@@ -2139,7 +2172,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                             {p.highlight && !p.injured && !p.suspended && !isChronicPain && <div className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-10">🏆 DESTAQUE</div>}
 
                             <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden border-2 shrink-0 relative mt-2" style={{borderColor: p.injured || p.suspended || isChronicPain ? '#ef4444' : p.highlight ? '#facc15' : themeColor}}>
-                                {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
+                                {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-400"/>}
                             </div>
                             <div className="text-center w-full mt-1">
                                 <div className="font-bold text-slate-700 dark:text-slate-200 text-xs truncate">{p.name}</div>
@@ -2246,7 +2279,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     <div key={i} className={`grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50`}>
                                         <div className="col-span-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
                                                 <div>
                                                     <span className="font-bold text-sm text-slate-700 dark:text-slate-200 truncate block">{p.name}</span>
                                                     {sRPE > 0 && <span className="text-[9px] font-bold text-blue-500">Carga Real: {sRPE}</span>}
@@ -2495,7 +2528,7 @@ const acwrGroups = useMemo(() => {
                                 <div key={i} onClick={()=>setViewProfile(i)} className={`bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-sm flex flex-col gap-3 relative overflow-hidden cursor-pointer hover:shadow-lg transition-all ${dehydration >= 2 ? 'border-blue-500 border-4' : painAlert?'border-red-500 animate-pulse border-4':inTransition?'border-orange-500 border-2':'border-slate-200 dark:border-slate-700'}`}>
                                     <div className="flex items-center gap-4">
                                         <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border-2 border-slate-200 dark:border-slate-600">
-                                            {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-300"/>}
+                                            {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" size={24} className="m-4 text-slate-300"/>}
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg uppercase truncate">{p.name}</h3>
@@ -2579,7 +2612,7 @@ const acwrGroups = useMemo(() => {
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 h-fit">
                             <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-red-600 dark:text-red-500"><Icon name="medkit"/> {editingId ? 'Editar' : 'Entrada DM'}</h2>
-                            <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full bg-slate-100 overflow-hidden relative shadow-sm border border-slate-200 dark:border-slate-600">{selectedPlayer!==''&&players[selectedPlayer]?.image?<img src={players[selectedPlayer].image} className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={40}/></div>}</div></div>
+                            <div className="flex justify-center mb-4"><div className="w-24 h-24 rounded-full bg-slate-100 overflow-hidden relative shadow-sm border border-slate-200 dark:border-slate-600">{selectedPlayer!==''&&players[selectedPlayer]?.image?<img src={players[selectedPlayer].image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<div className="w-full h-full flex items-center justify-center text-slate-300"><Icon name="user" size={40}/></div>}</div></div>
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Atleta</label>
                             <select className="w-full border dark:border-slate-600 rounded p-2 mb-3 font-bold text-sm dark:bg-slate-700 dark:text-white" value={selectedPlayer} onChange={e=>setSelectedPlayer(e.target.value)} disabled={!!editingId}><option value="">Selecione...</option>{safeArray(players).map((p,i)=>{if(!p)return null; return <option key={i} value={i}>{p.name}</option>})}</select>
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tipo</label>
@@ -2602,7 +2635,7 @@ const acwrGroups = useMemo(() => {
                                         <div key={idx} className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm mb-2 relative">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="flex gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border border-red-200">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-3 text-red-300"/>}</div>
+                                                    <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border border-red-200">{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-3 text-red-300"/>}</div>
                                                     <div><div className="font-bold text-slate-800 dark:text-slate-100 text-lg">{p.name}</div><div className="text-xs text-red-600 font-bold bg-red-50 dark:bg-red-900/30 px-1 rounded inline-block">{r.location}</div></div>
                                                 </div>
                                                 <button onClick={()=>dischargePlayer(r.id,r.playerId)} className="bg-green-500 text-white px-3 py-1.5 rounded text-xs font-bold shadow hover:bg-green-600 flex items-center gap-1"><Icon name="check" size={14}/> DAR ALTA</button>
@@ -2730,7 +2763,7 @@ const acwrGroups = useMemo(() => {
                                 if(!p) return null; 
                                 return (
                                     <div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border ${selectedPlayer===i?'border-l-4 shadow-sm bg-slate-50 dark:bg-slate-700':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}>
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div>
                                         <div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div>
                                     </div>
                                 )
@@ -2739,7 +2772,7 @@ const acwrGroups = useMemo(() => {
                         
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scroll">
                             <div className="flex items-center gap-4 mb-6 border-b dark:border-slate-700 pb-4">
-                                <div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{selectedP.image ? <img src={selectedP.image} className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
+                                <div className="w-20 h-20 rounded-full bg-slate-200 border-2 border-slate-300 dark:border-slate-600 overflow-hidden relative shadow-md shrink-0">{selectedP.image ? <img src={selectedP.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Icon name="user" size={40}/></div>}</div>
                                 <div className="flex-1">
                                     <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase leading-none">{selectedP.name}</h2>
                                     <div className="text-xs font-bold text-slate-400 uppercase mt-1">Ficha Clínica e Esportiva {activeTeam === 'base' ? '(FORMATIVA)' : '(PRO)'}</div>
@@ -4126,14 +4159,14 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate,
 <rect x="2.6" y="34" width="1.4" height="12"/><rect x="116" y="34" width="1.4" height="12"/>
 </g></svg>
                     <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><marker id="arrowhead-v11" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><polygon points="0 0, 6 3, 0 6" fill="#fde047"/></marker></defs>{safeArray(board.annotations).map(a=>a.type==='zone'?<rect key={a.id} x={Math.min(a.x1,a.x2)} y={Math.min(a.y1,a.y2)} width={Math.abs(a.x2-a.x1)} height={Math.abs(a.y2-a.y1)} fill="rgba(239,68,68,.22)" stroke="#f87171" strokeWidth=".7"/>:<line key={a.id} x1={a.x1} y1={a.y1} x2={a.x2} y2={a.y2} stroke={a.type==='arrow'?'#fde047':'#60a5fa'} strokeWidth=".8" strokeDasharray={a.type==='line'?'3 2':'0'} markerEnd={a.type==='arrow'?'url(#arrowhead-v11)':undefined}/>)}</svg>
-                    {fieldPlayers.map(p=><div key={p.idx} draggable onDragStart={e=>handleDragStart(e,p,true)} onClick={e=>{e.stopPropagation();setSelectedFieldPlayer(selectedFieldPlayer===p.idx?null:p.idx)}} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer z-20 ${selectedFieldPlayer===p.idx?'scale-125':''}`} style={{left:`${p.x}%`,top:`${p.y}%`}}><div className={`w-10 h-10 rounded-full border-[3px] overflow-hidden flex items-center justify-center text-white text-xs font-black shadow-lg ${p.isOpp?'border-red-500':'border-white'}`} style={{backgroundColor:p.isOpp?'#dc2626':themeColor}}>{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:(p.number||(p.name||'X').slice(0,2).toUpperCase())}</div><span className="bg-slate-950/90 text-white px-2 py-.5 rounded text-[8px] font-black mt-1 whitespace-nowrap">{(p.name||'Atleta').split(' ')[0]}</span>{mode==='pre'&&p.tacticalRole&&<span className="bg-blue-600 text-white px-1.5 rounded text-[7px] mt-1">{p.tacticalRole}</span>}{mode==='post'&&(p.rating||p.stats?.g||p.stats?.a)&&<span className="bg-black/80 text-emerald-300 px-1.5 rounded text-[7px] mt-1">{p.stats?.g?`⚽${p.stats.g} `:''}{p.stats?.a?`A${p.stats.a} `:''}{p.rating?`★${p.rating}`:''}</span>}</div>)}
+                    {fieldPlayers.map(p=><div key={p.idx} draggable onDragStart={e=>handleDragStart(e,p,true)} onClick={e=>{e.stopPropagation();setSelectedFieldPlayer(selectedFieldPlayer===p.idx?null:p.idx)}} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer z-20 ${selectedFieldPlayer===p.idx?'scale-125':''}`} style={{left:`${p.x}%`,top:`${p.y}%`}}><div className={`w-10 h-10 rounded-full border-[3px] overflow-hidden flex items-center justify-center text-white text-xs font-black shadow-lg ${p.isOpp?'border-red-500':'border-white'}`} style={{backgroundColor:p.isOpp?'#dc2626':themeColor}}>{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:(p.number||(p.name||'X').slice(0,2).toUpperCase())}</div><span className="bg-slate-950/90 text-white px-2 py-.5 rounded text-[8px] font-black mt-1 whitespace-nowrap">{(p.name||'Atleta').split(' ')[0]}</span>{mode==='pre'&&p.tacticalRole&&<span className="bg-blue-600 text-white px-1.5 rounded text-[7px] mt-1">{p.tacticalRole}</span>}{mode==='post'&&(p.rating||p.stats?.g||p.stats?.a)&&<span className="bg-black/80 text-emerald-300 px-1.5 rounded text-[7px] mt-1">{p.stats?.g?`⚽${p.stats.g} `:''}{p.stats?.a?`A${p.stats.a} `:''}{p.rating?`★${p.rating}`:''}</span>}</div>)}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-white"><div className="bg-slate-800 rounded-xl p-3"><div className="text-[8px] uppercase font-black text-blue-300">Plano A</div><p className="text-[9px] whitespace-pre-wrap">{board.planA||'-'}</p></div><div className="bg-slate-800 rounded-xl p-3"><div className="text-[8px] uppercase font-black text-yellow-300">Plano B</div><p className="text-[9px] whitespace-pre-wrap">{board.planB||'-'}</p></div><div className="bg-slate-800 rounded-xl p-3"><div className="text-[8px] uppercase font-black text-red-300">Plano C</div><p className="text-[9px] whitespace-pre-wrap">{board.planC||'-'}</p></div></div>
             </div>
         </div>
         <aside className="w-full xl:w-96 bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden flex flex-col shrink-0 max-h-[85vh] xl:max-h-none">
             <div className="flex"><button onClick={()=>setActiveTab('own')} className={`flex-1 p-3 text-[9px] font-black ${activeTab==='own'?'bg-blue-600 text-white':'text-slate-400'}`}>MEU ELENCO</button><button onClick={()=>setActiveTab('opp')} className={`flex-1 p-3 text-[9px] font-black ${activeTab==='opp'?'bg-red-600 text-white':'text-slate-400'}`}>ADVERSÁRIO</button></div>
-            <div onDragOver={e=>e.preventDefault()} onDrop={handleDropOnBench} className="p-3 grid grid-cols-6 xl:grid-cols-4 gap-2 max-h-44 overflow-y-auto custom-scroll">{(activeTab==='own'?bench:oppBench).map(p=><button key={p.idx} draggable onDragStart={e=>handleDragStart(e,p,false)} onClick={()=>setSelectedBenchPlayer(selectedBenchPlayer?.idx===p.idx?null:p)} className={`flex flex-col items-center rounded-lg p-1 ${selectedBenchPlayer?.idx===p.idx?(p.isOpp?'bg-red-600/30 ring-2 ring-red-400':'bg-blue-600/30 ring-2 ring-blue-400'):''}`}><div className={`w-9 h-9 rounded-full overflow-hidden border-2 flex items-center justify-center text-white text-[9px] font-black ${p.isOpp?'border-red-500 bg-red-700':'border-slate-500 bg-slate-700'}`}>{p.image?<img src={p.image} className="w-full h-full object-cover object-top"/>:(p.number||(p.name||'X').slice(0,2))}</div><span className="text-[7px] text-slate-400 truncate w-full">{(p.name||'Atleta').split(' ')[0]}</span></button>)}</div>
+            <div onDragOver={e=>e.preventDefault()} onDrop={handleDropOnBench} className="p-3 grid grid-cols-6 xl:grid-cols-4 gap-2 max-h-44 overflow-y-auto custom-scroll">{(activeTab==='own'?bench:oppBench).map(p=><button key={p.idx} draggable onDragStart={e=>handleDragStart(e,p,false)} onClick={()=>setSelectedBenchPlayer(selectedBenchPlayer?.idx===p.idx?null:p)} className={`flex flex-col items-center rounded-lg p-1 ${selectedBenchPlayer?.idx===p.idx?(p.isOpp?'bg-red-600/30 ring-2 ring-red-400':'bg-blue-600/30 ring-2 ring-blue-400'):''}`}><div className={`w-9 h-9 rounded-full overflow-hidden border-2 flex items-center justify-center text-white text-[9px] font-black ${p.isOpp?'border-red-500 bg-red-700':'border-slate-500 bg-slate-700'}`}>{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:(p.number||(p.name||'X').slice(0,2))}</div><span className="text-[7px] text-slate-400 truncate w-full">{(p.name||'Atleta').split(' ')[0]}</span></button>)}</div>
             <div className="p-3 border-t border-slate-700 space-y-2 overflow-y-auto custom-scroll flex-1">
                 <button onClick={()=>{const url=prompt('URL do escudo do adversário:',board.oppLogo||'');if(url!==null)patchBoard({oppLogo:url.trim()})}} className="w-full py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-[8px] font-black uppercase">{board.oppLogo?'Alterar escudo do adversário':'Adicionar escudo do adversário'}</button>
                 <textarea value={board.collectiveInstructions} onChange={e=>patchBoard({collectiveInstructions:e.target.value})} placeholder="Instruções coletivas" className="w-full h-16 p-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-[9px]"/>
@@ -4450,7 +4483,7 @@ const TacticalBoardModal = ({ players, onClose, themeColor, opponent, matchDate,
                         return (
                             <div key={i} className="grid grid-cols-12 p-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                 <div className="col-span-3 flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}</div>
+                                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">{p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}</div>
                                     <div><div className="font-black text-sm text-slate-800 dark:text-slate-100 uppercase truncate">{p.name}</div><div className="text-[9px] text-slate-400">{p.pos || 'Atleta'}</div></div>
                                 </div>
                                 <div className="col-span-2 flex justify-center items-center gap-2">
@@ -4598,7 +4631,7 @@ const ExecutiveDecisionPanel = ({ players, trainingLog, dmRecords, attendanceLog
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div><h3 className="text-sm font-black uppercase dark:text-white">Central de Decisão</h3><p className="text-[10px] text-slate-500 font-bold uppercase">Indicadores que exigem ação da comissão hoje</p></div>
                 <div className="flex flex-wrap gap-2">
-                    <button onClick={()=>onNavigate?.('profile360')} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Perfil 360º</button>
+                    <button onClick={()=>onNavigate?.('profile360')} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Mapa Atleta 360º</button>
                     <button onClick={()=>onNavigate?.('reports')} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Relatório semanal</button>
                     <button onClick={()=>onNavigate?.('workout')} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase">Montar treino</button>
                 </div>
@@ -4625,17 +4658,26 @@ const ExecutiveDecisionPanel = ({ players, trainingLog, dmRecords, attendanceLog
     );
 };
 
-const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, videoAssignments, themeColor }) => {
+const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanceLog, matchMinutes, videoAssignments, athleteNotificationReads, postWorkout, themeColor, onNavigate }) => {
     const safePlayers = safeArray(players);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [searchPlayer, setSearchPlayer] = useState('');
     const [positionFilter, setPositionFilter] = useState('Todas');
     const playerPositions=['Todas',...new Set(safePlayers.map(item=>item?.position||item?.pos).filter(Boolean))];
     useEffect(() => { if (selectedIndex >= safePlayers.length) setSelectedIndex(0); }, [safePlayers.length]);
+    useEffect(() => {
+        try{
+            const target=localStorage.getItem('procoach_profile360_target');
+            if(!target)return;
+            const found=safePlayers.findIndex((p,i)=>String(p?.id||i)===String(target));
+            if(found>=0)setSelectedIndex(found);
+            localStorage.removeItem('procoach_profile360_target');
+        }catch(_){}
+    }, [safePlayers.length]);
     const visiblePlayers = safePlayers.map((item, index) => ({ item, index })).filter(({ item }) => String(item?.name || '').toLowerCase().includes(searchPlayer.toLowerCase()) && (positionFilter==='Todas'||String(item?.position||item?.pos||'')===positionFilter));
     const movePlayer = step => { if(!safePlayers.length)return; setSelectedIndex(current=>(current+step+safePlayers.length)%safePlayers.length); };
     const player = safePlayers[selectedIndex];
-    if (!player) return <div className="p-8 text-center text-slate-500">Cadastre um atleta para abrir o Perfil 360º.</div>;
+    if (!player) return <div className="p-8 text-center text-slate-500">Cadastre uma atleta para abrir o Mapa 360º.</div>;
     const today = getTodayStr();
     const dates7 = getDatesInRange(today, 7);
     const dates28 = getDatesInRange(today, 28);
@@ -4674,6 +4716,29 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
     if (acuteChronic >= 1.5) riskReasons.push(`Relação agudo:crônico em ${acuteChronic}`);
     if (!todayWellness.sleep) riskReasons.push('Wellness de hoje ainda não preenchido');
     const riskTone = activeInjury || acuteChronic >= 1.5 ? 'red' : riskReasons.length ? 'yellow' : 'green';
+    const todayLoad = calcDailyLoad(trainingLog?.[today]?.[selectedIndex]);
+    const playerId = String(player.id ?? selectedIndex);
+    const activeVideos = playerVideos.filter(item=>!item.archivedAt);
+    const pendingVideos = activeVideos.filter(item=>!safeObj(athleteNotificationReads?.[playerId])?.[`video_${item.id}`]);
+    const filledWellnessFields=['sleep','stress','fatigue','soreness','mood'].filter(key=>todayWellness[key]!==undefined&&todayWellness[key]!==null&&todayWellness[key]!=='').length;
+    const dataSignals = [
+        wellnessEntries.length>=4,
+        loads7.some(Boolean),
+        attendanceStatuses.length>=2,
+        history.length>0,
+        matchEntries.length>0 || totalMinutes===0
+    ];
+    const dataQuality = Math.round(dataSignals.filter(Boolean).length/dataSignals.length*100);
+    const dataQualityLabel = dataQuality>=80?'Boa evidência':dataQuality>=50?'Dados parciais':'Poucos dados';
+    const dmPhase = activeInjury ? `RTP ${activeInjury.rtpPhase||1}` : 'Sem DM ativo';
+    const aiObserved = riskReasons.length ? riskReasons.slice(0,3) : ['Sem sinal crítico nos critérios atuais'];
+    const aiWhy = !todayWellness.sleep ? 'O wellness de hoje está incompleto, então a leitura de prontidão tem menor confiança.'
+        : activeInjury ? 'Há um registro ativo no DM/RTP e a interpretação deve respeitar os critérios clínicos da fase.'
+        : acuteChronic>=1.5 ? 'A carga recente está acima da referência individual calculada pela série disponível.'
+        : 'Carga, wellness e disponibilidade não ultrapassaram os gatilhos operacionais atuais.';
+    const aiReview = activeInjury ? 'Revisar DM/RTP, critérios da fase e resposta à última exposição.'
+        : riskReasons.length ? 'Revisar treino de hoje, carga recente e recuperação antes de aplicar qualquer ajuste.'
+        : 'Manter o plano e continuar a coleta de dados para confirmar a tendência.';
     const summaryCard = (label,value,detail) => <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm"><div className="text-[9px] uppercase font-black text-slate-400">{label}</div><div className="text-2xl font-black dark:text-white mt-1">{value}</div><div className="text-[9px] text-slate-500 font-bold mt-1">{detail}</div></div>;
     return (
         <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-6 custom-scroll pb-32">
@@ -4682,17 +4747,48 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
                     <div className="text-[10px] font-black uppercase text-slate-400 mb-3">Selecionar atleta</div>
                     <input value={searchPlayer} onChange={e=>setSearchPlayer(e.target.value)} placeholder="Buscar pelo nome..." className="w-full mb-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white outline-none focus:border-blue-500" />
                     <select value={positionFilter} onChange={e=>setPositionFilter(e.target.value)} className="w-full mb-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold dark:text-white"><option value="Todas">Todas as posições</option>{playerPositions.filter(x=>x!=='Todas').map(x=><option key={x}>{x}</option>)}</select>
-                    <div className="max-h-[65vh] overflow-y-auto custom-scroll space-y-1">{visiblePlayers.map(({item,index})=><button key={item.id || index} onClick={()=>setSelectedIndex(index)} className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all ${selectedIndex===index?'bg-blue-600 text-white shadow':'hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-200'}`}><div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">{item.image?<img src={item.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-2 text-slate-400"/>}</div><div className="min-w-0"><div className="text-xs font-black truncate uppercase">{item.name}</div><div className={`text-[9px] font-bold truncate ${selectedIndex===index?'text-blue-100':'text-slate-400'}`}>{item.position || item.pos || 'Atleta'}</div></div></button>)}</div>
+                    <div className="max-h-[65vh] overflow-y-auto custom-scroll space-y-1">{visiblePlayers.map(({item,index})=><button key={item.id || index} onClick={()=>setSelectedIndex(index)} className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all ${selectedIndex===index?'bg-blue-600 text-white shadow':'hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-200'}`}><div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden shrink-0">{item.image?<img src={item.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user" className="m-2 text-slate-400"/>}</div><div className="min-w-0"><div className="text-xs font-black truncate uppercase">{item.name}</div><div className={`text-[9px] font-bold truncate ${selectedIndex===index?'text-blue-100':'text-slate-400'}`}>{item.position || item.pos || 'Atleta'}</div></div></button>)}</div>
                 </aside>
                 <main className="flex-1 min-w-0 space-y-5">
                     <div className="bg-slate-900 text-white rounded-3xl p-5 md:p-6 shadow-xl relative overflow-hidden">
                         <div className="absolute inset-y-0 right-0 w-40 opacity-10" style={{background:`linear-gradient(135deg, transparent, ${themeColor})`}}></div>
-                        <div className="relative flex flex-col md:flex-row md:items-center gap-5"><div className="w-24 h-24 rounded-2xl bg-slate-700 overflow-hidden border-2 border-white/20 shrink-0">{player.image?<img src={player.image} className="w-full h-full object-cover object-top"/>:<Icon name="user" size={52} className="m-5 text-slate-400"/>}</div><div className="flex-1"><div className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Perfil 360º do atleta</div><h2 className="text-3xl font-black uppercase mt-1">{player.name}</h2><div className="flex flex-wrap gap-2 mt-3 text-[10px] font-bold"><span className="bg-white/10 px-2 py-1 rounded">{player.position || player.pos || 'Sem posição'}</span><span className="bg-white/10 px-2 py-1 rounded">Nº {player.number || '-'}</span><span className={`px-2 py-1 rounded ${riskTone==='red'?'bg-red-600':riskTone==='yellow'?'bg-yellow-500 text-slate-900':'bg-emerald-600'}`}>{riskTone==='red'?'ALTO RISCO':riskTone==='yellow'?'ATENÇÃO':'DISPONÍVEL'}</span></div></div><div className="flex gap-2 shrink-0"><button onClick={()=>movePlayer(-1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">‹</button><button onClick={()=>movePlayer(1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">›</button></div></div>
+                        <div className="relative flex flex-col md:flex-row md:items-center gap-5"><div className="w-24 h-24 rounded-2xl bg-slate-700 overflow-hidden border-2 border-white/20 shrink-0">{player.image?<img src={player.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user" size={52} className="m-5 text-slate-400"/>}</div><div className="flex-1"><div className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Mapa Atleta 360º</div><h2 className="text-3xl font-black uppercase mt-1">{player.name}</h2><div className="flex flex-wrap gap-2 mt-3 text-[10px] font-bold"><span className="bg-white/10 px-2 py-1 rounded">{player.position || player.pos || 'Sem posição'}</span><span className="bg-white/10 px-2 py-1 rounded">Nº {player.number || '-'}</span><span className={`px-2 py-1 rounded ${riskTone==='red'?'bg-red-600':riskTone==='yellow'?'bg-yellow-500 text-slate-900':'bg-emerald-600'}`}>{riskTone==='red'?'ALTO RISCO':riskTone==='yellow'?'ATENÇÃO':'DISPONÍVEL'}</span></div></div><div className="flex gap-2 shrink-0"><button onClick={()=>movePlayer(-1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">‹</button><button onClick={()=>movePlayer(1)} className="w-11 h-11 rounded-xl bg-white/10 hover:bg-white/20 font-black">›</button></div></div>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <button onClick={()=>onNavigate?.('workout')} className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[8px] font-black uppercase text-slate-400">Hoje</div>
+                            <div className="text-xl font-black dark:text-white mt-1">{todayLoad||0} <span className="text-[9px] text-slate-400">U.A.</span></div>
+                            <div className="text-[9px] text-slate-500 mt-1">{filledWellnessFields}/5 campos de wellness</div>
+                        </button>
+                        <button onClick={()=>onNavigate?.('dm')} className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[8px] font-black uppercase text-slate-400">Saúde / RTP</div>
+                            <div className={`text-lg font-black mt-1 ${activeInjury?'text-red-500':'text-emerald-500'}`}>{dmPhase}</div>
+                            <div className="text-[9px] text-slate-500 mt-1">{activeInjury?(activeInjury.location||activeInjury.type||'Acompanhamento ativo'):'Disponível clinicamente no cadastro'}</div>
+                        </button>
+                        <button onClick={()=>onNavigate?.('videos')} className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[8px] font-black uppercase text-slate-400">Vídeos</div>
+                            <div className={`text-xl font-black mt-1 ${pendingVideos.length?'text-orange-500':'text-blue-500'}`}>{pendingVideos.length}</div>
+                            <div className="text-[9px] text-slate-500 mt-1">{activeVideos.length} análise(s) ativa(s)</div>
+                        </button>
+                        <button onClick={()=>onNavigate?.('workout')} className="text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[8px] font-black uppercase text-slate-400">Recuperação</div>
+                            <div className="text-sm font-black dark:text-white mt-1 line-clamp-2">{postWorkout&&postWorkout!=='IA'?postWorkout:'Revisar pós-treino'}</div>
+                            <div className="text-[9px] text-slate-500 mt-1">Orientação atual da comissão</div>
+                        </button>
                     </div>
                     <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">{summaryCard('Carga 7 dias', total7, 'U.A. acumuladas')}{summaryCard('Carga 28 dias', total28, 'U.A. acumuladas')}{summaryCard('Agudo : crônico', acuteChronic || '-', acuteChronic>=1.5?'Zona de atenção':'Referência individual')}{summaryCard('Frequência 28d', attendanceRate?`${attendanceRate}%`:'-', `${presentCount}/${attendanceStatuses.length} registros`)}{summaryCard('Minutos em jogos', totalMinutes, `${matchEntries.length} partidas registradas`)}</div>
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                         <section className="xl:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Prontidão e wellness — 7 dias</h3><div className="grid grid-cols-2 md:grid-cols-5 gap-3">{[['Sono','sleep'],['Estresse','stress'],['Fadiga','fatigue'],['Dor','soreness'],['Humor','mood']].map(([label,key])=><div key={key} className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700"><div className="text-[9px] font-black text-slate-400 uppercase">{label}</div><div className="text-2xl font-black dark:text-white mt-1">{avgWellness(key)}</div><div className="text-[8px] text-slate-400">média 1–7</div></div>)}</div><div className="mt-5"><div className="text-[10px] font-black uppercase text-slate-400 mb-2">Regiões com dor recorrente</div><div className="flex flex-wrap gap-2">{frequentPain.length?frequentPain.map(([zone,count])=><span key={zone} className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-full text-[10px] font-bold">{zone}: {count}x</span>):<span className="text-xs text-slate-400">Sem dor recorrente registrada.</span>}</div></div></section>
-                        <section className={`rounded-2xl p-5 border shadow-sm ${riskTone==='red'?'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800':riskTone==='yellow'?'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800':'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}><h3 className="text-xs font-black uppercase mb-3">Assistente de decisão</h3><div className="space-y-2">{riskReasons.length?riskReasons.map((reason,index)=><div key={index} className="text-[10px] font-bold">• {reason}</div>):<div className="text-xs font-bold">Nenhum sinal relevante de risco nos dados atuais.</div>}</div><div className="text-[9px] opacity-70 mt-4">A decisão final permanece com a comissão e a equipe médica.</div></section>
+                        <section className={`rounded-2xl p-5 border shadow-sm ${riskTone==='red'?'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800':riskTone==='yellow'?'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800':'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}>
+                            <div className="flex items-center justify-between gap-2 mb-3"><h3 className="text-xs font-black dark:text-white">IA • Leitura explicável</h3><span className="text-[8px] font-black px-2 py-1 rounded-full bg-white/60 dark:bg-slate-950/40">{dataQualityLabel} • {dataQuality}%</span></div>
+                            <div className="space-y-3">
+                                <div><div className="text-[8px] font-black uppercase opacity-60">O que observou</div>{aiObserved.map((reason,index)=><div key={index} className="text-[10px] font-bold mt-1">• {reason}</div>)}</div>
+                                <div><div className="text-[8px] font-black uppercase opacity-60">Por que importa</div><div className="text-[10px] font-bold mt-1 leading-relaxed">{aiWhy}</div></div>
+                                <div><div className="text-[8px] font-black uppercase opacity-60">Ação para revisão</div><div className="text-[10px] font-bold mt-1 leading-relaxed">{aiReview}</div></div>
+                            </div>
+                            <div className="flex gap-2 mt-4"><button onClick={()=>onNavigate?.(activeInjury?'dm':'workout')} className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[9px] font-black">Revisar agora</button><button onClick={()=>onNavigate?.('reports')} className="px-3 py-2.5 rounded-xl bg-white/60 dark:bg-slate-950/30 border border-current/10 text-[9px] font-black">Relatório</button></div>
+                            <div className="text-[8px] opacity-60 mt-3">A IA organiza sinais registrados; não substitui julgamento da comissão ou avaliação clínica.</div>
+                        </section>
                     </div>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                         <section className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm"><h3 className="text-xs font-black uppercase dark:text-white mb-4">Última avaliação</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{[['Data',formatDateBR(latestAssessment.date)],['Peso',latestAssessment.weight?`${latestAssessment.weight} kg`:'-'],['FMS',latestAssessment.fms_total||'-'],['1RM',latestAssessment.squat_rm?`${latestAssessment.squat_rm} kg`:'-'],['30 m',latestAssessment.speed30?`${latestAssessment.speed30} s`:'-'],['SJ',latestAssessment.sj?`${latestAssessment.sj} cm`:'-'],['Resistência',latestAssessment.soccer_test||'-'],['Scout',latestAssessment.scout_tech||'-']].map(([label,value])=><div key={label} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl"><div className="text-[8px] uppercase font-black text-slate-400">{label}</div><div className="font-black dark:text-white mt-1">{value}</div></div>)}</div></section>
@@ -4915,12 +5011,12 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
     else aiFocus = "Recuperação / Ajuste";
 
     const aiPriorities = [];
-    if(wellnessPendente>0 && trainingStatus!=='encerrado') aiPriorities.push({level:'Alta',title:`${wellnessPendente} pendência(s) no ${trainingStatus==='pre'?'wellness':'PSE'}`,detail:'A qualidade da decisão depende de completar os registros do dia.',tab:trainingStatus==='pre'?'wellness':'pse',tone:'red'});
-    if(activeDM.length>0) aiPriorities.push({level:'Alta',title:`Revisar ${activeDM.length} atleta(s) no DM/RTP`,detail:'Confirmar evolução, fase atual, critérios e próxima reavaliação.',tab:'dm',tone:'red'});
-    if(riskPlayers.length>0) aiPriorities.push({level:'Moderada',title:`${riskPlayers.length} atleta(s) com carga elevada`,detail:'Revisar carga recente e necessidade de ajuste individual antes da sessão.',tab:'pse',tone:'orange'});
-    if(elencoDisponivel<16) aiPriorities.push({level:'Alta',title:`Disponibilidade reduzida: ${elencoDisponivel}/${elencoTotal.length}`,detail:'Adaptar formato da sessão e revisar indisponibilidades.',tab:'workout',tone:'orange'});
-    if((todayPlan.md||'').includes('MD+1')||(todayPlan.md||'').includes('MD+2')) aiPriorities.push({level:'Rotina',title:'Dia com foco de recuperação',detail:'Revisar a aba de recuperação e individualizar quando necessário.',tab:'workout',tone:'blue'});
-    if(aiPriorities.length===0) aiPriorities.push({level:'OK',title:'Sem prioridade crítica pelos critérios atuais',detail:'Manter coleta de dados, executar o plano e revisar respostas após a sessão.',tab:'workout',tone:'green'});
+    if(wellnessPendente>0 && trainingStatus!=='encerrado') aiPriorities.push({level:'Alta',source:'Wellness / PSE',title:`${wellnessPendente} pendência(s) no ${trainingStatus==='pre'?'wellness':'PSE'}`,detail:'A qualidade da decisão depende de completar os registros do dia.',tab:trainingStatus==='pre'?'wellness':'pse',tone:'red'});
+    if(activeDM.length>0) aiPriorities.push({level:'Alta',source:'DM / RTP',title:`Revisar ${activeDM.length} atleta(s) no DM/RTP`,detail:'Confirmar evolução, fase atual, critérios e próxima reavaliação.',tab:'dm',tone:'red'});
+    if(riskPlayers.length>0) aiPriorities.push({level:'Moderada',source:'Carga recente',title:`${riskPlayers.length} atleta(s) com carga elevada`,detail:'Revisar carga recente e necessidade de ajuste individual antes da sessão.',tab:'pse',tone:'orange'});
+    if(elencoDisponivel<16) aiPriorities.push({level:'Alta',source:'Disponibilidade',title:`Disponibilidade reduzida: ${elencoDisponivel}/${elencoTotal.length}`,detail:'Adaptar formato da sessão e revisar indisponibilidades.',tab:'workout',tone:'orange'});
+    if((todayPlan.md||'').includes('MD+1')||(todayPlan.md||'').includes('MD+2')) aiPriorities.push({level:'Rotina',source:'Microciclo',title:'Dia com foco de recuperação',detail:'Revisar a aba de recuperação e individualizar quando necessário.',tab:'workout',tone:'blue'});
+    if(aiPriorities.length===0) aiPriorities.push({level:'OK',source:'Leitura integrada',title:'Sem prioridade crítica pelos critérios atuais',detail:'Manter coleta de dados, executar o plano e revisar respostas após a sessão.',tab:'workout',tone:'green'});
 
     return (
         <div className="p-6 bg-slate-50 dark:bg-slate-900 h-full overflow-y-auto animate-fade-in custom-scroll pb-32">
@@ -4942,9 +5038,9 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                 </div>
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2 p-3">
                     {aiPriorities.slice(0,5).map((item,i)=><button key={i} type="button" onClick={()=>onNavigate(item.tab)} className="text-left p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition-colors">
-                        <div className={`text-[8px] font-black uppercase ${item.tone==='red'?'text-red-400':item.tone==='orange'?'text-orange-400':item.tone==='green'?'text-emerald-400':'text-blue-400'}`}>{i+1}. {item.level}</div>
+                        <div className="flex items-center justify-between gap-2"><div className={`text-[8px] font-black uppercase ${item.tone==='red'?'text-red-400':item.tone==='orange'?'text-orange-400':item.tone==='green'?'text-emerald-400':'text-blue-400'}`}>{i+1}. {item.level}</div><span className="text-[7px] uppercase text-slate-600">{item.source||'Dados'}</span></div>
                         <div className="text-xs font-black mt-1">{item.title}</div>
-                        <div className="text-[9px] text-slate-400 mt-1 leading-relaxed">{item.detail}</div>
+                        <div className="text-[9px] text-slate-400 mt-1 leading-relaxed">{item.detail}</div><div className="text-[8px] text-blue-400 font-black mt-2">Revisar →</div>
                     </button>)}
                 </div>
                 <div className="px-4 pb-3 text-[8px] text-slate-500">Prioridades geradas pelos dados registrados. A decisão final continua com a comissão.</div>
@@ -5189,7 +5285,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors gap-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-600">
-                                        {p.image ? <img src={p.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}
+                                        {p.image ? <img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
@@ -5606,7 +5702,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         {visible.map(row => {
                             const minuteLimit = row.entry.minuteLimit ?? row.suggestedMinutes;
                             return <div key={row.player.id} className={`grid grid-cols-1 xl:grid-cols-12 gap-3 items-center bg-white dark:bg-slate-800 border-2 rounded-2xl p-3 ${row.selected ? 'border-blue-500 shadow-lg' : 'border-slate-200 dark:border-slate-700'}`}>
-                                <div className="xl:col-span-3 flex items-center gap-3"><button onClick={() => updateEntry(row, { selected: !row.selected })} className={`w-10 h-10 rounded-xl border flex items-center justify-center font-black ${row.selected ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-400'}`}>{row.selected ? '✓' : '+'}</button><div className="w-11 h-11 rounded-full overflow-hidden bg-slate-200">{row.player.image ? <img src={row.player.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-3 text-slate-400"/>}</div><div><div className="font-black uppercase text-sm dark:text-white">{row.player.name}</div><div className="text-[9px] font-bold text-slate-400">{row.positionGroup} • {row.player.position || row.player.pos || 'Atleta'}</div></div></div>
+                                <div className="xl:col-span-3 flex items-center gap-3"><button onClick={() => updateEntry(row, { selected: !row.selected })} className={`w-10 h-10 rounded-xl border flex items-center justify-center font-black ${row.selected ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-400'}`}>{row.selected ? '✓' : '+'}</button><div className="w-11 h-11 rounded-full overflow-hidden bg-slate-200">{row.player.image ? <img src={row.player.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-3 text-slate-400"/>}</div><div><div className="font-black uppercase text-sm dark:text-white">{row.player.name}</div><div className="text-[9px] font-bold text-slate-400">{row.positionGroup} • {row.player.position || row.player.pos || 'Atleta'}</div></div></div>
                                 <div className="xl:col-span-1 text-center"><div className={`text-3xl font-black ${row.score >= 70 ? 'text-emerald-500' : row.score >= 50 ? 'text-orange-500' : 'text-red-500'}`}>{row.score}</div><div className="text-[8px] uppercase font-bold text-slate-400">Prontidão</div></div>
                                 <div className="xl:col-span-3 grid grid-cols-4 gap-1 text-center"><div><div className="font-black text-xs dark:text-white">{row.readiness}%</div><div className="text-[7px] uppercase text-slate-400">Wellness</div></div><div><div className="font-black text-xs dark:text-white">{row.acwr ? row.acwr.toFixed(2) : '-'}</div><div className="text-[7px] uppercase text-slate-400">ACWR</div></div><div><div className="font-black text-xs dark:text-white">{row.attendancePct}%</div><div className="text-[7px] uppercase text-slate-400">Freq.</div></div><div><div className="font-black text-xs dark:text-white">{row.minutes14}</div><div className="text-[7px] uppercase text-slate-400">Min 14d</div></div></div>
                                 <div className="xl:col-span-2"><span className={`inline-block border rounded-lg px-2 py-1 text-[9px] font-black uppercase ${row.statusClass}`}>{row.recommendation}</span><div className="text-[8px] text-slate-400 mt-1 truncate" title={row.reasons.join(' • ')}>{row.reasons.join(' • ') || 'Sem alertas relevantes'}</div></div>
@@ -5669,10 +5765,10 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             return <div className="h-full overflow-y-auto p-6 custom-scroll pb-32">
                 <div className="mb-5"><h2 className="text-2xl font-black uppercase dark:text-white" style={{color: themeColor}}>Return to Play avançado</h2><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Critérios, restrições, sessões e governança multidisciplinar</p></div>
                 {!activeRecords.length ? <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl p-12 text-center text-slate-400 font-bold">Nenhum atleta ativo no DM. Cadastre uma entrada na aba “Operação DM”.</div> : <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-                    <div className="xl:col-span-3 space-y-2">{activeRecords.map(item => { const itemPlayer = players[item.playerId]; return <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full text-left p-3 rounded-xl border-2 flex items-center gap-3 ${selectedId === item.id ? 'border-blue-500 bg-blue-500/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}><div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200">{itemPlayer?.image ? <img src={itemPlayer.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}</div><div><div className="font-black text-xs uppercase dark:text-white">{itemPlayer?.name || 'Atleta'}</div><div className="text-[9px] text-slate-400">Fase {item.rtpPhase || 1} • {item.location}</div></div></button>; })}</div>
+                    <div className="xl:col-span-3 space-y-2">{activeRecords.map(item => { const itemPlayer = players[item.playerId]; return <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full text-left p-3 rounded-xl border-2 flex items-center gap-3 ${selectedId === item.id ? 'border-blue-500 bg-blue-500/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}><div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200">{itemPlayer?.image ? <img src={itemPlayer.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-2 text-slate-400"/>}</div><div><div className="font-black text-xs uppercase dark:text-white">{itemPlayer?.name || 'Atleta'}</div><div className="text-[9px] text-slate-400">Fase {item.rtpPhase || 1} • {item.location}</div></div></button>; })}</div>
                     <div className="xl:col-span-9 space-y-5">
                         <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl p-5 shadow-sm">
-                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-5"><div className="flex items-center gap-4"><div className="w-16 h-16 rounded-full overflow-hidden bg-slate-200">{player?.image ? <img src={player.image} className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-4 text-slate-400"/>}</div><div><h3 className="text-xl font-black uppercase dark:text-white">{player?.name}</h3><div className="text-xs font-bold text-red-500">{record?.location}</div></div></div><div className="grid grid-cols-3 gap-2 text-center"><div className="bg-slate-100 dark:bg-slate-700 rounded-xl p-3"><div className="text-2xl font-black dark:text-white">{daysOut}</div><div className="text-[8px] uppercase text-slate-400">Dias afastado</div></div><div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3"><div className="text-2xl font-black text-blue-500">{phase}/9</div><div className="text-[8px] uppercase text-slate-400">Fase RTP</div></div><div className="bg-slate-100 dark:bg-slate-700 rounded-xl p-3"><div className={`text-2xl font-black ${expectedDays !== null && expectedDays < 0 ? 'text-red-500' : 'text-emerald-500'}`}>{expectedDays === null ? '-' : expectedDays}</div><div className="text-[8px] uppercase text-slate-400">Dias previstos</div></div></div></div>
+                            <div className="flex flex-col md:flex-row justify-between gap-4 mb-5"><div className="flex items-center gap-4"><div className="w-16 h-16 rounded-full overflow-hidden bg-slate-200">{player?.image ? <img src={player.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/> : <Icon name="user" className="m-4 text-slate-400"/>}</div><div><h3 className="text-xl font-black uppercase dark:text-white">{player?.name}</h3><div className="text-xs font-bold text-red-500">{record?.location}</div></div></div><div className="grid grid-cols-3 gap-2 text-center"><div className="bg-slate-100 dark:bg-slate-700 rounded-xl p-3"><div className="text-2xl font-black dark:text-white">{daysOut}</div><div className="text-[8px] uppercase text-slate-400">Dias afastado</div></div><div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3"><div className="text-2xl font-black text-blue-500">{phase}/9</div><div className="text-[8px] uppercase text-slate-400">Fase RTP</div></div><div className="bg-slate-100 dark:bg-slate-700 rounded-xl p-3"><div className={`text-2xl font-black ${expectedDays !== null && expectedDays < 0 ? 'text-red-500' : 'text-emerald-500'}`}>{expectedDays === null ? '-' : expectedDays}</div><div className="text-[8px] uppercase text-slate-400">Dias previstos</div></div></div></div>
                             <div className="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-blue-600 transition-all" style={{width: `${(phase / 9) * 100}%`}}></div></div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -6418,6 +6514,9 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
             }, [players, trainingLog]);
 
             const [showSettings, setShowSettings] = useState(false);
+            const [showQuickTools,setShowQuickTools]=useState(false);
+            const [showDiagnostics,setShowDiagnostics]=useState(false);
+            const [lastSuccessfulSync,setLastSuccessfulSync]=useState('');
             const [syncStatus, setSyncStatus] = useState(''); 
 
             // NOVO: Trava de Segurança para não apagar dados do atleta!
@@ -6511,7 +6610,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     });
                     const docId = workspaceId || getActiveDocId(user.uid);
                     db.collection('coachData').doc(docId).update(dataToSave)
-                        .then(() => { setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
+                        .then(() => { setLastSuccessfulSync(new Date().toISOString()); setSyncStatus('☁️ Sincronizado'); setTimeout(() => setSyncStatus(''), 3000); })
                         .catch((err) => { 
                             if(err.code === 'not-found') db.collection('coachData').doc(docId).set(dataToSave, { merge: true });
                             else setSyncStatus('❌ Erro Sinc');
@@ -6629,14 +6728,14 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
             const navGroups = [
                 { label: 'Operação', items: [['home','Central'],['intelligence','Inteligência'],['alerts','Alertas'],['micro','Microciclo'],['workout','Treino'],['calendar','Calendário'],['videos','Vídeos'],['macro','Temporada']] },
-                { label: 'Gestão do elenco', items: [['squad','Elenco'],['profile360','Perfil 360º'],['contracts','Contratos'],['documents','Documentos'],['family','Família/LGPD'],['wellness','Wellness'],['pse','PSE'],['freq','Frequência'],['dm','DM/RTP'],['clinical','Clínico']] },
+                { label: 'Gestão do elenco', items: [['squad','Elenco'],['profile360','Mapa Atleta 360º'],['contracts','Contratos'],['documents','Documentos'],['family','Família/LGPD'],['wellness','Wellness'],['pse','PSE'],['freq','Frequência'],['dm','DM/RTP'],['clinical','Clínico']] },
                 { label: 'Operação humana', items: [['care','Agenda Clínica'],['commitments','Compromissos']] },
                 { label: 'Performance', items: [['competitions','Competições'],['assessment','Avaliações'],['match','Pré-jogo'],['selection','Convocação'],['gameday','Jogo'],['postgame','Pós-jogo'],['reports','Relatórios'],['print','Impressão'],['library','Biblioteca'],['integrations','Integrações']] },
                 { label: 'Enterprise', items: [['scout','Adversários'],['director','Diretoria'],['access','Acessos'],['audit','Auditoria'],['clubs','Clubes']] }
             ].map(group => ({ ...group, items: group.items.filter(([key]) => canTab(key)) })).filter(group => group.items.length);
             const allNavItems = navGroups.flatMap(group=>group.items.map(([key,label])=>({key,label,group:group.label})));
             const toggleFavorite = key => { const next=favoriteTabs.includes(key)?favoriteTabs.filter(x=>x!==key):[...favoriteTabs,key];setFavoriteTabs(next);localStorage.setItem('procoach_favorite_tabs',JSON.stringify(next)); };
-            const searchMatches = globalSearch.trim() ? [...allNavItems.filter(x=>`${x.label} ${x.group}`.toLowerCase().includes(globalSearch.toLowerCase())),...safeArray(players).filter(p=>p.name?.toLowerCase().includes(globalSearch.toLowerCase())).slice(0,5).map(p=>({key:'profile360',label:p.name,group:'Atleta'}))].slice(0,8) : [];
+            const searchMatches = globalSearch.trim() ? [...allNavItems.filter(x=>`${x.label} ${x.group}`.toLowerCase().includes(globalSearch.toLowerCase())),...safeArray(players).map((p,playerIndex)=>({p,playerIndex})).filter(x=>x.p?.name?.toLowerCase().includes(globalSearch.toLowerCase())).slice(0,5).map(x=>({key:'profile360',label:x.p.name,group:'Atleta',playerId:String(x.p.id??x.playerIndex)}))].slice(0,8) : [];
 
             useEffect(() => {
                 const onKeyDown = event => {
@@ -6667,6 +6766,35 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                 <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
 
                     {showShortcuts && <div className="fixed inset-0 z-[220] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 no-print" onClick={()=>setShowShortcuts(false)}><div className="w-full max-w-lg bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}><div className="p-5 border-b dark:border-slate-700 flex justify-between items-center"><div><div className="text-[9px] font-black uppercase tracking-[.2em] text-blue-500">Produtividade</div><h3 className="text-xl font-black dark:text-white">Atalhos do ProCoach</h3></div><button onClick={()=>setShowShortcuts(false)} className="text-slate-400"><Icon name="x"/></button></div><div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-2">{[['Ctrl/⌘ + K','Busca global'],['Ctrl/⌘ + S','Confirmar salvamento automático'],['I','Inteligência'],['H','Central'],['A','Elenco'],['T','Treino'],['P','Prancheta / Jogo'],['J','Pré-jogo'],['B','Biblioteca'],['V','Vídeos'],['C','Calendário'],['?','Abrir esta ajuda']].map(([key,label])=><div key={key} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span><kbd className="px-2 py-1 rounded-lg bg-white dark:bg-slate-700 border dark:border-slate-600 shadow-sm text-[10px] font-black dark:text-white">{key}</kbd></div>)}</div></div></div>}
+                    {showQuickTools && <div className="fixed inset-0 z-[230] bg-slate-950/60 backdrop-blur-sm flex items-start justify-end p-3 md:p-5 no-print" onClick={()=>setShowQuickTools(false)}>
+                        <div className="w-full max-w-sm mt-14 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-3xl shadow-2xl p-4" onClick={e=>e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-3"><div><div className="pc211-kicker">Ferramentas</div><h3 className="font-black dark:text-white">Acessos complementares</h3></div><button onClick={()=>setShowQuickTools(false)} className="p-2 text-slate-400"><Icon name="x"/></button></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button className="pc211-tool-card" onClick={()=>{document.getElementById('pcr-open')?.click();setShowQuickTools(false)}}><div className="text-lg">🧩</div><div className="font-black text-xs dark:text-white mt-1">Rotinas</div><div className="text-[8px] text-slate-500 mt-1">Sequências reutilizáveis</div></button>
+                                <button className="pc211-tool-card" onClick={()=>{document.getElementById('pcva-coach-open')?.click();setShowQuickTools(false)}}><div className="text-lg">🎥</div><div className="font-black text-xs dark:text-white mt-1">Vídeo & IA</div><div className="text-[8px] text-slate-500 mt-1">Análises avançadas</div></button>
+                                <button className="pc211-tool-card" onClick={()=>{document.getElementById('pc-hub-open')?.click();setShowQuickTools(false)}}><div className="text-lg">🧠</div><div className="font-black text-xs dark:text-white mt-1">Central técnica</div><div className="text-[8px] text-slate-500 mt-1">Painel executivo</div></button>
+                                <button className="pc211-tool-card" onClick={()=>{setShowQuickTools(false);setShowDiagnostics(true)}}><div className="text-lg">🩺</div><div className="font-black text-xs dark:text-white mt-1">Diagnóstico</div><div className="text-[8px] text-slate-500 mt-1">Versão, cache e sync</div></button>
+                            </div>
+                        </div>
+                    </div>}
+                    {showDiagnostics && <div className="fixed inset-0 z-[240] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 no-print" onClick={()=>setShowDiagnostics(false)}>
+                        <div className="w-full max-w-xl bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden" onClick={e=>e.stopPropagation()}>
+                            <div className="p-5 border-b dark:border-slate-700 flex justify-between items-center"><div><div className="pc211-kicker text-blue-500">Sistema</div><h3 className="text-xl font-black dark:text-white">Diagnóstico do ProCoach</h3></div><button onClick={()=>setShowDiagnostics(false)} className="p-2 text-slate-400"><Icon name="x"/></button></div>
+                            <div className="p-5 grid grid-cols-2 gap-3">
+                                {[
+                                    ['Build','FINAL 211'],
+                                    ['Internet',navigator.onLine?'Online':'Offline'],
+                                    ['Sincronização',syncStatus||'Sem pendência visual'],
+                                    ['Último sync',lastSuccessfulSync?new Date(lastSuccessfulSync).toLocaleString('pt-BR'):'Nesta sessão: ainda não registrado'],
+                                    ['Service Worker',navigator.serviceWorker?.controller?'Ativo':'Aguardando controle'],
+                                    ['Workspace',workspaceId||getActiveDocId(user.uid)],
+                                    ['Equipe',String(activeTeam||'pro').toUpperCase()],
+                                    ['Atletas',String(safeArray(players).length)]
+                                ].map(([label,value])=><div key={label} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700"><div className="text-[8px] font-black uppercase text-slate-400">{label}</div><div className="text-[10px] font-black dark:text-white mt-1 break-words">{value}</div></div>)}
+                            </div>
+                            <div className="px-5 pb-5 flex gap-2"><button onClick={()=>location.reload()} className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-[9px] font-black uppercase">Recarregar app</button><button onClick={()=>setShowDiagnostics(false)} className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 dark:text-white text-[9px] font-black uppercase">Fechar</button></div>
+                        </div>
+                    </div>}
                     <SettingsModal 
                         show={showSettings} 
                         onClose={() => setShowSettings(false)} 
@@ -6681,11 +6809,11 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     />
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-2 px-4 flex justify-between items-center shadow-sm z-30 shrink-0 no-print">
                         <div className="font-black text-xl italic text-slate-800 dark:text-white flex items-center gap-2">
-                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="text-[9px] not-italic bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-1.5 py-0.5 rounded ml-1">PERFORMANCE SUITE • V207 FINAL</span></div>
+                            <div className="hidden sm:block"><span style={{color: themeColor}}>PRO</span>COACH <span className="hidden md:inline text-[9px] not-italic text-slate-400 ml-1">Performance Suite</span></div>
                             {syncStatus && <span className="text-[9px] font-bold text-slate-400 animate-pulse hidden md:inline">{syncStatus}</span>}
                         </div>
                         <div className="flex gap-1 items-center relative">
-                            <div className="hidden xl:block relative mr-2 no-print"><input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} data-global-search placeholder="Buscar módulo ou atleta... (Ctrl+K)" className="w-56 px-3 py-2 rounded-xl border dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white text-[10px] font-bold phase4-focus"/>{searchMatches.length>0&&<div className="absolute top-10 right-0 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-2xl rounded-xl overflow-hidden z-[100]">{searchMatches.map((x,i)=><button key={`${x.key}_${i}`} onClick={()=>{setTab(x.key);setGlobalSearch('')}} className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700"><div className="text-[9px] font-black uppercase text-blue-500">{x.group}</div><div className="text-xs font-bold dark:text-white">{x.label}</div></button>)}</div>}</div>
+                            <div className="hidden xl:block relative mr-2 no-print"><input value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)} data-global-search placeholder="Buscar módulo ou atleta... (Ctrl+K)" className="w-56 px-3 py-2 rounded-xl border dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white text-[10px] font-bold phase4-focus"/>{searchMatches.length>0&&<div className="absolute top-10 right-0 w-72 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-2xl rounded-xl overflow-hidden z-[100]">{searchMatches.map((x,i)=><button key={`${x.key}_${i}`} onClick={()=>{if(x.playerId)localStorage.setItem('procoach_profile360_target',x.playerId);setTab(x.key);setGlobalSearch('')}} className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 border-b dark:border-slate-700"><div className="text-[9px] font-black uppercase text-blue-500">{x.group}</div><div className="text-xs font-bold dark:text-white">{x.label}</div></button>)}</div>}</div>
                             <div className="flex bg-slate-100 dark:bg-slate-700 rounded p-1 mr-2 border dark:border-slate-600 overflow-x-auto custom-scroll max-w-[45vw] md:max-w-none">
                                 <button onClick={() => setActiveTeam('pro')} className={`px-2 py-1 rounded text-[9px] font-black uppercase transition-all whitespace-nowrap ${activeTeam === 'pro' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white'}`}>
                                     {header.labelPro || 'PRO'}
@@ -6724,6 +6852,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             </div>
 
                             <span className="hidden lg:inline px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-[8px] font-black uppercase text-slate-500 dark:text-slate-300 mr-1">{ROLE_CATALOG[currentRole]?.label}</span>
+<button onClick={()=>setShowQuickTools(!showQuickTools)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300" title="Ferramentas"><Icon name="grid" size={19}/></button>
 <button onClick={()=>window.open(getAthletePortalUrl(workspaceId || getActiveDocId(user.uid), '', true),'_blank')} className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold hover:bg-blue-500 mr-2 uppercase flex items-center gap-1">
                                 <Icon name="user" size={14}/>
                                 <span className="hidden md:inline">Portal Atleta</span>
@@ -6754,7 +6883,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                                                     <option value="🎥 ATENÇÃO: Reunião de Vídeo Análise antes do treino.">🎥 Vídeo Análise Tática</option>
                                                     <option value="🩺 OBRIGATÓRIO: Passar na Avaliação Médica.">🩺 Avaliação Médica</option>
                                                     <option value="🏋️ Foco de Hoje: Academia (Membros Inferiores).">🏋️ Academia</option>
-                                                    <option value="🧊 RECUPERAÇÃO: Crioterapia obrigatória pós-treino.">🧊 Crioterapia</option>
+                                                    <option value="🔋 RECUPERAÇÃO: Consulte a orientação individualizada pós-treino no app.">🔋 Recuperação pós-treino</option>
                                                 </select>
                                                 <BufferedInput className="w-full md:w-2/3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white p-2 rounded-lg text-sm font-bold outline-none" placeholder="Digite um recado..." value={coachMsg} onSave={val=>setCoachMsg(val)} />
                                             </div>
@@ -6789,7 +6918,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                         <div className="h-full min-h-0">
                             {tab === 'intelligence' && <SeasonIntelligenceView players={players} trainingLog={trainingLog} attendanceLog={attendanceLog} matchMinutes={matchMinutes} competitions={competitions} exercises={exercises} library={library} dmRecords={dmRecords} nextGame={nextGame} header={header} logo={logo} themeColor={themeColor} onNavigate={setTab} />}
 {tab === 'home' && <DashboardView players={players} days={days} trainingLog={trainingLog} dmRecords={dmRecords} themeColor={themeColor} attendanceLog={attendanceLog} trainingStatus={initialData?.trainingStatus} assessments={assessments} matchMinutes={matchMinutes} nextGame={nextGame} setNextGame={setNextGame} header={header} setHeader={setHeader} onNavigate={setTab} user={user} workspaceId={workspaceId || getActiveDocId(user.uid)} teamCommitments={teamCommitments} setTeamCommitments={setTeamCommitments} />}
-                            {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} videoAssignments={videoAssignments} themeColor={themeColor} />}
+                            {tab === 'profile360' && <Player360View players={players} trainingLog={trainingLog} assessments={assessments} dmRecords={dmRecords} attendanceLog={attendanceLog} matchMinutes={matchMinutes} videoAssignments={videoAssignments} athleteNotificationReads={athleteNotificationReads} postWorkout={postWorkout} themeColor={themeColor} onNavigate={setTab} />}
                             {tab === 'squad' && <SquadView players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} dmRecords={dmRecords} archivedPlayers={archivedPlayers} onArchivePlayers={archivePlayerIds} onRestoreArchived={restoreArchivedPlayer} />}
                             {tab === 'micro' && <MicrocycleSeasonView days={days} setDays={setDays} themeColor={themeColor} players={players} trainingLog={trainingLog} library={library} macrocycle={macrocycle} setMacrocycle={setMacrocycle} />}
                             {tab === 'wellness' && <WellnessDashboard players={players} setPlayers={setPlayersSafely} themeColor={themeColor} trainingLog={trainingLog} setTrainingLog={setTrainingLog} user={user} />}
@@ -7811,8 +7940,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.09-final-210';
- document.documentElement.dataset.procoachBuild='210';
+ window.PROCOACH_BUILD='2026.09-final-211';
+ document.documentElement.dataset.procoachBuild='211';
 })();
 </script>
 
@@ -7820,11 +7949,11 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 if('serviceWorker' in navigator){
  window.addEventListener('load',async()=>{
   try{
-   const r=await navigator.serviceWorker.register('./sw.js?v=210',{updateViaCache:'none'});
+   const r=await navigator.serviceWorker.register('./sw.js?v=211',{updateViaCache:'none'});
    await r.update().catch(()=>{});
    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(sessionStorage.getItem('pc_sw_210_reloaded')) return;
-    sessionStorage.setItem('pc_sw_210_reloaded','1');
+    if(sessionStorage.getItem('pc_sw_211_reloaded')) return;
+    sessionStorage.setItem('pc_sw_211_reloaded','1');
     location.reload();
    });
   }catch(_){}
