@@ -1,40 +1,43 @@
 const {admin,db,json,verifyAthlete,safeObj,safeArr}=require('./_lib');
-module.exports=async(req,res)=>{try{
- if(req.method!=='POST')return json(res,405,{error:'METHOD_NOT_ALLOWED'});
- const {workspaceId,playerId,action,payload={},date,clientMutationId}=req.body||{};
- const ctx=await verifyAthlete(req,workspaceId,playerId),pid=ctx.playerId,ref=ctx.ref;
- const mutationId=String(clientMutationId||payload.clientMutationId||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,160);
- if(mutationId){const mref=ref.collection('athleteMutations').doc(mutationId),ms=await mref.get();if(ms.exists)return json(res,200,{ok:true,deduplicated:true})}
- const now=new Date().toISOString(),day=String(date||new Date().toISOString().slice(0,10));
- if(['wellness','agendaAck','water','rpe'].includes(action)){
-   await db.runTransaction(async tx=>{
-     const snap=await tx.get(ref),data=snap.data()||{},row=safeObj(safeObj(data.trainingLog)[day]),current=safeObj(row[pid]);
-     const clean={...payload};delete clean.clientMutationId;delete clean.period;
-     tx.update(ref,new admin.firestore.FieldPath('trainingLog',day,pid),{...current,...clean,updatedAt:now,source:'athlete-secure'});
-     if(mutationId)tx.set(ref.collection('athleteMutations').doc(mutationId),{action,playerId:pid,createdAt:admin.firestore.FieldValue.serverTimestamp()});
-   });
- }else if(action==='notificationAck'){
-   const id=String(payload.notificationId||'broadcast').slice(0,180);
-   await ref.update(new admin.firestore.FieldPath('athleteNotificationReads',pid,id),now);
- }else if(action==='postGame'){
-   await ref.update(new admin.firestore.FieldPath('postGameResponses',day,pid),{...payload,submittedAt:now,source:'athlete-secure'});
- }else if(action==='medicalRequest'){
-   const snap=await ref.get(),all={...safeObj(snap.data()?.athleteRequests)},rows=safeArr(all[pid]);
-   all[pid]=[{...payload,createdAt:payload.createdAt||now},...rows].slice(0,100);await ref.update({athleteRequests:all});
- }else if(action==='appointmentResponse'){
-   const snap=await ref.get(),rows=safeArr(snap.data()?.careAppointments).map(x=>x.id===payload.appointmentId?{...x,athleteResponse:payload.response,athleteRespondedAt:now}:x);await ref.update({careAppointments:rows});
- }else if(action==='commitmentResponse'){
-   const snap=await ref.get(),all={...safeObj(snap.data()?.commitmentResponses)},row={...safeObj(all[payload.commitmentId])};row[pid]={response:payload.response,by:'athlete',at:now};all[payload.commitmentId]=row;await ref.update({commitmentResponses:all});
- }else if(action==='consentAck'){
-   const snap=await ref.get(),all={...safeObj(snap.data()?.consentRecords)},player={...safeObj(all[pid])},row={...safeObj(player[payload.templateId])};row.athlete={accepted:!!payload.accepted,version:payload.version||'',at:now,uid:ctx.user.uid};player[payload.templateId]=row;all[pid]=player;await ref.update({consentRecords:all});
- }else if(action==='routineProgress'){
-   const state=safeObj(payload.state);if(!state.assignmentId)return json(res,400,{error:'ASSIGNMENT_REQUIRED'});
-   await ref.update(new admin.firestore.FieldPath('athleteRoutineProgress',pid,String(state.assignmentId)),{...state,updatedAt:now});
- }else if(action==='cycleHealth'){
-   await ref.collection('privateHealth').doc(pid).set({menstrualLogs:{[day]:{...payload,recordedAt:now}}},{merge:true});
- }else if(action==='medicationAck'){
-   const ph=ref.collection('privateHealth').doc(pid),snap=await ph.get(),d=snap.exists?snap.data():{},adh={...safeObj(d.medicationAdherence)},med={...safeObj(adh[payload.medicationId])},key=`${day}_${String(payload.timeKey||'').replace(':','')}`;med[key]={status:payload.status||'Confirmado',at:now};adh[payload.medicationId]=med;await ph.set({medicationAdherence:adh},{merge:true});
- }else return json(res,400,{error:'ACTION_NOT_ALLOWED'});
- if(mutationId&&!['wellness','agendaAck','water','rpe'].includes(action))await ref.collection('athleteMutations').doc(mutationId).set({action,playerId:pid,createdAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
- return json(res,200,{ok:true,action,updatedAt:now});
-}catch(e){console.error(e);return json(res,e.status||500,{error:e.message||'SERVER_ERROR'})}};
+const cleanId=v=>String(v||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,160);
+module.exports=async(req,res)=>{
+ try{
+  if(req.method!=='POST')return json(res,405,{error:'METHOD_NOT_ALLOWED'});
+  const {workspaceId,playerId,action,payload={},date,clientMutationId}=req.body||{},ctx=await verifyAthlete(req,workspaceId,playerId),pid=ctx.playerId,ref=ctx.ref,body=safeObj(payload);
+  const mutationId=cleanId(clientMutationId||body.clientMutationId),mutationRef=mutationId?ref.collection('athleteMutations').doc(mutationId):null;
+  const day=String(date||new Date().toISOString().slice(0,10)),now=new Date().toISOString();
+  const allowed=['wellness','agendaAck','water','rpe','notificationAck','postGame','medicalRequest','appointmentResponse','commitmentResponse','consentAck','routineProgress','cycleHealth','medicationAck'];
+  if(!allowed.includes(action))return json(res,400,{error:'ACTION_NOT_ALLOWED'});
+  if(action==='routineProgress'&&!safeObj(body.state).assignmentId)return json(res,400,{error:'ASSIGNMENT_REQUIRED'});
+  const outcome=await db.runTransaction(async tx=>{
+   if(mutationRef){const marker=await tx.get(mutationRef);if(marker.exists)return {deduplicated:true};}
+   const privateAction=action==='cycleHealth'||action==='medicationAck';
+   const rootSnap=privateAction?null:await tx.get(ref),data=rootSnap?.data()||{};
+   if(['wellness','agendaAck','water','rpe'].includes(action)){
+    const old=safeObj(safeObj(safeObj(data.trainingLog)[day])[pid]),clean={...body};delete clean.clientMutationId;delete clean.period;
+    tx.update(ref,new admin.firestore.FieldPath('trainingLog',day,pid),{...old,...clean,updatedAt:now,source:'athlete-secure'});
+   }else if(action==='notificationAck'){
+    tx.update(ref,new admin.firestore.FieldPath('athleteNotificationReads',pid,String(body.notificationId||'broadcast').slice(0,180)),now);
+   }else if(action==='postGame'){
+    tx.update(ref,new admin.firestore.FieldPath('postGameResponses',day,pid),{...body,submittedAt:now,source:'athlete-secure'});
+   }else if(action==='medicalRequest'){
+    const all={...safeObj(data.athleteRequests)},rows=safeArr(all[pid]);all[pid]=[{...body,createdAt:body.createdAt||now,clientMutationId:mutationId||null},...rows].slice(0,100);tx.update(ref,{athleteRequests:all});
+   }else if(action==='appointmentResponse'){
+    tx.update(ref,{careAppointments:safeArr(data.careAppointments).map(x=>x.id===body.appointmentId?{...x,athleteResponse:body.response,athleteRespondedAt:now}:x)});
+   }else if(action==='commitmentResponse'){
+    const all={...safeObj(data.commitmentResponses)},row={...safeObj(all[body.commitmentId])};row[pid]={response:body.response,by:'athlete',at:now};all[body.commitmentId]=row;tx.update(ref,{commitmentResponses:all});
+   }else if(action==='consentAck'){
+    const all={...safeObj(data.consentRecords)},athlete={...safeObj(all[pid])},row={...safeObj(athlete[body.templateId])};row.athlete={accepted:!!body.accepted,version:body.version||'',at:now,uid:ctx.user.uid};athlete[body.templateId]=row;all[pid]=athlete;tx.update(ref,{consentRecords:all});
+   }else if(action==='routineProgress'){
+    const state=safeObj(body.state);tx.update(ref,new admin.firestore.FieldPath('athleteRoutineProgress',pid,String(state.assignmentId)),{...state,updatedAt:now});
+   }else if(action==='cycleHealth'){
+    const privateRef=ref.collection('privateHealth').doc(pid),snap=await tx.get(privateRef),old=snap.exists?snap.data():{};tx.set(privateRef,{menstrualLogs:{...safeObj(old.menstrualLogs),[day]:{...body,recordedAt:now}}},{merge:true});
+   }else if(action==='medicationAck'){
+    const privateRef=ref.collection('privateHealth').doc(pid),snap=await tx.get(privateRef),old=snap.exists?snap.data():{},all={...safeObj(old.medicationAdherence)},med={...safeObj(all[body.medicationId])},key=day+'_'+String(body.timeKey||'').replace(':','');med[key]={status:body.status||'Confirmado',at:now};all[body.medicationId]=med;tx.set(privateRef,{medicationAdherence:all},{merge:true});
+   }
+   if(mutationRef)tx.create(mutationRef,{action,playerId:pid,createdAt:admin.firestore.FieldValue.serverTimestamp()});
+   return {deduplicated:false};
+  });
+  return json(res,200,{ok:true,action,deduplicated:!!outcome.deduplicated,updatedAt:now});
+ }catch(e){console.error(e);return json(res,e.status||500,{error:e.message||'SERVER_ERROR'})}
+};
