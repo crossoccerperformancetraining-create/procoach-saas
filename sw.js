@@ -1,9 +1,9 @@
-const VERSION='211';
+const VERSION='213';
 const STATIC_CACHE=`procoach-static-v${VERSION}`;
 const RUNTIME_CACHE=`procoach-runtime-v${VERSION}`;
 const CORE=[
-  '/','/index.html?v=211','/atleta.html?v=211','/athlete-start.html?v=211',
-  '/manifest.json?v=211','/athlete-manifest.json?v=211','/logo.png?v=211'
+  '/','/index.html?v=213','/atleta.html?v=213','/athlete-start.html?v=213',
+  '/manifest.json?v=213','/athlete-manifest.json?v=213','/logo.png?v=213'
 ];
 const CDN_HOSTS=new Set(['cdn.tailwindcss.com','www.gstatic.com','cdnjs.cloudflare.com','cdn.onesignal.com']);
 self.addEventListener('install',event=>{
@@ -29,9 +29,9 @@ self.addEventListener('fetch',event=>{
         cachePut(req,fresh);return fresh;
       }catch(_){
         const exact=await caches.match(req);if(exact)return exact;
-        if(url.pathname.endsWith('/atleta.html')) return (await caches.match('/atleta.html?v=211'))||Response.error();
-        if(url.pathname.endsWith('/athlete-start.html')) return (await caches.match('/athlete-start.html?v=211'))||Response.error();
-        return (await caches.match('/index.html?v=211'))||Response.error();
+        if(url.pathname.endsWith('/atleta.html')) return (await caches.match('/atleta.html?v=213'))||Response.error();
+        if(url.pathname.endsWith('/athlete-start.html')) return (await caches.match('/athlete-start.html?v=213'))||Response.error();
+        return (await caches.match('/index.html?v=213'))||Response.error();
       }
     })());return;
   }
