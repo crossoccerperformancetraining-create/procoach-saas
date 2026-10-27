@@ -1,4 +1,4 @@
-# Auditoria da unificação ProCoach 213
+# Auditoria da unificação ProCoach 214
 
 A base escolhida é o ProCoach SaaS, porque já centraliza os elencos, o portal do atleta e a sincronização por workspace. O app de futebol contribui com rotinas de treino, prancheta e visão da base. As funções foram adicionadas à estrutura atual do SaaS, preservando cadastro e portal existentes.
 
@@ -22,4 +22,9 @@ O portal já envia `clientMutationId` nas ações seguras. O endpoint atualizado
 
 ## Situação
 
-O pacote foi reconstituído nesta conversa a partir do ZIP base 211 salvo na Library e preparado como versão 213. A integração GitHub retorna 403 ao criar a branch; não há branch, PR ou deploy de Preview. Foram conferidos a sintaxe dos endpoints JavaScript, o JSON do manifesto e a integridade do ZIP. Não foi feito teste autenticado nem revisão visual no Vercel.
+O pacote foi reconstituído nesta conversa a partir do ZIP base 211 salvo na Library e preparado como versão 214. A integração GitHub retorna 403 ao criar a branch; não há branch, PR ou deploy de Preview. Foram conferidos a sintaxe dos endpoints JavaScript, o JSON do manifesto e a integridade do ZIP. Não foi feito teste autenticado nem revisão visual no Vercel.
+
+
+## Ajuste de navegação e espaço
+
+Foi reforçado o tratamento de sessão sem papel/função: em vez de deixar o usuário em uma tela com elenco vazio e menus filtrados, o app oferece retorno ao workspace principal registrado no perfil. Não altera dados do Firestore. A causa provável relatada é abertura de outro workspace/categoria ou sessão sem função; não houve acesso à conta autenticada do usuário para confirmar o workspace selecionado.

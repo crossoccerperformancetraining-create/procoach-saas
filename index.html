@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • UNIFICAÇÃO 213</title>
+    <title>ProCoach • UNIFICAÇÃO 214</title>
     
-    <link rel="manifest" href="manifest.json?v=213">
-    <link rel="apple-touch-icon" href="logo.png?v=213">
-    <link rel="icon" type="image/png" href="logo.png?v=213">
+    <link rel="manifest" href="manifest.json?v=214">
+    <link rel="apple-touch-icon" href="logo.png?v=214">
+    <link rel="icon" type="image/png" href="logo.png?v=214">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -255,7 +255,7 @@ rotinas/sequências, semana padrão, player de treino e login diagnóstico. -->
             if (docId) url.searchParams.set('id', String(docId));
             if (playerId) url.searchParams.set('uid', String(playerId));
             if (preview) url.searchParams.set('view', 'coach');
-            url.searchParams.set('v', '203');
+            url.searchParams.set('v', '214');
             return url.toString();
         };
 
@@ -6835,7 +6835,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             <div className="p-5 border-b dark:border-slate-700 flex justify-between items-center"><div><div className="pc211-kicker text-blue-500">Sistema</div><h3 className="text-xl font-black dark:text-white">Diagnóstico do ProCoach</h3></div><button onClick={()=>setShowDiagnostics(false)} className="p-2 text-slate-400"><Icon name="x"/></button></div>
                             <div className="p-5 grid grid-cols-2 gap-3">
                                 {[
-                                    ['Build','UNIFICAÇÃO 213'],
+                                    ['Build','UNIFICAÇÃO 214'],
                                     ['Internet',navigator.onLine?'Online':'Offline'],
                                     ['Sincronização',syncStatus||'Sem pendência visual'],
                                     ['Último sync',lastSuccessfulSync?new Date(lastSuccessfulSync).toLocaleString('pt-BR'):'Nesta sessão: ainda não registrado'],
@@ -7037,7 +7037,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
             if (loadingCloud) return <div className="flex flex-col h-screen w-screen items-center justify-center bg-slate-900 text-slate-300 font-bold">A Carregar Espaço de Trabalho...</div>;
             const role = resolveWorkspaceRole(user, initialData, workspaceId);
-            if (role === 'viewer' && initialData?.ownerUid && initialData.ownerUid !== user.uid && !initialData?.memberRoles?.[normalizeEmailKey(user.email)]) {
+            const workspaceMembership = safeObj(initialData?.memberRoles)[normalizeEmailKey(user.email)];
+            if (role === 'viewer' && !workspaceMembership) {
                 const ownedWorkspace = safeArray(profile?.workspaces).find(item => item?.ownerUid === user.uid)?.id || user.uid;
                 const recoverOwnerWorkspace = () => {
                     localStorage.setItem('procoach_active_workspace', ownedWorkspace);
@@ -7046,10 +7047,10 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     url.search = '';
                     url.searchParams.set('root', ownedWorkspace);
                     url.searchParams.set('team', 'pro');
-                    url.searchParams.set('v', '203');
+                    url.searchParams.set('v', '214');
                     window.location.replace(url.toString());
                 };
-                return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-red-500 mb-4"/><h1 className="text-2xl font-black uppercase">Espaço de trabalho diferente</h1><p className="text-sm text-slate-400 max-w-md mt-2">O login foi aceito, mas este dispositivo abriu outro clube ou categoria. Volte ao seu espaço principal sem alterar a senha e sem recadastrar atletas.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
+                return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-yellow-400 mb-4"/><h1 className="text-2xl font-black uppercase">Confira o espaço de trabalho</h1><p className="text-sm text-slate-400 max-w-md mt-2">Este acesso está sem uma função neste espaço. Pode ser que o navegador tenha aberto outro clube ou uma categoria vazia. Seus atletas não foram apagados. Abra seu espaço principal para carregar o elenco e os menus corretos.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
             }
             return <ErrorBoundary><MainApp key={workspaceId} user={user} initialData={initialData} activeTeam={activeTeam} setActiveTeam={setActiveTeam} workspaceId={workspaceId} activeWorkspace={activeWorkspace} profile={profile} setProfile={setProfile} /></ErrorBoundary>;
         };
@@ -7998,8 +7999,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.10-unification-213';
- document.documentElement.dataset.procoachBuild='213';
+ window.PROCOACH_BUILD='2026.10-unification-214';
+ document.documentElement.dataset.procoachBuild='214';
 })();
 </script>
 
@@ -8007,11 +8008,11 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 if('serviceWorker' in navigator){
  window.addEventListener('load',async()=>{
   try{
-   const r=await navigator.serviceWorker.register('./sw.js?v=213',{updateViaCache:'none'});
+   const r=await navigator.serviceWorker.register('./sw.js?v=214',{updateViaCache:'none'});
    await r.update().catch(()=>{});
    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(sessionStorage.getItem('pc_sw_213_reloaded')) return;
-    sessionStorage.setItem('pc_sw_213_reloaded','1');
+    if(sessionStorage.getItem('pc_sw_214_reloaded')) return;
+    sessionStorage.setItem('pc_sw_214_reloaded','1');
     location.reload();
    });
   }catch(_){}
