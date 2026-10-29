@@ -1,30 +1,18 @@
-# Auditoria da unificação ProCoach 214
+# Auditoria ProCoach — sincronização da dor v215
 
-A base escolhida é o ProCoach SaaS, porque já centraliza os elencos, o portal do atleta e a sincronização por workspace. O app de futebol contribui com rotinas de treino, prancheta e visão da base. As funções foram adicionadas à estrutura atual do SaaS, preservando cadastro e portal existentes.
+## Base
 
-| Área | Incluído na unificação |
-|---|---|
-| Operação | Central, inteligência, alertas, microciclo, treino, calendário, vídeos, temporada, biblioteca, Estúdio de treino, modelos, sequências, quadro semanal e diário do treinador |
-| Elenco | Cadastro, perfil 360°, contratos e alertas, documentos, família/consentimentos, wellness, PSE/RPE, frequência, grupos e notificações |
-| Performance | Avaliações físicas, metas, notas semanais do treinador, Top 5, sugestão de escalação por formação e posição, convocação, jogos, minutagem, pós-jogo e relatórios |
-| DM | DM/RTP existente, agenda clínica e estoque básico com quantidades, mínimos, validade e entradas/saídas |
-| Tática e conteúdo | Nova prancheta com seleção de atletas, ajustes direcionais, quadros guardados e exportação PNG; vídeos existentes continuam aceitando envio individual, por setor ou coletivo |
-| Clube e base | Radar resumido por equipes do mesmo clube, calendário agregado e propostas de promoção/convocação para revisão humana |
-| Administração | Acessos, auditoria, configurações, integrações e backups existentes |
+Os arquivos deste pacote foram lidos do branch `main` atual do repositório `crossoccerperformancetraining-create/procoach-saas`, identificado como versão 214. As alterações foram aplicadas localmente em uma cópia de trabalho para preparar o patch da versão 215.
 
-## Notas e escalação sugerida
+## Fluxo de dados
 
-A nota de 1 a 5 é do treinador e não substitui o RPE/PSE informado pelo atleta. O Top 5 considera as notas dos últimos sete dias. A sugestão tenta preencher a formação 4-3-3, 4-4-2 ou 3-5-2 com base nas posições cadastradas; posições ausentes são completadas pelos melhores avaliados disponíveis. A decisão final continua com o treinador.
+O portal do atleta envia `painZones` como regiões normalizadas, `painSides` como mapa região/lado e `painDetails` para preservar cada seleção. O endpoint atual mescla os campos recebidos no diário do atleta/data. O app do treinador lê esses dados no preenchimento manual, no painel do wellness, no histórico individual e no dashboard de avaliações.
 
-## Respostas do atleta
+Registros antigos em texto com sufixo `(Dir)` ou `(Esq)` continuam legíveis e são normalizados no formulário do treinador. Sem lado disponível, a interface mostra “Lado não informado”.
 
-O portal já envia `clientMutationId` nas ações seguras. O endpoint atualizado grava a resposta e o marcador na mesma transação do Firestore, reduzindo duplicações quando uma operação é repetida após falha de rede. A sincronização real deve ser confirmada na Preview com Firebase.
+## Escopo e validação
 
-## Situação
+A alteração cobre a sincronização da dor, sem reorganizar as áreas principais do app. O seletor permite direita, esquerda, ambos ou lado não informado. A intensidade aparece apenas quando existe ao menos uma região dolorida; sem dor, o valor salvo de soreness fica em 1.
 
-O pacote foi reconstituído nesta conversa a partir do ZIP base 211 salvo na Library e preparado como versão 214. A integração GitHub retorna 403 ao criar a branch; não há branch, PR ou deploy de Preview. Foram conferidos a sintaxe dos endpoints JavaScript, o JSON do manifesto e a integridade do ZIP. Não foi feito teste autenticado nem revisão visual no Vercel.
+O ZIP foi conferido quanto à integridade e aos arquivos incluídos. Não foi feito teste autenticado no Firebase nem validação visual na Preview do Vercel. A tentativa de criar uma branch pelo conector GitHub foi bloqueada com erro 403; nada foi gravado no repositório nem publicado.
 
-
-## Ajuste de navegação e espaço
-
-Foi reforçado o tratamento de sessão sem papel/função: em vez de deixar o usuário em uma tela com elenco vazio e menus filtrados, o app oferece retorno ao workspace principal registrado no perfil. Não altera dados do Firestore. A causa provável relatada é abertura de outro workspace/categoria ou sessão sem função; não houve acesso à conta autenticada do usuário para confirmar o workspace selecionado.

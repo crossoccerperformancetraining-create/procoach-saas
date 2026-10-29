@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach Athlete • FINAL 211</title>
-    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=211">
+    <title>ProCoach Athlete • UNIFICAÇÃO 215</title>
+    <link id="athlete-manifest-link" rel="manifest" href="athlete-manifest.json?v=215">
     <script>
     // ProCoach 2.0.4: o manifesto instalado recebe o endereço individual da atleta.
     // Também persistimos a identidade em várias camadas para migração de PWAs já instalados.
@@ -40,7 +40,7 @@
                 name: 'Portal da Atleta — ProCoach', short_name: 'ProCoach Atleta',
                 start_url: start, scope: '/', id: appId, display: 'standalone',
                 background_color: '#020617', theme_color: '#020617',
-                icons: [{src:'/logo.png?v=211',sizes:'512x512',type:'image/png'}]
+                icons: [{src:'/logo.png?v=215',sizes:'512x512',type:'image/png'}]
             };
             const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
             document.getElementById('athlete-manifest-link').href = URL.createObjectURL(blob);
@@ -863,7 +863,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const playBeep = () => { try { const ctx = audioCtxRef.current; if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(1, ctx.currentTime); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => { const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime); gain2.gain.setValueAtTime(1, ctx.currentTime); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(); osc2.stop(ctx.currentTime + 0.3); }, 400); } catch(e) {} };
 
             const selectP = (i) => { selectedPlayerUidRef.current = getPlayerStableId(data.players, i); setIdx(i); setIsPriv(false); initAudio(); };
-            const addP = () => { if(tp) { const z = ts ? `${tp} ${ts}` : tp; if(!pain.includes(z)) setPain([...pain, z]); setTp(''); setTs(''); } };
+            const addP = () => { if(tp) { const entry={zone:tp,side:ts||'Não informado'}; if(!pain.some(item=>item.zone===entry.zone)) setPain([...pain,entry]); setTp(''); setTs(''); } };
             
             const refreshOfflineCount=async()=>{try{const items=await offlineQueueList();setOfflineCount(items.filter(x=>x.workspaceId===activeCoachDocId&&x.playerId===getPlayerStableId(data.players,idx)).length)}catch(e){setOfflineCount(0)}};
             const OFFLINE_QUEUE_ACTIONS = new Set(['wellness','agendaAck','water','rpe','postGame','appointmentResponse','commitmentResponse','consentAck','notificationAck','medicationAck','routineProgress']);
@@ -895,7 +895,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
             const subData = async () => {
                 if (submitting || idx === null) return;
                 setSubmitting(true); const td=selectedDate; const timestamp=new Date().toISOString(); const stableId=getPlayerStableId(data.players,idx);
-                const patch={wellness:scores,painZones:pain,timestamp,playerUid:stableId,playerIndex:idx,source:'athlete-portal'};
+                const painZones=[...new Set(pain.map(item=>item.zone))];\n                const painSides=pain.reduce((acc,item)=>{acc[item.zone]=item.side;return acc},{});\n                const patch={wellness:{...scores,soreness:pain.length?scores.soreness:1},painZones,painSides,painDetails:pain,timestamp,playerUid:stableId,playerIndex:idx,source:'athlete-portal'};
                 try {
                     const result=secureMode?await submitSecureAction('wellness',patch):await db.collection('coachData').doc(data.id).update(buildDualPlayerDayUpdate('trainingLog',td,data.players,idx,patch));
                     const player=data.players[idx];
@@ -1194,10 +1194,10 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
                         </div>
 
                         {/* SLIDERS DE WELLNESS */}
-                        {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Dor Muscular (1=Zero | 7=Muita)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
+                        {[{id:'sleep',l:'😴 Sono (1=Ótimo | 7=Ruim)'},{id:'stress',l:'🤯 Estresse (1=Relax | 7=Tenso)'},{id:'fatigue',l:'🔋 Cansaço (1=Energia | 7=Exausto)'},{id:'soreness',l:'🦵 Intensidade da dor (1=Leve | 7=Forte)'},{id:'mood',l:'🧠 Humor (1=Feliz | 7=Mal)'}].filter(m=>m.id!=='soreness'||pain.length>0).map(m=>(<div key={m.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700"><div className="flex justify-between mb-2 font-bold text-white text-sm"><span>{m.l}</span><span className="bg-slate-900 px-2 rounded text-blue-400">{scores[m.id]}</span></div><input type="range" min="1" max="7" value={scores[m.id]} onChange={e=>setScores({...scores,[m.id]:parseInt(e.target.value)})} className="hooper-slider" style={{background:'linear-gradient(to right,#22c55e,#eab308,#ef4444)'}}/></div>))}
                         
                         {/* DORES FOCAIS */}
-                        <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Local?</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólica pélvica", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-20 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado?</option><option>(Dir)</option><option>(Esq)</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map(z=><span key={z} onClick={()=>setPain(pain.filter(x=>x!==z))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{z} x</span>)}</div>}</div>
+                        <div className="bg-slate-800/80 p-5 rounded-xl border border-red-500/30"><h3 className="font-bold text-red-400 flex gap-2"><Icon name="alert"/> Dores Focais</h3><p className="text-xs text-slate-400 mt-1">Marque a região e o lado. Se não houver dor, deixe sem selecionar.</p><div className="flex gap-2 mt-3"><select className="flex-1 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTp(e.target.value)} value={tp}><option value="">Região</option>{["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólica pélvica", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"].map(x=><option key={x}>{x}</option>)}</select><select className="w-28 bg-slate-900 text-white text-xs p-2 rounded outline-none border border-slate-600" onChange={e=>setTs(e.target.value)} value={ts}><option value="">Lado</option><option value="Direita">Direita</option><option value="Esquerda">Esquerda</option><option value="Ambos">Ambos</option><option value="Não informado">Não informado</option></select><button onClick={addP} className="bg-red-600 text-white px-3 rounded font-bold">+</button></div>{pain.length>0&&<div className="flex flex-wrap gap-2 mt-3">{pain.map((item,index)=><span key={item.zone+'-'+item.side+'-'+index} onClick={()=>setPain(pain.filter((_,i)=>i!==index))} className="bg-red-900/50 text-red-300 text-xs px-2 py-1 rounded cursor-pointer">{item.zone} · {item.side} ×</span>)}</div>}</div>
                         {secureMode && (p.menstrualTrackingEnabled || p.healthProfile === 'Feminino') && (
                             <div className="bg-fuchsia-950/40 p-5 rounded-xl border border-fuchsia-500/30">
                                 <div className="flex justify-between items-start gap-3"><div><h3 className="font-black text-fuchsia-300 uppercase text-sm">Saúde menstrual</h3><p className="text-[9px] text-slate-500 mt-1">Opcional e protegido. Visível apenas à equipe clínica autorizada.</p></div><span className="text-xl">🌸</span></div>
@@ -2475,7 +2475,7 @@ rotinas/sequências, semana padrão, player de treino e player atleta compacto. 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ErrorBoundary><AthletePortal /></ErrorBoundary>);
     </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=211',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{const r=await navigator.serviceWorker.register('./sw.js?v=215',{updateViaCache:'none'});r.update().catch(()=>{});}catch(_){}});}</script>
 
 <!-- PROCOACH ATLETA 2.1 • CENTRAL PESSOAL -->
 <style id="pc21-ath-style">

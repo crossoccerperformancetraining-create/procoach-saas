@@ -1,37 +1,22 @@
-# ProCoach — pacote de integração 214
+# ProCoach — sincronização da dor v215
 
-Pacote de atualização para aplicar em uma branch de teste do repositório `procoach-saas`. Foi reconstituído a partir da base ProCoach 211 salva e inclui as alterações 214 descritas nesta documentação. Não foi enviado ao GitHub nem implantado. Esta revisão também mostra uma tela de recuperação quando o login cai em um espaço sem função, evitando confundir isso com falha dos menus ou perda de atletas.
+Pacote de atualização preparado sobre os arquivos atuais do branch `main` do repositório `crossoccerperformancetraining-create/procoach-saas` (versão 214). Ele adiciona o registro e a leitura do lado da dor do atleta no diário compartilhado. Ainda não foi enviado ao GitHub nem publicado no Vercel.
 
-## Arquivos de atualização
+## Arquivos incluídos
 
-- `index.html`: novas abas, integração com autosave, backup/importação e recarga de dados ao trocar de equipe.
-- `athlete-submit.js` (na raiz): gravação transacional das respostas do atleta, com deduplicação por `clientMutationId` enviado pelo portal.
-- `club-data.js` (na raiz): endpoint autenticado para resumo do radar e calendário entre equipes vinculadas.
-- `manifest.json` e `sw.js`: versão 214 e atualização do cache.
+- `index.html`: formulário manual do treinador com lado por região, intensidade condicional, leitura de `painSides`, exibição por atleta e recorrência por região/lado.
+- `atleta.html`: portal atual do atleta, com região, lado, intensidade condicional e envio dos campos `painZones`, `painSides` e `painDetails`. Preserva modo seguro e fila offline.
+- `athlete-submit.js`: endpoint atual que grava as respostas seguras e conserva os campos do diário.
+- `manifest.json` e `sw.js`: atualização de cache para a versão 215.
+- `README-INTEGRACAO.md` e `AUDITORIA-UNIFICACAO.md`: instruções e escopo.
 
-## Aplicação em branch
+## Como integrar
 
-Na raiz do repositório, substitua `index.html`, `manifest.json`, `sw.js` e `athlete-submit.js` (na raiz); adicione `club-data.js` (na raiz). Preserve os outros arquivos, incluindo `_lib.js`, `atleta.html`, regras Firestore, imagens e variáveis de ambiente.
+Extraia o pacote e aplique os cinco arquivos de código na raiz de uma branch de teste. Faça commit na branch e confira a Preview do Vercel antes de publicar. Preserve os demais arquivos, regras do Firebase e variáveis de ambiente.
 
-Crie uma branch de teste e gere uma Preview no Vercel antes de publicar. A integração GitHub usada nesta conversa não conseguiu criar a branch por falta de autorização de escrita; o ZIP serve para fazer o envio manual ou retomar quando essa autorização estiver disponível.
+A tentativa de criar a branch pelo conector GitHub foi bloqueada com erro 403. Por isso, este pacote está pronto para integração manual; nenhum arquivo do repositório foi alterado.
 
-## Recursos incluídos
+## Comportamento
 
-O menu passa de 35 para 40 destinos com **Estúdio de treino**, **Estoque DM**, **Escalação semanal**, **Prancheta tática** e **Clube e base**. O Estúdio organiza modelos e rotinas, agenda modelos no calendário existente e guarda um diário da comissão. A área de vídeos existente continua sendo usada para envios individuais, por setor e ao elenco.
+O treinador e o atleta registram a região e o lado (direita, esquerda, ambos ou não informado). Os registros ficam no mesmo diário por atleta e data. Relatórios e histórico agrupam a recorrência pela mesma região e lado. A intensidade da dor só aparece quando há uma região selecionada. O alerta de recorrência é um sinal para a comissão revisar, não um diagnóstico nem uma decisão automática de afastamento.
 
-A avaliação semanal registra notas do treinador de 1 a 5, calcula Top 5 dos últimos sete dias e sugere até onze atletas na formação selecionada, considerando as posições cadastradas. A sugestão fica salva e deve ser revisada pelo treinador.
-
-O estoque permite cadastro de material, quantidade, nível mínimo, validade e movimentações simples de entrada/saída. Os itens sincronizam com o workspace, mas ainda não são debitados automaticamente por um atendimento do DM.
-
-A prancheta nova oferece campo, tokens dos atletas, seleção múltipla, ajustes direcionais, quadros salvos e exportação PNG. O centro de jogo que já existia no SaaS permanece disponível.
-
-## Limites da sincronização Clube e base
-
-Informe o mesmo código em **Clube e base** nos workspaces que devem se reunir. A função só agrega workspaces que pertencem à conta autenticada (`ownerUid`) e que têm o mesmo `organization.clubId`; a consulta fica limitada aos 50 primeiros documentos da conta.
-
-O endpoint compartilha apenas dados resumidos para o radar: nome, posição, média de notas, frequência e sinal de revisão do DM, além de eventos de calendário. Não retorna diagnóstico, contrato ou documento pessoal. Propostas de promoção/convocação vão para revisão e não movem atleta automaticamente.
-
-
-## Se aparecer “Confira o espaço de trabalho”
-
-Toque em **Abrir meu espaço principal**. A tela aparece quando o login abre um espaço sem uma função atribuída; o app não apaga nem move atletas. Depois de aplicar esta revisão, a versão nova do service worker atualiza os arquivos em cache.

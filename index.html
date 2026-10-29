@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCoach • UNIFICAÇÃO 214</title>
+    <title>ProCoach • UNIFICAÇÃO 215</title>
     
-    <link rel="manifest" href="manifest.json?v=214">
-    <link rel="apple-touch-icon" href="logo.png?v=214">
-    <link rel="icon" type="image/png" href="logo.png?v=214">
+    <link rel="manifest" href="manifest.json?v=215">
+    <link rel="apple-touch-icon" href="logo.png?v=215">
+    <link rel="icon" type="image/png" href="logo.png?v=215">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a4a3e">
@@ -255,7 +255,7 @@ rotinas/sequências, semana padrão, player de treino e login diagnóstico. -->
             if (docId) url.searchParams.set('id', String(docId));
             if (playerId) url.searchParams.set('uid', String(playerId));
             if (preview) url.searchParams.set('view', 'coach');
-            url.searchParams.set('v', '214');
+            url.searchParams.set('v', '215');
             return url.toString();
         };
 
@@ -1373,25 +1373,33 @@ const LineChart = ({ data, color, height = 50 }) => {
             const [selectedPlayer, setSelectedPlayer] = useState(0);
             const [localScores, setLocalScores] = useState({sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
             const [localPainZones, setLocalPainZones] = useState([]);
+            const [localPainSides, setLocalPainSides] = useState({});
            const bodyParts = ["Cabeça", "Pescoço", "Trapézio", "Ombro", "Peitoral", "Costas Sup.", "Lombar", "Abdômen", "Cólicas", "Braço", "Quadril", "Adutor", "Quadríceps", "Posterior Coxa", "Joelho", "Panturrilha", "Tornozelo", "Pé"];
             useEffect(() => { 
                 if(mode === 'manual') {
                     const logObj = trainingLog[wellnessDate]?.[selectedPlayer] || {}; 
                     const validW = safeObj(logObj.wellness);
                     setLocalScores(validW.sleep ? validW : {sleep:1,stress:1,fatigue:1,soreness:1, mood: 1}); 
-                    setLocalPainZones(Array.isArray(logObj.painZones) ? logObj.painZones : []); 
+                    const savedSides=safeObj(logObj.painSides);
+                    const normalizedZones=[];
+                    const normalizedSides={...savedSides};
+                    safeArray(logObj.painZones).forEach(raw=>{const value=String(raw||'');const legacy=value.match(/^(.*)\s+\((Dir|Esq)\)$/);const zone=legacy?legacy[1]:value;if(zone&&!normalizedZones.includes(zone))normalizedZones.push(zone);if(legacy&&!normalizedSides[zone])normalizedSides[zone]=legacy[2]==='Dir'?'Direita':'Esquerda';});
+                    setLocalPainZones(normalizedZones);
+                    setLocalPainSides(normalizedSides); 
                 }
             }, [wellnessDate, selectedPlayer, trainingLog, mode]);
 
             const handleScoreChange = (metric, val) => { setLocalScores(prev => ({...prev, [metric]: parseInt(val)})); };
-            const togglePainZone = (zone) => { let n = [...localPainZones]; if(n.includes(zone)) n = n.filter(z=>z!==zone); else n.push(zone); setLocalPainZones(n); };
+            const togglePainZone = (zone) => { let n=[...localPainZones]; if(n.includes(zone)){n=n.filter(z=>z!==zone);setLocalPainSides(prev=>{const next={...prev};delete next[zone];return next;});}else n.push(zone);setLocalPainZones(n); };
+            const handlePainSideChange = (zone,side) => setLocalPainSides(prev=>({...prev,[zone]:side}));
             
             const confirmData = () => { 
                 const newLog = {...trainingLog}; 
                 if(!newLog[wellnessDate]) newLog[wellnessDate] = {}; 
                 if(!newLog[wellnessDate][selectedPlayer]) newLog[wellnessDate][selectedPlayer] = {}; 
-                newLog[wellnessDate][selectedPlayer].wellness = localScores; 
-                newLog[wellnessDate][selectedPlayer].painZones = localPainZones; 
+                newLog[wellnessDate][selectedPlayer].wellness = {...localScores,soreness:localPainZones.length?localScores.soreness:1}; 
+                newLog[wellnessDate][selectedPlayer].painZones = localPainZones;
+                newLog[wellnessDate][selectedPlayer].painSides = localPainSides; 
                 setTrainingLog(newLog); 
                 showToast("Dados Salvos!"); 
                 setMode('dashboard');
@@ -1486,7 +1494,9 @@ const LineChart = ({ data, color, height = 50 }) => {
                                     if(!p) return null;
                                     const logObj = trainingLog[wellnessDate]?.[i] || {};
                                     const log = safeObj(logObj.wellness);
-                                    const pain = Array.isArray(logObj.painZones) ? logObj.painZones : [];
+                                    const painZones = Array.isArray(logObj.painZones) ? logObj.painZones : [];
+                                    const painSides = safeObj(logObj.painSides);
+                                    const pain = painZones.map(raw=>{const value=String(raw||'');const legacy=value.match(/^(.*)\s+\((Dir|Esq)\)$/);const zone=legacy?legacy[1]:value;const side=painSides[zone]||painSides[value]||(legacy?(legacy[2]==='Dir'?'Direita':'Esquerda'):'Lado não informado');return zone+' ('+side+')';});
                                     const isFilled = !!log.sleep;
                                     
                                     return (
@@ -1550,7 +1560,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                         <div className="w-full md:w-1/3 bg-white dark:bg-slate-800 rounded-xl shadow p-4 border border-slate-200 dark:border-slate-700 flex flex-col"><h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-4">Selecionar Atleta</h3><div className="space-y-2 flex-1 overflow-y-auto pr-2">{safeArray(players).map((p, i) => { if(!p) return null; return (<div key={i} onClick={()=>setSelectedPlayer(i)} className={`flex items-center gap-2 p-2 rounded cursor-pointer border group transition-colors ${selectedPlayer===i?'border-l-4 shadow-sm':'border-transparent hover:bg-slate-50 dark:hover:bg-slate-700'}`} style={{borderLeftColor: selectedPlayer===i?themeColor:'transparent'}}><div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden relative shrink-0 border border-slate-200 dark:border-slate-600">{p.image?<img src={p.image} loading="lazy" decoding="async" className="w-full h-full object-cover object-top"/>:<Icon name="user"/>}</div><div className="font-bold text-sm text-slate-700 dark:text-slate-200">{p.name}</div></div>)})}</div></div>
                         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl shadow p-6 border border-slate-200 dark:border-slate-700 flex flex-col gap-4 overflow-y-auto relative">
                             <div className="flex justify-between items-center border-b dark:border-slate-700 pb-4"><div><h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{players[selectedPlayer]?.name}</h2></div></div>
-                            <div className="space-y-4">{[{id:'sleep',label:'Qualidade do Sono (1=Excelente | 7=Péssimo)'},{id:'stress',label:'Estresse (1=Relaxado | 7=Estressado)'},{id:'fatigue',label:'Fadiga (1=Muita Energia | 7=Exausto)'},{id:'soreness',label:'Dor Muscular (1=Sem Dor | 7=Muita Dor)'}, {id:'mood', label:'Humor (1=Animado | 7=Irritado)'}].map(m=>(<div key={m.id}><div className="flex justify-between text-sm font-bold text-slate-700 dark:text-slate-300 mb-2"><span>{m.label}</span><span className="text-white px-2 rounded font-bold" style={{backgroundColor: themeColor}}>{localScores[m.id]}</span></div><input type="range" min="1" max="7" step="1" value={localScores[m.id]} onChange={(e)=>handleScoreChange(m.id, e.target.value)} className="hooper-slider" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}}/></div>))}</div>
+                            <div className="space-y-4">{[{id:'sleep',label:'Qualidade do Sono (1=Excelente | 7=Péssimo)'},{id:'stress',label:'Estresse (1=Relaxado | 7=Estressado)'},{id:'fatigue',label:'Fadiga (1=Muita Energia | 7=Exausto)'},{id:'soreness',label:'Intensidade da dor (1=Leve | 7=Forte)'}, {id:'mood', label:'Humor (1=Animado | 7=Irritado)'}].filter(m=>m.id!=='soreness'||localPainZones.length>0).map(m=>(<div key={m.id}><div className="flex justify-between text-sm font-bold text-slate-700 dark:text-slate-300 mb-2"><span>{m.label}</span><span className="text-white px-2 rounded font-bold" style={{backgroundColor: themeColor}}>{localScores[m.id]}</span></div><input type="range" min="1" max="7" step="1" value={localScores[m.id]} onChange={(e)=>handleScoreChange(m.id, e.target.value)} className="hooper-slider" style={{background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`}}/></div>))}</div>
                              <div className="border-t dark:border-slate-700 pt-4">
                                 <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex justify-between items-center">
                                     <span>Sintomas e Dores</span>
@@ -1570,6 +1580,7 @@ const LineChart = ({ data, color, height = 50 }) => {
                                         )
                                     })}
                                 </div>
+                                {localPainZones.length>0 && <div className="space-y-2 mt-3">{localPainZones.map(zone=><div key={zone} className="flex items-center justify-between gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"><span className="text-xs font-bold text-red-700 dark:text-red-300">{zone}</span><select aria-label={'Lado da dor em '+zone} value={localPainSides[zone]||'Não informado'} onChange={e=>handlePainSideChange(zone,e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs"><option value="Direita">Direita</option><option value="Esquerda">Esquerda</option><option value="Ambos">Ambos</option><option value="Não informado">Não informado</option></select></div>)}</div>}
                             </div>
                             </div>
                     </div>
@@ -1611,7 +1622,7 @@ const LineChart = ({ data, color, height = 50 }) => {
 
             const HistoryAI = () => {
                 const painCounts = {};
-                dates.forEach(d => { const l = logs[d]?.[playerIndex] || {}; if(Array.isArray(l.painZones)) l.painZones.forEach(z => { painCounts[z] = (painCounts[z]||0) + 1; }); });
+                dates.forEach(d => { const l=logs[d]?.[playerIndex]||{},sides=safeObj(l.painSides); safeArray(l.painZones).forEach(raw=>{const value=String(raw||''),legacy=value.match(/^(.*)\s+\((Dir|Esq)\)$/),zone=legacy?legacy[1]:value,side=sides[zone]||sides[value]||(legacy?(legacy[2]==='Dir'?'Direita':'Esquerda'):'Lado não informado'),key=zone+' — '+side;painCounts[key]=(painCounts[key]||0)+1;}); });
                 const chronic = Object.keys(painCounts).find(k => painCounts[k] >= 3);
                 if (chronic) return (<div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-3 mb-4 rounded-r-lg shadow-sm"><div className="flex items-center gap-2 mb-1"><Icon name="brain" className="text-red-600 dark:text-red-400" size={18}/><span className="text-xs font-bold text-red-700 dark:text-red-300 uppercase">Fisiologista Virtual</span></div><div className="text-xs text-slate-700 dark:text-slate-300">Atenção: Dor recorrente em <strong>{chronic}</strong> detectada nesta semana. Risco elevado.</div></div>);
                 return null;
@@ -4694,7 +4705,7 @@ const Player360View = ({ players, trainingLog, assessments, dmRecords, attendanc
     const wellnessEntries = dates7.map(date => safeObj(trainingLog?.[date]?.[selectedIndex]?.wellness)).filter(w => w.sleep);
     const avgWellness = key => wellnessEntries.length ? (wellnessEntries.reduce((sum,w)=>sum+(Number(w[key])||0),0)/wellnessEntries.length).toFixed(1) : '-';
     const painCounts = {};
-    dates28.forEach(date => safeArray(trainingLog?.[date]?.[selectedIndex]?.painZones).forEach(zone => painCounts[zone]=(painCounts[zone]||0)+1));
+    dates28.forEach(date => {const log=trainingLog?.[date]?.[selectedIndex]||{},sides=safeObj(log.painSides);safeArray(log.painZones).forEach(raw=>{const value=String(raw||''),legacy=value.match(/^(.*)\s+\((Dir|Esq)\)$/),zone=legacy?legacy[1]:value,side=sides[zone]||sides[value]||(legacy?(legacy[2]==='Dir'?'Direita':'Esquerda'):'Lado não informado'),key=zone+' — '+side;painCounts[key]=(painCounts[key]||0)+1;});});
     const frequentPain = Object.entries(painCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
     const attendanceDates = Object.keys(safeObj(attendanceLog)).filter(date => dates28.includes(date));
     const attendanceStatuses = attendanceDates.map(date => attendanceLog[date]?.[selectedIndex]).filter(Boolean);
@@ -6835,7 +6846,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                             <div className="p-5 border-b dark:border-slate-700 flex justify-between items-center"><div><div className="pc211-kicker text-blue-500">Sistema</div><h3 className="text-xl font-black dark:text-white">Diagnóstico do ProCoach</h3></div><button onClick={()=>setShowDiagnostics(false)} className="p-2 text-slate-400"><Icon name="x"/></button></div>
                             <div className="p-5 grid grid-cols-2 gap-3">
                                 {[
-                                    ['Build','UNIFICAÇÃO 214'],
+                                    ['Build','UNIFICAÇÃO 215'],
                                     ['Internet',navigator.onLine?'Online':'Offline'],
                                     ['Sincronização',syncStatus||'Sem pendência visual'],
                                     ['Último sync',lastSuccessfulSync?new Date(lastSuccessfulSync).toLocaleString('pt-BR'):'Nesta sessão: ainda não registrado'],
@@ -7047,7 +7058,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
                     url.search = '';
                     url.searchParams.set('root', ownedWorkspace);
                     url.searchParams.set('team', 'pro');
-                    url.searchParams.set('v', '214');
+                    url.searchParams.set('v', '215');
                     window.location.replace(url.toString());
                 };
                 return <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center"><Icon name="lock" size={48} className="text-yellow-400 mb-4"/><h1 className="text-2xl font-black uppercase">Confira o espaço de trabalho</h1><p className="text-sm text-slate-400 max-w-md mt-2">Este acesso está sem uma função neste espaço. Pode ser que o navegador tenha aberto outro clube ou uma categoria vazia. Seus atletas não foram apagados. Abra seu espaço principal para carregar o elenco e os menus corretos.</p><div className="mt-6 flex flex-col sm:flex-row gap-3"><button onClick={recoverOwnerWorkspace} className="px-5 py-3 bg-blue-600 rounded-xl font-black uppercase text-xs">Abrir meu espaço principal</button><button onClick={()=>auth.signOut()} className="px-5 py-3 bg-slate-800 rounded-xl font-black uppercase text-xs">Sair</button></div></div>;
@@ -7999,8 +8010,8 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 
 <script id="pc-stable-runtime-marker">
 (function(){
- window.PROCOACH_BUILD='2026.10-unification-214';
- document.documentElement.dataset.procoachBuild='214';
+ window.PROCOACH_BUILD='2026.10-unification-215';
+ document.documentElement.dataset.procoachBuild='215';
 })();
 </script>
 
@@ -8008,7 +8019,7 @@ const QuickCommissionPublisher = ({ user, workspaceId, teamCommitments, setTeamC
 if('serviceWorker' in navigator){
  window.addEventListener('load',async()=>{
   try{
-   const r=await navigator.serviceWorker.register('./sw.js?v=214',{updateViaCache:'none'});
+   const r=await navigator.serviceWorker.register('./sw.js?v=215',{updateViaCache:'none'});
    await r.update().catch(()=>{});
    navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(sessionStorage.getItem('pc_sw_214_reloaded')) return;
